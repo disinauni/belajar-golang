@@ -1,7 +1,7 @@
 {
-  "name": "Belajar Python",
-  "short_name": "BelajarPy",
-  "description": "Platform pembelajaran Python gratis, interaktif, dan bilingual untuk siswa SMP & SMA Indonesia",
+  "name": "Belajar Golang",
+  "short_name": "BelajarGo",
+  "description": "Platform pembelajaran Go (Golang) gratis, interaktif, dan bilingual untuk siswa SMP & SMA Indonesia",
   "start_url": "/id/",
   "scope": "/",
   "display": "standalone",

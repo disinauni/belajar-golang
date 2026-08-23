@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://belajar-python.varnimyr.my.id/sitemap-index.xml
+Sitemap: https://belajar-golang.varnimyr.my.id/sitemap-index.xml
