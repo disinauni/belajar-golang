@@ -41,7 +41,7 @@ export const GET: APIRoute = async ({ url }) => {
             fontWeight: 'bold',
             color: 'white',
           },
-        }, 'C+'),
+        }, '</>'),
         h('span', {
           style: { color: '#94a3b8', fontSize: '20px' },
         }, 'belajar-golang.varnimyr.my.id'),
