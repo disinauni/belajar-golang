@@ -1,0 +1,214 @@
+---
+title: "JSON Encoding"
+unit: 8
+lesson: 3
+description: "Mengubah struct Go menjadi JSON dan sebaliknya dengan package encoding/json"
+objectives:
+  - "Mengonversi struct ke JSON dengan json.Marshal"
+  - "Mengonversi JSON ke struct dengan json.Unmarshal"
+  - "Memakai struct tag untuk mengatur nama field JSON"
+estimatedTime: 30
+prerequisites: ["unit-8/02-testing"]
+difficulty: "intermediate"
+tags: ["json", "encoding", "struct-tag", "marshal", "unmarshal"]
+---
+
+# JSON Encoding
+
+JSON adalah format tukar-data paling umum di web — dipakai REST API, file konfigurasi, sampai pesan antar microservice. Go punya dukungan JSON bawaan lewat package `encoding/json`, dan strukturnya menyatu rapi dengan `struct` yang sudah kamu kuasai sejak Unit 6.
+
+## Struct ke JSON: json.Marshal
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type Siswa struct {
+    Nama  string
+    Umur  int
+    Aktif bool
+}
+
+func main() {
+    siswa := Siswa{Nama: "Budi", Umur: 17, Aktif: true}
+
+    data, err := json.Marshal(siswa)
+    if err != nil {
+        fmt.Println("Gagal encode:", err)
+        return
+    }
+
+    fmt.Println(string(data))
+}
+```
+
+Output:
+```
+{"Nama":"Budi","Umur":17,"Aktif":true}
+```
+
+## Membedah json.Marshal
+
+**`json.Marshal(siswa)`** — mengonversi nilai Go (di sini, struct `Siswa`) menjadi JSON. Mengembalikan **dua nilai**: `[]byte` (data JSON dalam bentuk byte) dan `error`.
+
+**`string(data)`** — `Marshal` mengembalikan `[]byte`, bukan `string`, jadi perlu dikonversi eksplisit untuk ditampilkan sebagai teks — pola konversi tipe yang sudah kamu kenal sejak Unit 1.
+
+**Nama field di JSON sama persis dengan nama field struct** (`Nama`, `Umur`, `Aktif`) — karena field-nya exported (kapital). Kalau kamu ingin nama JSON berbeda (misalnya huruf kecil, gaya `snake_case` yang lebih umum di JSON), kamu butuh **struct tag**.
+
+## Mengatur Nama Field dengan Struct Tag
+
+```go
+type Siswa struct {
+    Nama  string `json:"nama"`
+    Umur  int    `json:"umur"`
+    Aktif bool   `json:"aktif"`
+}
+```
+
+Dengan struct tag ini, hasil `json.Marshal` menjadi:
+```
+{"nama":"Budi","umur":17,"aktif":true}
+```
+
+Struct tag ditulis di dalam backtick `` `json:"nama"` `` setelah tipe field. Ini bukan komentar biasa — Go membaca teks ini lewat reflection saat `Marshal`/`Unmarshal` dijalankan.
+
+:::note
+Field struct **wajib exported** (huruf kapital) supaya bisa di-encode ke JSON sama sekali — ini kelanjutan langsung dari aturan exported/unexported yang kamu pelajari di lesson pertama unit ini. Field unexported (huruf kecil) akan **dilewati diam-diam**, tanpa error.
+:::
+
+## JSON ke Struct: json.Unmarshal
+
+Kebalikannya — mengubah teks JSON menjadi struct Go:
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type Siswa struct {
+    Nama string `json:"nama"`
+    Umur int    `json:"umur"`
+}
+
+func main() {
+    jsonText := `{"nama": "Ani", "umur": 16}`
+
+    var siswa Siswa
+    err := json.Unmarshal([]byte(jsonText), &siswa)
+    if err != nil {
+        fmt.Println("Gagal decode:", err)
+        return
+    }
+
+    fmt.Println(siswa.Nama, siswa.Umur)
+}
+```
+
+Output:
+```
+Ani 16
+```
+
+## Membedah json.Unmarshal
+
+**`` `{"nama": "Ani", "umur": 16}` ``** — string literal pakai backtick (raw string), praktis untuk teks yang mengandung banyak tanda kutip ganda tanpa perlu di-escape satu-satu.
+
+**`var siswa Siswa`** — deklarasikan variabel kosong dulu (zero value: `Nama` = `""`, `Umur` = `0`) yang nanti akan **diisi** oleh `Unmarshal`.
+
+**`json.Unmarshal([]byte(jsonText), &siswa)`** — perhatikan tanda `&` sebelum `siswa`! `Unmarshal` butuh **alamat (pointer)** ke variabel tujuan, karena fungsi ini perlu **mengubah isi `siswa` secara langsung**, bukan cuma mengembalikan nilai baru. Konsep pointer sudah kamu kenal sejak Unit 6 (pointer receiver).
+
+:::tip
+Kamu bisa menambahkan `,omitempty` di struct tag (`json:"nama,omitempty"`) supaya field dengan zero value (`""`, `0`, `false`) tidak dimasukkan sama sekali ke output JSON. Berguna untuk field opsional.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa `&` saat Unmarshal:**
+   ```go
+   var siswa Siswa
+   json.Unmarshal([]byte(jsonText), siswa)  // ERROR: json: Unmarshal(non-pointer main.Siswa)
+   ```
+   `Unmarshal` selalu butuh pointer sebagai argumen kedua, supaya bisa mengisi variabel aslinya.
+
+2. **Field unexported dikira ikut ter-encode:**
+   ```go
+   type Siswa struct {
+       nama string  // unexported — TIDAK akan muncul di JSON
+   }
+   // json.Marshal(siswa) menghasilkan: {}
+   ```
+   Kalau field-nya tidak muncul di hasil `Marshal`, cek dulu: apakah huruf pertamanya kapital?
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u8l3-ex1"
+  title="Encode Struct ke JSON"
+  description="Lengkapi program agar mencetak JSON dari struct Produk dengan nama field 'nama' dan 'harga' (huruf kecil)."
+  type="code-output"
+  expectedOutput='{"nama":"Buku","harga":25000}'
+  starterCode={`package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type Produk struct {
+    Nama  string \`json:"nama"\`
+    Harga int    \`json:"harga"\`
+}
+
+func main() {
+    p := Produk{Nama: "Buku", Harga: 25000}
+    data, _ := json.Marshal(p)
+    fmt.Println(string(data))
+}`}
+  hints={["Struct tag json:\"nama\" mengatur nama field di output JSON.", "Kode ini sudah lengkap — coba jalankan!"]}
+  explanation='Struct tag json:"nama" dan json:"harga" membuat json.Marshal menghasilkan key huruf kecil sesuai tag, bukan nama field Go aslinya (Nama, Harga).'
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u8l3-ex2"
+  title="Kenapa Field Tidak Muncul di JSON?"
+  description="Field struct dengan nama 'alamat' (huruf kecil semua) tidak pernah muncul di hasil json.Marshal. Kenapa?"
+  type="multiple-choice"
+  options={["Karena tidak ada struct tag json:\"alamat\"", "Karena field unexported (huruf kecil) selalu dilewati saat encoding", "Karena tipe datanya salah", "Karena JSON tidak mendukung field bernama 'alamat'"]}
+  correctIndex={1}
+  hints={["Ingat aturan exported/unexported dari lesson sebelumnya.", "encoding/json memakai reflection, dan reflection tidak bisa 'melihat' field unexported dari package lain."]}
+  explanation="Field struct harus exported (huruf pertama kapital) supaya bisa diakses package encoding/json lewat reflection. Field unexported selalu dilewati, dengan atau tanpa struct tag."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u8l3-ex3"
+  title="Lengkapi Unmarshal"
+  description="Lengkapi argumen json.Unmarshal agar variabel siswa benar-benar terisi."
+  type="fill-blank"
+  template="json.Unmarshal([]byte(jsonText), {{BLANK}}siswa)"
+  blanks={["&"]}
+  hints={["Unmarshal butuh alamat variabel, bukan nilainya langsung."]}
+  explanation="&siswa memberikan pointer (alamat) ke variabel siswa, sehingga Unmarshal bisa mengubah isinya secara langsung."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Fungsi | Arah | Return |
+|---|---|---|
+| `json.Marshal(v)` | Go → JSON | `([]byte, error)` |
+| `json.Unmarshal(data, &v)` | JSON → Go | `error` (mengisi `v` lewat pointer) |
+| `` `json:"nama"` `` | Struct tag | Mengatur nama field di JSON |
+| `` `json:"nama,omitempty"` `` | Struct tag | Sembunyikan field kalau zero value |
+
+Kamu sudah menguasai package, module, testing, dan JSON — bekal lengkap untuk membangun program Go nyata. Saatnya menggabungkan **semuanya** di **Final Project**: CLI Manajemen Tugas!

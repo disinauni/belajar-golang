@@ -1,0 +1,170 @@
+---
+title: "Package & Module"
+unit: 8
+lesson: 1
+description: "Memahami go.mod, module Go, dan aturan exported/unexported secara tuntas"
+objectives:
+  - "Memahami fungsi file go.mod dan konsep module"
+  - "Mengetahui bagaimana import path bekerja di dalam sebuah module"
+  - "Memahami aturan exported (huruf kapital) vs unexported (huruf kecil) secara tuntas"
+estimatedTime: 35
+prerequisites: ["unit-7/05-project-worker-pool"]
+difficulty: "intermediate"
+tags: ["package", "module", "go-mod", "exported"]
+---
+
+# Package & Module
+
+Sejak lesson pertama kursus ini, kamu sudah menulis `package main` tanpa banyak bertanya "kenapa?". Sekarang, di penghujung perjalanan, saatnya memahami bagaimana Go sungguhan mengatur project besar berisi banyak file dan package — lewat konsep bernama **module**.
+
+## Dari Satu File ke Banyak File
+
+Semua kode yang kamu tulis sejauh ini muat dalam satu file `main.go`, dijalankan langsung lewat playground situs ini. Tapi project sungguhan biasanya punya puluhan bahkan ratusan file, dikelompokkan ke banyak package. Go butuh cara untuk tahu: "project apa ini, dan bagaimana file-file di dalamnya saling mengimpor satu sama lain?" Jawabannya: file `go.mod`.
+
+## Anatomi go.mod
+
+Kalau kamu jalankan `go mod init namaproyek/kalkulator` di terminal komputer sendiri (bukan di playground situs ini), Go akan membuat file `go.mod` seperti ini:
+
+```
+module namaproyek/kalkulator
+
+go 1.13
+
+require (
+    github.com/contoh/beberapa-dependency v1.2.3
+)
+```
+
+Ini bukan file Go biasa (bukan `.go`), jadi tidak dijalankan — cukup dibaca sebagai konfigurasi.
+
+## Membedah go.mod
+
+**`module namaproyek/kalkulator`** — nama module, biasanya berupa path yang mirip URL repository. Ini dipakai sebagai "alamat dasar" untuk semua import path di dalam project.
+
+**`go 1.13`** — versi minimum Go yang dibutuhkan project ini untuk di-compile.
+
+**`require ( ... )`** — daftar dependency eksternal beserta versinya, otomatis terisi begitu kamu menjalankan `go get namapaket` untuk memakai library pihak ketiga.
+
+:::note
+Playground di situs ini menjalankan satu file `main.go` langsung tanpa `go.mod` — cukup untuk belajar sintaks dan logika Go. Begitu kamu mulai membangun project sungguhan di komputer sendiri, `go mod init` adalah perintah pertama yang wajib kamu jalankan.
+:::
+
+## Import Path di Dalam Module
+
+Misalnya module kamu bernama `namaproyek/kalkulator`, dan kamu punya folder `operasi/` berisi package bernama `operasi`. Dari `main.go` di root project, kamu mengimpornya seperti ini:
+
+```go
+import "namaproyek/kalkulator/operasi"
+```
+
+Import path = nama module + path folder relatif. Ini beda dari `import "fmt"` yang kita pakai sepanjang kursus — `fmt` adalah package **standard library** bawaan Go, bukan bagian dari module-mu sendiri, jadi tidak perlu prefix nama module apapun.
+
+## Exported vs Unexported — Aturan Lengkap
+
+Ingat catatan kecil soal `Println` (huruf besar) vs `main` (huruf kecil) di lesson pertama kursus ini? Sekarang saatnya tuntas.
+
+```go
+package geometri
+
+// Luas — exported, bisa dipanggil dari package lain
+func Luas(sisi float64) float64 {
+    return sisi * sisi
+}
+
+// hitungInternal — unexported, hanya bisa dipanggil di dalam package geometri
+func hitungInternal(x float64) float64 {
+    return x * 2
+}
+```
+
+## Membedah Aturan Exported
+
+**Huruf pertama kapital (`Luas`)** — exported. Bisa diakses dari package lain lewat `geometri.Luas(5)`.
+
+**Huruf pertama kecil (`hitungInternal`)** — unexported. Hanya bisa dipanggil oleh kode di dalam package `geometri` sendiri — package lain sama sekali tidak bisa mengaksesnya, bahkan tidak muncul di autocomplete editor.
+
+Aturan yang sama berlaku untuk semuanya: nama fungsi, nama variabel/konstanta di level package, nama tipe (`struct`, `interface`), bahkan nama **field** di dalam struct. Ini akan langsung relevan di lesson berikutnya — field struct harus exported (kapital) supaya bisa di-encode ke JSON, karena package `encoding/json` sendiri adalah "package lain" dari sudut pandang struct-mu.
+
+:::tip
+Ini cara Go menggantikan keyword `public`/`private` yang ada di Java/C++. Tidak ada keyword khusus — cukup lihat huruf pertama namanya. Sederhana, tapi efektif.
+:::
+
+:::fun
+Konvensi ini kadang bikin bingung pemula dari bahasa lain: nama fungsi/variabel yang "penting" di Go justru sering diawali huruf besar, kebalikan dari kebiasaan `camelCase` murni di banyak bahasa lain untuk semua identifier.
+:::
+
+## Kesalahan Umum
+
+1. **Mengira semua fungsi otomatis bisa dipanggil dari package lain:**
+   ```go
+   // di package matematika
+   func hitungPajak(harga float64) float64 {
+       return harga * 0.11
+   }
+
+   // di package main
+   import "namaproyek/matematika"
+
+   func main() {
+       matematika.hitungPajak(1000)  // ERROR: hitungPajak is unexported
+   }
+   ```
+   Solusi: kalau fungsi itu memang perlu dipanggil dari luar package-nya, ganti huruf pertamanya jadi kapital: `HitungPajak`.
+
+2. **Lupa `go.mod` saat memindahkan kode dari playground ke komputer sendiri:**
+   ```bash
+   go run main.go
+   # go: cannot find main module, but found .git/config in ...
+   ```
+   Solusi: jalankan `go mod init namaproyek` dulu di folder project sebelum `go run`.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u8l1-ex1"
+  title="Fungsi Mana yang Exported?"
+  description="Fungsi mana yang BISA dipanggil dari package lain?"
+  type="multiple-choice"
+  options={["hitungTotal(harga float64) float64", "HitungTotal(harga float64) float64", "hitung_total(harga float64) float64", "_HitungTotal(harga float64) float64"]}
+  correctIndex={1}
+  hints={["Yang menentukan exported atau tidak adalah huruf PERTAMA nama fungsi.", "Cari yang diawali huruf kapital."]}
+  explanation="HitungTotal diawali huruf kapital, jadi exported — bisa dipanggil dari package lain lewat namapackage.HitungTotal(...)."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u8l1-ex2"
+  title="Ekspor Fungsi Ini"
+  description="Ubah nama fungsi 'konversiSuhu' agar exported (bisa dipanggil dari package lain), tanpa mengubah apapun yang lain."
+  type="fill-blank"
+  template="func {{BLANK}}(celsius float64) float64 {"
+  blanks={["KonversiSuhu"]}
+  hints={["Cukup ubah huruf pertama nama fungsinya jadi kapital."]}
+  explanation="KonversiSuhu (K kapital) membuat fungsi ini exported, sehingga bisa dipanggil dari package lain."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u8l1-ex3"
+  title="Fungsi go.mod"
+  description="Apa fungsi utama file go.mod dalam sebuah project Go?"
+  type="multiple-choice"
+  options={["Menyimpan hasil compile program", "Menandai root project, nama module, dan daftar dependency", "Menyimpan konfigurasi editor", "Mengganti fungsi package main"]}
+  correctIndex={1}
+  hints={["Ini file konfigurasi, bukan file kode Go yang dijalankan.", "Isinya mirip package.json di dunia Node.js — identitas project + dependency."]}
+  explanation="go.mod menandai root sebuah module Go, memuat nama module (dipakai sebagai basis import path) dan daftar dependency eksternal beserta versinya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Keterangan |
+|---|---|
+| `go mod init nama` | Membuat file `go.mod`, menandai root project |
+| Import path | nama module + path folder relatif |
+| Exported | Nama diawali huruf kapital, bisa diakses package lain |
+| Unexported | Nama diawali huruf kecil, hanya untuk package itu sendiri |
+
+Di pelajaran berikutnya, kita akan bahas **testing dengan go test** — cara memastikan kode Go-mu benar-benar bekerja sesuai harapan, secara otomatis!

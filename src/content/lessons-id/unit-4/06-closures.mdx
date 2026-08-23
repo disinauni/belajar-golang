@@ -1,0 +1,273 @@
+---
+title: "Closures"
+unit: 4
+lesson: 6
+description: "Fungsi anonim yang bisa mengakses dan 'mengingat' variabel dari scope di luar dirinya"
+objectives:
+  - "Memahami apa itu closure dan bagaimana ia menangkap variabel dari scope luar"
+  - "Membuat fungsi anonim dan function factory memakai closure"
+  - "Mengenali dan menghindari jebakan loop variable capture di Go 1.13"
+estimatedTime: 30
+prerequisites: ["unit-4/05-defer"]
+difficulty: "intermediate"
+tags: ["closure", "anonymous-function", "loop-variable", "fungsi"]
+---
+
+# Closures
+
+Semua fungsi yang kamu tulis sejauh ini punya nama dan dideklarasikan di level package. Tapi Go juga mengizinkan **fungsi anonim** — fungsi tanpa nama yang bisa dibuat langsung di tengah kode, bahkan disimpan ke variabel. Ketika fungsi anonim itu "mengingat" variabel dari scope di sekitarnya, itulah yang disebut **closure**.
+
+## Fungsi Anonim dan Closure Sederhana
+
+```go
+package main
+
+import "fmt"
+
+func buatCounter() func() int {
+    hitung := 0
+    return func() int {
+        hitung++
+        return hitung
+    }
+}
+
+func main() {
+    counter := buatCounter()
+    fmt.Println(counter())
+    fmt.Println(counter())
+    fmt.Println(counter())
+}
+```
+
+Output:
+```
+1
+2
+3
+```
+
+## Membedah Closure
+
+**`func buatCounter() func() int`** — ini fungsi biasa, tapi tipe return-nya adalah **fungsi lain**: `func() int` (fungsi tanpa parameter yang mengembalikan `int`). Fungsi yang mengembalikan fungsi lain disebut *function factory*.
+
+**`hitung := 0`** — variabel lokal di dalam `buatCounter`. Normalnya, variabel lokal "hilang" begitu fungsi selesai. Tapi di sini, ada yang istimewa.
+
+**`return func() int { hitung++; return hitung }`** — fungsi anonim ini "menutup" (*closes over*) variabel `hitung` dari scope di sekitarnya. Inilah **closure**: fungsi anonim ini membawa serta akses ke `hitung`, bahkan setelah `buatCounter` selesai dieksekusi dan seharusnya "keluar scope".
+
+**`counter := buatCounter()`** — `counter` sekarang menyimpan fungsi anonim itu, lengkap dengan `hitung` miliknya sendiri yang tetap "hidup" karena closure menahannya.
+
+**Setiap `counter()` dipanggil** — menambah `hitung` sebanyak 1 dan mengembalikan nilainya. Karena `hitung` adalah milik closure ini (bukan disalin ulang setiap panggilan), nilainya **terus bertambah** antar pemanggilan: 1, 2, 3.
+
+Bayangkan closure seperti ransel yang dibawa fungsi anonim ke mana pun ia pergi — di dalam ransel itu ada variabel-variabel dari "rumah lamanya" (scope tempat ia dibuat), dan ia bisa terus membuka dan mengubah isi ransel itu kapan saja dipanggil.
+
+:::note
+Kalau kamu memanggil `buatCounter()` **lagi** untuk membuat `counter2 := buatCounter()`, `counter2` akan punya `hitung` miliknya **sendiri**, terpisah total dari `hitung` milik `counter`. Setiap pemanggilan `buatCounter()` membuat variabel `hitung` yang baru.
+:::
+
+## Jebakan Klasik: Closures di Dalam Loop
+
+Ini salah satu jebakan Go paling terkenal, dan **penting sekali** untuk dipahami dengan akurat sesuai versi Go yang dipakai. Perhatikan kode berikut:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    funcs := []func(){}
+
+    for i := 0; i < 3; i++ {
+        funcs = append(funcs, func() {
+            fmt.Println(i)
+        })
+    }
+
+    for _, f := range funcs {
+        f()
+    }
+}
+```
+
+Output:
+```
+3
+3
+3
+```
+
+Kemungkinan besar kamu berharap outputnya `0 1 2` — tapi hasilnya `3 3 3`! Kenapa?
+
+:::warning
+**Ini perilaku Go versi lama (termasuk Go 1.13.5 yang dipakai untuk menjalankan kode di situs ini).** Variabel loop `i` pada `for i := 0; i < 3; i++` **dibagi (shared)** oleh semua iterasi — bukan disalin ulang setiap putaran. Setiap closure yang dibuat di dalam loop menyimpan **referensi ke variabel `i` yang sama**, bukan salinan nilainya saat itu. Ketika loop selesai, `i` bernilai `3` (nilai yang membuat kondisi `i < 3` gagal) — dan karena semua closure menunjuk ke `i` yang sama, semuanya mencetak `3` saat dipanggil belakangan.
+
+Sejak Go 1.22, perilaku ini **berubah**: variabel loop otomatis jadi salinan baru per iterasi, sehingga kode di atas akan mencetak `0 1 2` di Go modern. Tapi playground di situs ini menjalankan **Go 1.13.5** — sebelum perubahan tersebut — jadi kamu tetap wajib memahami dan menerapkan solusi di bawah ini agar kodemu berperilaku benar di sini.
+:::
+
+### Solusi 1: Shadowing — Buat Salinan Baru Tiap Iterasi
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    funcs := []func(){}
+
+    for i := 0; i < 3; i++ {
+        i := i // shadow: deklarasi variabel BARU bernama i, salinan dari i loop
+        funcs = append(funcs, func() {
+            fmt.Println(i)
+        })
+    }
+
+    for _, f := range funcs {
+        f()
+    }
+}
+```
+
+Output:
+```
+0
+1
+2
+```
+
+**`i := i`** — baris ini terlihat aneh tapi sangat umum di Go. Ruas kanan (`i`) merujuk ke variabel loop di luar; ruas kiri **mendeklarasikan variabel baru** juga bernama `i`, tapi hidup di scope body loop, dan dibuat **ulang setiap iterasi**. Closure yang dibuat setelah baris ini menangkap variabel `i` yang baru ini — yang nilainya "dibekukan" untuk iterasi tersebut — bukan variabel `i` milik loop yang dibagi bersama.
+
+### Solusi 2: Kirim sebagai Parameter Fungsi
+
+```go
+package main
+
+import "fmt"
+
+func buatFungsi(n int) func() {
+    return func() {
+        fmt.Println(n)
+    }
+}
+
+func main() {
+    funcs := []func(){}
+
+    for i := 0; i < 3; i++ {
+        funcs = append(funcs, buatFungsi(i))
+    }
+
+    for _, f := range funcs {
+        f()
+    }
+}
+```
+
+Output:
+```
+0
+1
+2
+```
+
+Solusi ini memakai apa yang sudah kamu pelajari: parameter fungsi **selalu disalin (by value)**. Setiap pemanggilan `buatFungsi(i)` menyalin nilai `i` **saat itu juga** ke parameter `n` yang baru — dan setiap pemanggilan fungsi punya `n` miliknya sendiri, terpisah dari pemanggilan lain. Closure di dalam `buatFungsi` menangkap `n` (yang sudah aman, per-pemanggilan), bukan `i` (yang dibagi loop).
+
+:::tip
+Aturan praktis: kalau kamu membuat closure di dalam loop dan closure itu **dipakai belakangan** (disimpan, dikirim ke goroutine, dst — bukan langsung dipanggil di iterasi yang sama), selalu curigai variabel loop-nya. Terapkan shadowing (`i := i`) atau kirim sebagai parameter fungsi untuk memastikan setiap closure punya salinannya sendiri.
+:::
+
+## Kesalahan Umum
+
+1. **Closure di loop tanpa shadowing, dipakai belakangan (jebakan utama di atas):**
+   ```go
+   for i := 0; i < 3; i++ {
+       funcs = append(funcs, func() { fmt.Println(i) }) // semua menangkap i yang sama
+   }
+   // Semua closure mencetak nilai akhir i (3), bukan nilai saat closure dibuat
+   ```
+
+2. **Mengira closure menyalin nilai variabel saat closure dibuat:**
+   ```go
+   x := 10
+   cetak := func() { fmt.Println(x) }
+   x = 20
+   cetak() // mencetak 20, BUKAN 10 — closure menangkap variabel-nya, bukan nilainya saat itu
+   ```
+   Closure menangkap **variabel** (referensi), bukan **nilai** pada saat closure dibuat. Ini berbeda dari parameter fungsi biasa yang memang disalin saat dipanggil.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l6-ex1"
+  title="Closure Counter Independen"
+  description="Prediksi output ketika dua counter independen dibuat dari function factory yang sama."
+  type="code-output"
+  expectedOutput="1
+2
+1"
+  starterCode={`package main
+
+import "fmt"
+
+func buatCounter() func() int {
+    hitung := 0
+    return func() int {
+        hitung++
+        return hitung
+    }
+}
+
+func main() {
+    counterA := buatCounter()
+    counterB := buatCounter()
+
+    fmt.Println(counterA())
+    fmt.Println(counterA())
+    fmt.Println(counterB())
+}`}
+  hints={["counterA dan counterB masing-masing punya variabel hitung miliknya sendiri.", "Memanggil counterA() dua kali tidak memengaruhi hitung milik counterB."]}
+  explanation="counterA dan counterB berasal dari dua pemanggilan buatCounter() yang terpisah, jadi masing-masing punya variabel hitung sendiri. counterA() dipanggil dua kali menghasilkan 1 lalu 2, sementara counterB() yang baru pertama kali dipanggil menghasilkan 1."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l6-ex2"
+  title="Output Loop Variable di Go 1.13.5"
+  description="Ingat contoh kode <code>funcs</code> di bagian 'Jebakan Klasik: Closures di Dalam Loop' di atas — closure dibuat di dalam loop tanpa shadowing, lalu semua closure dipanggil setelah loop selesai. Di Go 1.13.5 (versi yang dipakai playground ini), apa outputnya?"
+  type="multiple-choice"
+  options={["3 3 3 — karena semua closure berbagi variabel i yang sama", "0 1 2 — karena setiap closure otomatis dapat salinan i sendiri", "0 0 0 — karena i belum sempat berubah", "Error saat compile"]}
+  correctIndex={0}
+  hints={["Di Go 1.13.5, variabel loop dibagi (shared) oleh semua iterasi, bukan disalin per iterasi.", "Setelah loop selesai, nilai i adalah 3 (nilai yang membuat kondisi loop gagal)."]}
+  explanation="Di Go 1.13.5, variabel i pada for-loop dibagi oleh semua iterasi. Semua closure menyimpan referensi ke i yang sama, sehingga saat dipanggil belakangan (setelah loop selesai dan i bernilai 3), semuanya mencetak 3. Perilaku ini baru berubah di Go 1.22+."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l6-ex3"
+  title="Lengkapi Shadowing"
+  description="Lengkapi baris yang membuat salinan variabel loop baru untuk setiap iterasi, agar closure di dalamnya menangkap nilai yang benar."
+  type="fill-blank"
+  template={`for i := 0; i < 3; i++ {
+    {{BLANK}} := i
+    funcs = append(funcs, func() { fmt.Println(i) })
+}`}
+  blanks={["i"]}
+  hints={["Nama variabel baru ini sengaja sama dengan variabel loop-nya — teknik ini disebut shadowing."]}
+  explanation="'i := i' mendeklarasikan variabel i baru yang di-scope ke body loop, sebagai salinan dari i loop saat iterasi itu. Closure yang dibuat setelahnya menangkap i yang baru ini, bukan i milik loop yang dibagi bersama."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Fungsi anonim | `func() { fmt.Println("halo") }` |
+| Closure | Fungsi anonim yang menangkap variabel dari scope luar |
+| Function factory | Fungsi yang mengembalikan fungsi lain, tiap panggilan dapat state sendiri |
+| Closure menangkap variabel, bukan nilai | Mengubah variabel setelahnya tetap terlihat dari closure |
+| Jebakan loop variable (Go 1.13.5) | Semua closure di loop berbagi 1 variabel — hasil akhir bisa `3 3 3` |
+| Solusi shadowing | `i := i` di dalam body loop |
+| Solusi parameter fungsi | Kirim `i` sebagai argumen ke fungsi lain |
+
+Kamu sudah menguasai semua dasar fungsi di Go: deklarasi, parameter, multiple return, variadic, defer, dan closures. Saatnya menggabungkan semuanya di **project unit ini: Batu Gunting Kertas**!

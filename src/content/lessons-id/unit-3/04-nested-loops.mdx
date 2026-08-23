@@ -1,0 +1,181 @@
+---
+title: "Nested Loops"
+unit: 3
+lesson: 4
+description: "Loop di dalam loop — dasar untuk membuat pola, tabel, dan grid"
+objectives:
+  - "Menulis loop bersarang (nested loop)"
+  - "Memahami bagaimana loop dalam berjalan penuh untuk setiap iterasi loop luar"
+  - "Membuat pola sederhana dengan nested loop"
+estimatedTime: 35
+prerequisites: ["unit-3/03-break-continue-label"]
+difficulty: "beginner"
+tags: ["nested-loop", "pola", "grid"]
+---
+
+# Nested Loops
+
+Kamu sudah melihat sekilas loop bersarang di pelajaran Label. Sekarang mari kuasai pola ini secara formal — ini fondasi penting untuk project unit ini: membuat pola bintang.
+
+## Loop di Dalam Loop
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for baris := 1; baris <= 3; baris++ {
+        for kolom := 1; kolom <= 3; kolom++ {
+            fmt.Printf("(%d,%d) ", baris, kolom)
+        }
+        fmt.Println()
+    }
+}
+```
+
+Output:
+```
+(1,1) (1,2) (1,3) 
+(2,1) (2,2) (2,3) 
+(3,1) (3,2) (3,3) 
+```
+
+## Membedah Loop Bersarang
+
+**Loop luar (`baris`)** berjalan 3 kali. **Untuk setiap satu iterasi loop luar**, loop dalam (`kolom`) berjalan **penuh** dari awal sampai akhir (3 kali juga) — jadi totalnya loop dalam dieksekusi `3 × 3 = 9` kali.
+
+**`fmt.Println()`** di luar loop dalam (tapi masih di dalam loop luar) — dipanggil sekali setiap `baris` selesai, untuk pindah ke baris baru di output.
+
+Bayangkan ini seperti jam dinding: setiap satu putaran jarum jam (loop luar), jarum detik (loop dalam) sudah berputar penuh 60 kali.
+
+:::tip
+Aturan sederhana untuk menghitung total iterasi nested loop: kalikan jumlah iterasi tiap level. Loop luar 3x, loop dalam 3x → total `3 × 3 = 9` eksekusi bagian terdalam. Kalau ada 3 level loop masing-masing 10x, totalnya `10 × 10 × 10 = 1000`!
+:::
+
+## Membuat Pola Sederhana
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for baris := 1; baris <= 5; baris++ {
+        for kolom := 1; kolom <= baris; kolom++ {
+            fmt.Print("*")
+        }
+        fmt.Println()
+    }
+}
+```
+
+Output:
+```
+*
+**
+***
+****
+*****
+```
+
+Perhatikan `kolom <= baris` — bukan angka tetap! Jumlah bintang per baris **ikut berubah** sesuai nilai `baris` saat ini. Ini pola yang sangat umum untuk membuat segitiga, dan jadi dasar project pola bintang di pelajaran berikutnya.
+
+:::note
+Trik nested loop untuk pola: loop luar biasanya mengontrol **berapa baris**, loop dalam mengontrol **apa yang dicetak di satu baris itu**. Kondisi loop dalam sering bergantung pada variabel loop luar, seperti contoh `kolom <= baris` di atas.
+:::
+
+## Kesalahan Umum
+
+1. **Salah urutan variabel, bikin pola terbalik dari yang diharapkan:**
+   ```go
+   for baris := 1; baris <= 5; baris++ {
+       for kolom := 1; kolom <= 6-baris; kolom++ {  // bukan <= baris
+           fmt.Print("*")
+       }
+       fmt.Println()
+   }
+   // Menghasilkan segitiga terbalik, bukan segitiga normal
+   ```
+   Selalu cek dengan hati-hati kondisi loop dalam — salah tanda `<=` vs `>=`, atau salah variabel, bisa membalik seluruh pola.
+
+2. **Lupa `fmt.Println()` untuk pindah baris:**
+   ```go
+   for baris := 1; baris <= 3; baris++ {
+       for kolom := 1; kolom <= 3; kolom++ {
+           fmt.Print("*")
+       }
+       // lupa fmt.Println() di sini!
+   }
+   // Output: *********  (semua nempel jadi satu baris)
+   ```
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l4-ex1"
+  title="Tabel Perkalian Sederhana"
+  description="Lengkapi program agar mencetak tabel perkalian 1-3, format 'baris x kolom = hasil' per baris."
+  type="code-output"
+  expectedOutput="1 x 1 = 1
+1 x 2 = 2
+2 x 1 = 2
+2 x 2 = 4"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    for baris := 1; baris <= 2; baris++ {
+        for kolom := 1; kolom <= 2; kolom++ {
+            fmt.Printf("%d x %d = %d\\n", baris, kolom, baris*kolom)
+        }
+    }
+}`}
+  hints={["baris*kolom menghitung hasil perkalian di setiap kombinasi.", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="Nested loop menghasilkan setiap kombinasi baris dan kolom dari 1 sampai 2, mencetak hasil perkaliannya masing-masing."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l4-ex2"
+  title="Total Iterasi Nested Loop"
+  description="Kalau loop luar berjalan 4 kali dan loop dalam berjalan 5 kali di setiap iterasi loop luar, berapa total eksekusi bagian terdalam?"
+  type="multiple-choice"
+  options={["9 (4+5)", "20 (4x5)", "4 (cuma loop luar dihitung)", "5 (cuma loop dalam dihitung)"]}
+  correctIndex={1}
+  hints={["Ingat aturan mengalikan jumlah iterasi tiap level.", "Bukan dijumlahkan, tapi dikalikan."]}
+  explanation="Total eksekusi bagian terdalam nested loop dihitung dengan mengalikan jumlah iterasi tiap level: 4 x 5 = 20."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l4-ex3"
+  title="Lengkapi Kondisi Segitiga"
+  description="Lengkapi kondisi loop dalam agar jumlah bintang per baris sama dengan nomor barisnya (membentuk segitiga)."
+  type="fill-blank"
+  template={`for baris := 1; baris <= 5; baris++ {
+    for kolom := 1; kolom {{BLANK}} baris; kolom++ {
+        fmt.Print("*")
+    }
+    fmt.Println()
+}`}
+  blanks={["<="]}
+  hints={["Bintang dicetak selama kolom belum melewati nilai baris saat ini."]}
+  explanation="kolom <= baris membuat jumlah bintang di setiap baris sama dengan nomor barisnya — baris 1 punya 1 bintang, baris 2 punya 2 bintang, dan seterusnya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Penjelasan |
+|---|---|
+| Nested loop | Loop di dalam loop |
+| Total iterasi | Kalikan jumlah iterasi tiap level |
+| Loop luar | Biasanya mengontrol jumlah baris |
+| Loop dalam | Biasanya mengontrol isi satu baris |
+| Kondisi dinamis | Kondisi loop dalam bisa bergantung pada variabel loop luar |
+
+Kamu sudah menguasai semua dasar perulangan Go: `for` dalam tiga bentuk, `range`, `break`/`continue`/label, dan nested loop. Saatnya menggabungkan semuanya di **project unit ini: Pola Bintang**!

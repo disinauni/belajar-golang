@@ -1,0 +1,210 @@
+---
+title: "Array"
+unit: 5
+lesson: 1
+description: "Struktur data dengan ukuran tetap — dasar sebelum mengenal slice yang lebih fleksibel"
+objectives:
+  - "Mendeklarasikan dan menggunakan array dengan ukuran tetap di Go"
+  - "Memahami bahwa array adalah value type — disalin penuh saat di-assign"
+  - "Mengenal alasan array jarang dipakai langsung dibanding slice"
+estimatedTime: 30
+prerequisites: ["unit-4/07-project-batu-gunting-kertas"]
+difficulty: "beginner"
+tags: ["array", "data-structure", "value-type"]
+---
+
+# Array
+
+Sejauh ini kamu menyimpan data satu per satu — satu variabel, satu nilai. Tapi bagaimana kalau kamu punya 5 nilai ujian, atau 7 nama hari? Menyimpannya satu-satu di 5 atau 7 variabel terpisah jelas tidak praktis. Array adalah struktur data pertama Go untuk menyimpan **kumpulan nilai bertipe sama** dalam satu variabel.
+
+## Mendeklarasikan Array
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var nilai [5]int
+    nilai[0] = 90
+    nilai[1] = 85
+    nilai[2] = 78
+    nilai[3] = 92
+    nilai[4] = 88
+
+    fmt.Println(nilai)
+    fmt.Println("Jumlah data:", len(nilai))
+}
+```
+
+Output:
+```
+[90 85 78 92 88]
+Jumlah data: 5
+```
+
+## Membedah Deklarasi Array
+
+**`var nilai [5]int`** — deklarasi array dengan ukuran **5**, bertipe `int`. Ukuran ini adalah bagian dari tipe datanya sendiri — `[5]int` dan `[3]int` adalah dua tipe yang berbeda di mata Go, meskipun sama-sama array of int. Karena belum diisi nilai, setiap elemen otomatis berisi zero value tipe `int`, yaitu `0`.
+
+**`nilai[0] = 90`** — mengisi elemen di index 0 (elemen pertama). Sama seperti string, index array dimulai dari `0`, bukan `1`.
+
+**`len(nilai)`** — mengembalikan ukuran array, yaitu `5`. Untuk array, `len()` selalu mengembalikan angka yang sama persis dengan ukuran yang dideklarasikan — tidak pernah berubah.
+
+Kamu juga bisa langsung mengisi array saat deklarasi dengan **array literal**:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    hari := [7]string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"}
+    fmt.Println(hari)
+    fmt.Println("Hari pertama:", hari[0])
+    fmt.Println("Hari terakhir:", hari[6])
+}
+```
+
+Output:
+```
+[Senin Selasa Rabu Kamis Jumat Sabtu Minggu]
+Hari pertama: Senin
+Hari terakhir: Minggu
+```
+
+:::tip
+Malas menghitung jumlah elemen? Pakai `[...]` — Go akan menghitung ukurannya otomatis dari jumlah elemen di literal: `hari := [...]string{"Senin", "Selasa", "Rabu"}` menghasilkan array `[3]string`, sama persis seolah kamu menulis `[3]string{...}` sendiri.
+:::
+
+## Array adalah Value Type
+
+Ini bagian paling penting untuk dipahami: array di Go **disalin sepenuhnya** setiap kali kamu meng-assign-nya ke variabel lain, atau mengirimnya sebagai argumen fungsi. Ini beda dari kebanyakan bahasa lain (dan beda dari slice, yang akan kita pelajari selanjutnya).
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    asli := [3]int{1, 2, 3}
+    salinan := asli
+    salinan[0] = 100
+
+    fmt.Println("asli   :", asli)
+    fmt.Println("salinan:", salinan)
+}
+```
+
+Output:
+```
+asli   : [1 2 3]
+salinan: [100 2 3]
+```
+
+**`salinan := asli`** — ini bukan membuat "dua nama untuk array yang sama". Go benar-benar menyalin seluruh isi array ke variabel baru. Mengubah `salinan` sama sekali tidak memengaruhi `asli`.
+
+:::note
+Bayangkan array seperti fotokopi dokumen fisik. Kalau kamu punya fotokopi dan mencoret-coretnya, dokumen aslinya tetap bersih — karena itu memang lembar yang berbeda. Ini beda dengan slice nanti, yang lebih mirip "menunjuk ke dokumen yang sama".
+:::
+
+## Kenapa Array Jarang Dipakai Langsung
+
+Ukuran array yang tetap terdengar aman, tapi justru jadi masalah dalam praktik: kamu jarang tahu di awal berapa banyak data yang akan kamu simpan. Mau menyimpan daftar belanja? Bisa 3 item, bisa 30. Array memaksamu menebak ukuran di depan — dan kalau tebakanmu salah, kamu harus membuat array baru dengan ukuran berbeda (tipe yang berbeda pula!).
+
+Karena keterbatasan ini, di dunia nyata Go, kamu akan jauh lebih sering memakai **slice** — struktur data yang dibangun di atas array, tapi bisa tumbuh dan menyusut secara dinamis. Array tetap penting untuk dipahami karena slice sebenarnya "membungkus" array di baliknya — dan itu topik pelajaran berikutnya.
+
+:::fun
+Array bukannya tidak berguna sama sekali — dipakai saat ukuran data memang benar-benar pasti dan tidak berubah, misalnya `[3]float64` untuk koordinat X, Y, Z, atau papan permainan tic-tac-toe `[3][3]string`. Tapi untuk kebanyakan kasus sehari-hari, slice adalah pilihan default.
+:::
+
+## Kesalahan Umum
+
+1. **Mengakses index dengan angka konstan yang di luar batas:**
+   ```go
+   data := [3]int{1, 2, 3}
+   fmt.Println(data[5]) // ERROR: invalid argument: index 5 out of bounds [0:3]
+   ```
+   Karena `5` adalah angka konstan dan ukuran array diketahui saat compile, Go langsung menolak compile.
+
+2. **Mengakses index lewat variabel yang ternyata di luar batas saat runtime:**
+   ```go
+   data := [3]int{1, 2, 3}
+   idx := 5
+   fmt.Println(data[idx]) // panic: runtime error: index out of range [5] with length 3
+   ```
+   Kalau index-nya berasal dari variabel (bukan angka konstan), Go tidak bisa mengeceknya saat compile — errornya baru muncul sebagai *panic* saat program dijalankan.
+
+3. **Menganggap array beda ukuran itu tipe yang sama:**
+   ```go
+   var a [3]int = [5]int{1, 2, 3, 4, 5} // ERROR: cannot use [5]int{…} as [3]int value
+   ```
+   `[3]int` dan `[5]int` adalah dua tipe yang sepenuhnya berbeda — sama seperti `int` dan `string` berbeda. Ukuran adalah bagian dari tipe array.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l1-ex1"
+  title="Ubah Elemen Array"
+  description="Ubah program agar mencetak `[10 20 100 40]` — elemen di index ke-2 diubah menjadi 100."
+  type="code-output"
+  expectedOutput="[10 20 100 40]"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    angka := [4]int{10, 20, 0, 40}
+    angka[2] = 0
+    fmt.Println(angka)
+}`}
+  hints={["Kamu cuma perlu mengubah satu angka.", "angka[2] = 0 harus diubah jadi angka[2] = 100."]}
+  explanation="angka[2] = 100 mengubah elemen di index 2 (elemen ketiga) menjadi 100, menghasilkan [10 20 100 40]."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l1-ex2"
+  title="Panjang Array Selalu Tetap"
+  description="Ubah program agar mencetak `5` — jumlah elemen array, bukan isinya."
+  type="code-output"
+  expectedOutput="5"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    hari := [5]string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat"}
+    fmt.Println(hari)
+}`}
+  hints={["Fungsi bawaan Go untuk menghitung jumlah elemen adalah len().", "Ganti fmt.Println(hari) menjadi fmt.Println(len(hari))."]}
+  explanation="len(hari) mengembalikan ukuran array, yaitu 5 — angka ini selalu sama dengan ukuran yang dideklarasikan, tidak peduli isinya apa."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l1-ex3"
+  title="Sifat Array Saat Di-assign"
+  description="Kalau `salinan := asli` (keduanya array), lalu kamu ubah salah satu elemen `salinan`, apa yang terjadi pada `asli`?"
+  type="multiple-choice"
+  options={["asli ikut berubah, karena salinan dan asli menunjuk ke data yang sama", "asli tidak berubah sama sekali, karena array disalin sepenuhnya saat di-assign", "Program akan gagal compile", "asli hanya berubah kalau ukurannya lebih dari 5"]}
+  correctIndex={1}
+  hints={["Ingat analogi fotokopi dokumen di pelajaran ini.", "Array adalah value type — beda dari slice yang akan kamu pelajari selanjutnya."]}
+  explanation="Array adalah value type: setiap assignment menyalin seluruh isinya ke variabel baru. Mengubah salinan tidak pernah memengaruhi array aslinya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi array kosong | `var nilai [5]int` |
+| Array literal | `[3]int{1, 2, 3}` |
+| Ukuran otomatis dari literal | `[...]int{1, 2, 3}` |
+| Akses elemen | `nilai[0]` |
+| Panjang array | `len(nilai)` |
+| Sifat array saat assign | Disalin penuh (value type) |
+
+Array itu solid tapi kaku. Di pelajaran berikutnya, kita masuk ke **slice** — struktur data paling sering dipakai di Go, yang dibangun di atas array tapi jauh lebih fleksibel.

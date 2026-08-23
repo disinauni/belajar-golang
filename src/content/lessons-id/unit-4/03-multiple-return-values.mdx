@@ -1,0 +1,220 @@
+---
+title: "Multiple Return Values"
+unit: 4
+lesson: 3
+description: "Fitur khas Go — mengembalikan lebih dari satu nilai sekaligus dari satu fungsi"
+objectives:
+  - "Mendeklarasikan fungsi yang mengembalikan lebih dari satu nilai"
+  - "Memahami pola (hasil, error) yang jadi identitas idiomatik Go"
+  - "Memakai named return values untuk fungsi dengan banyak nilai kembali"
+estimatedTime: 30
+prerequisites: ["unit-4/02-parameter-return"]
+difficulty: "beginner"
+tags: ["multiple-return", "error-handling", "named-return", "fungsi"]
+---
+
+# Multiple Return Values
+
+Di banyak bahasa pemrograman, fungsi cuma bisa mengembalikan **satu** nilai — kalau butuh lebih, kamu harus membungkusnya dalam objek atau array. Go berbeda: fungsi Go bisa mengembalikan **beberapa nilai sekaligus**, langsung dari sintaksnya. Ini bukan sekadar fitur tambahan — ini salah satu ciri khas paling identik dengan gaya pemrograman Go.
+
+## Mengembalikan Dua Nilai
+
+```go
+package main
+
+import "fmt"
+
+func bagi(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("tidak bisa membagi dengan nol")
+    }
+    return a / b, nil
+}
+
+func main() {
+    hasil, err := bagi(10, 2)
+    if err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Println("Hasil:", hasil)
+    }
+}
+```
+
+Output:
+```
+Hasil: 5
+```
+
+## Membedah Multiple Return Values
+
+**`func bagi(a, b float64) (float64, error)`** — tipe return sekarang diapit tanda kurung `(float64, error)` karena ada **dua** nilai yang dikembalikan: hasil pembagian (`float64`) dan status error (`error`).
+
+**`return 0, fmt.Errorf(...)`** — mengembalikan dua nilai sekaligus, dipisah koma: `0` sebagai hasil (nilai "kosong" karena operasi gagal) dan sebuah error yang menjelaskan kenapa gagal.
+
+**`return a / b, nil`** — kalau operasi berhasil, kembalikan hasilnya dan `nil` untuk error (artinya "tidak ada error").
+
+**`hasil, err := bagi(10, 2)`** — menangkap **kedua** nilai balik sekaligus ke dua variabel berbeda, dipisah koma di sisi kiri.
+
+Bayangkan pola ini seperti kembalian di kasir: kamu tidak cuma menerima uang kembalian, tapi juga struk yang menjelaskan apa yang terjadi (berhasil atau ada masalah). Pola `(hasil, error)` adalah cara Go bilang "ini hasilnya, dan ini catatan apakah semuanya berjalan lancar".
+
+:::note
+**Pola `(hasil, error)` adalah idiom paling umum di Go.** Alih-alih memakai *exception* seperti `try/catch` di bahasa lain, Go mendorong penanganan error secara eksplisit: setiap fungsi yang bisa gagal biasanya mengembalikan error sebagai nilai balik terakhirnya, dan pemanggil **wajib** mengecek `if err != nil { ... }` sebelum memakai hasilnya. Kamu akan melihat pola ini di hampir semua kode Go, termasuk seluruh standard library.
+:::
+
+## Named Return Values
+
+Go juga mengizinkan kamu memberi **nama** pada nilai return langsung di deklarasi fungsi:
+
+```go
+package main
+
+import "fmt"
+
+func bagiV2(a, b float64) (hasil float64, err error) {
+    if b == 0 {
+        err = fmt.Errorf("tidak bisa membagi dengan nol")
+        return
+    }
+    hasil = a / b
+    return
+}
+
+func main() {
+    hasil, err := bagiV2(9, 3)
+    fmt.Println(hasil, err)
+}
+```
+
+Output:
+```
+3 <nil>
+```
+
+**`(hasil float64, err error)`** — `hasil` dan `err` sudah dideklarasikan sebagai variabel di dalam fungsi, lengkap dengan zero value masing-masing (`0` untuk `float64`, `nil` untuk `error`) sejak awal fungsi berjalan.
+
+**`return` tanpa nilai (naked return)** — karena `hasil` dan `err` sudah punya nama, kamu cukup menulis `return` saja, dan Go otomatis mengembalikan nilai `hasil` dan `err` yang sedang tersimpan saat itu.
+
+:::tip
+Named return values berguna untuk mendokumentasikan **maksud** setiap nilai balik langsung di signature fungsi — orang lain yang membaca `func bagiV2(a, b float64) (hasil float64, err error)` langsung tahu urutan dan makna tiap nilai tanpa perlu baca isi fungsinya. Tapi hati-hati memakai *naked return* di fungsi panjang — bisa membingungkan karena nilai yang dikembalikan tidak terlihat jelas di baris `return` itu sendiri. Banyak programmer Go tetap menulis `return hasil, err` secara eksplisit meski nama sudah dideklarasikan.
+:::
+
+## Contoh Lain: Tukar Dua Nilai
+
+```go
+package main
+
+import "fmt"
+
+func tukar(a, b int) (int, int) {
+    return b, a
+}
+
+func main() {
+    x, y := tukar(1, 2)
+    fmt.Println(x, y)
+}
+```
+
+Output:
+```
+2 1
+```
+
+Tanpa multiple return values, menukar dua nilai lewat fungsi akan jauh lebih ribet — kamu harus memakai pointer atau struct pembungkus. Di Go, cukup `return b, a`.
+
+## Kesalahan Umum
+
+1. **Hanya menangkap satu variabel padahal fungsi mengembalikan dua nilai:**
+   ```go
+   hasil := bagi(10, 2) // ERROR: assignment mismatch: 1 variable but bagi returns 2 values
+   ```
+   Kamu **wajib** menangkap semua nilai balik, meskipun salah satunya tidak dipakai (pakai `_` untuk mengabaikan, misalnya `hasil, _ := bagi(10, 2)`).
+
+2. **Mengabaikan error yang dikembalikan:**
+   ```go
+   hasil, _ := bagi(10, 0) // error diabaikan dengan _
+   fmt.Println(hasil)       // mencetak 0, tanpa penjelasan kenapa
+   ```
+   Ini valid secara sintaks, tapi jadi kebiasaan buruk — kamu kehilangan informasi penting tentang apa yang salah. Selalu cek `err != nil` kecuali kamu benar-benar yakin error itu tidak mungkin terjadi.
+
+3. **Lupa mengisi named return value sebelum naked return:**
+   ```go
+   func cariNilai(n int) (hasil int) {
+       if n > 0 {
+           hasil = n * 2
+           return
+       }
+       return // hasil masih zero value (0) di jalur ini!
+   }
+   ```
+   Kalau kamu tidak sengaja lupa mengisi variabel bernama sebelum `return`, kamu akan mendapat zero value-nya (`0`, `""`, `nil`, dst) — bukan error compile, tapi bisa jadi bug logika yang licin.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l3-ex1"
+  title="Fungsi Min dan Max"
+  description="Lengkapi fungsi <code>minMax</code> agar mengembalikan nilai terkecil dan terbesar dari dua angka sekaligus."
+  type="code-output"
+  expectedOutput="3 9"
+  starterCode={`package main
+
+import "fmt"
+
+func minMax(a, b int) (int, int) {
+    if a < b {
+        return a, b
+    }
+    return b, a
+}
+
+func main() {
+    kecil, besar := minMax(9, 3)
+    fmt.Println(kecil, besar)
+}`}
+  hints={["Fungsi minMax sudah lengkap — coba jalankan dulu untuk melihat hasilnya.", "minMax(9, 3): karena 9 tidak < 3, fungsi mengembalikan (3, 9)."]}
+  explanation="minMax(9, 3) mengevaluasi 'a < b' yaitu '9 < 3' yang bernilai false, jadi fungsi mengeksekusi 'return b, a' yaitu 'return 3, 9' — menghasilkan kecil=3 dan besar=9."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l3-ex2"
+  title="Pola Idiomatik Go"
+  description="Pola nilai balik apa yang paling umum dipakai fungsi Go untuk menandai keberhasilan atau kegagalan sebuah operasi?"
+  type="multiple-choice"
+  options={["Mengembalikan (hasil, error) — error bernilai nil kalau operasi berhasil", "Melempar exception dengan try/catch seperti Java", "Mengembalikan -1 untuk semua jenis kegagalan", "Menghentikan program langsung dengan panic setiap kali ada masalah"]}
+  correctIndex={0}
+  hints={["Go tidak punya try/catch sebagai mekanisme utama penanganan error.", "Pola ini melibatkan dua nilai balik: hasil operasi, dan sebuah nilai bertipe error."]}
+  explanation="Go secara idiomatik menggunakan pola (hasil, error): fungsi mengembalikan hasil operasinya beserta nilai error yang bernilai nil kalau tidak ada masalah, dan pemanggil wajib memeriksa 'if err != nil' sebelum memakai hasilnya."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l3-ex3"
+  title="Lengkapi Tipe Return Ganda"
+  description="Lengkapi tipe return untuk fungsi yang mengembalikan dua nilai int sekaligus."
+  type="fill-blank"
+  template={`func tukar(a, b int) {{BLANK}} {
+    return b, a
+}`}
+  blanks={["(int, int)"]}
+  hints={["Kalau ada lebih dari satu nilai return, tipenya harus diapit tanda kurung dan dipisah koma."]}
+  explanation="Untuk mengembalikan dua nilai int, tipe return-nya ditulis '(int, int)' — diapit tanda kurung karena lebih dari satu nilai."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Return ganda | `func f() (int, error)` |
+| Menangkap semua nilai | `hasil, err := f()` |
+| Mengabaikan salah satu nilai | `hasil, _ := f()` |
+| Pola idiomatik Go | `if err != nil { ... }` |
+| Named return values | `func f() (hasil int, err error)` |
+| Naked return | `return` (mengembalikan nilai bernama saat itu) |
+
+Sekarang fungsimu bisa fleksibel menerima berapa pun parameter yang dibutuhkan — tapi bagaimana kalau kamu **tidak tahu** berapa banyak argumen yang akan dikirim? Pelajaran berikutnya membahas **variadic functions**, fungsi yang bisa menerima jumlah argumen berapa pun.

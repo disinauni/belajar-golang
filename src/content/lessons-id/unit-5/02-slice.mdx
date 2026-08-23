@@ -1,0 +1,317 @@
+---
+title: "Slice"
+unit: 5
+lesson: 2
+description: "Struktur data dinamis paling sering dipakai di Go — dibangun di atas array tapi jauh lebih fleksibel"
+objectives:
+  - "Membedakan len() dan cap() pada slice"
+  - "Menggunakan append() dan memahami perilaku pertumbuhannya"
+  - "Melakukan slicing dengan [low:high] dan memahami slice literal serta make()"
+  - "Mengenali gotcha berbagi underlying array antar slice"
+estimatedTime: 45
+prerequisites: ["unit-5/01-array"]
+difficulty: "intermediate"
+tags: ["slice", "append", "data-structure", "underlying-array"]
+---
+
+# Slice
+
+Array itu kaku — ukurannya tetap selamanya. Slice memecahkan masalah ini: dia dibangun **di atas** array, tapi bisa tumbuh sesuai kebutuhan. Inilah kenapa hampir setiap koleksi data di Go — hasil `strings.Split`, daftar item, apa pun — berbentuk slice, bukan array.
+
+## Slice Literal
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    buah := []string{"Apel", "Jeruk", "Mangga"}
+
+    fmt.Println(buah)
+    fmt.Println("len:", len(buah))
+}
+```
+
+Output:
+```
+[Apel Jeruk Mangga]
+len: 3
+```
+
+## Membedah Slice Literal
+
+**`[]string{...}`** — perhatikan **tidak ada angka** di dalam kurung siku, beda dengan array `[3]string{...}`. Inilah tanda tipe itu slice, bukan array — ukurannya tidak jadi bagian dari tipenya.
+
+Di balik layar, sebuah slice sebenarnya cuma **header kecil** berisi tiga informasi: pointer ke underlying array (array asli tempat data disimpan), panjang saat ini (`len`), dan kapasitas maksimum sebelum perlu realokasi (`cap`).
+
+## `len()` vs `cap()`
+
+Ini yang bikin slice beda dari array: slice punya dua angka ukuran, bukan satu.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    angka := make([]int, 3, 5)
+
+    fmt.Println(angka)
+    fmt.Println("len:", len(angka))
+    fmt.Println("cap:", cap(angka))
+}
+```
+
+Output:
+```
+[0 0 0]
+len: 3
+cap: 5
+```
+
+**`make([]int, 3, 5)`** — membuat slice `int` dengan panjang (`len`) 3 dan kapasitas (`cap`) 5. Panjang adalah jumlah elemen yang **benar-benar ada sekarang** (makanya tercetak 3 nol). Kapasitas adalah jumlah elemen yang **muat** di underlying array sebelum Go terpaksa mengalokasikan array baru yang lebih besar.
+
+Kalau kamu memanggil `make([]int, 3)` saja (tanpa argumen ketiga), `cap` otomatis sama dengan `len`.
+
+:::note
+Bayangkan `cap` seperti ukuran kotak, dan `len` seperti jumlah barang yang sedang ada di dalam kotak itu. Kotak berkapasitas 5 bisa saja baru diisi 3 barang — masih ada ruang kosong untuk 2 barang lagi tanpa perlu ganti kotak.
+:::
+
+## `append()` — Menambah Elemen
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    angka := []int{1, 2, 3}
+    angka = append(angka, 4)
+    angka = append(angka, 5, 6)
+
+    fmt.Println(angka)
+    fmt.Println("len:", len(angka))
+}
+```
+
+Output:
+```
+[1 2 3 4 5 6]
+len: 6
+```
+
+**`append(angka, 4)`** — menambahkan `4` ke akhir slice, lalu mengembalikan slice baru yang harus kamu tampung kembali ke variabel (`angka = append(...)`). `append` juga menerima banyak nilai sekaligus, seperti `append(angka, 5, 6)`.
+
+:::warning
+Hasil `append()` **wajib** ditampung, biasanya ke variabel yang sama. Kalau kamu menulis `append(angka, 4)` saja tanpa `angka = ...` di depannya, hasilnya dibuang begitu saja dan `angka` tidak berubah!
+:::
+
+### Perilaku Pertumbuhan (Growth)
+
+Kalau `append` membuat panjang slice melebihi kapasitasnya, Go **mengalokasikan underlying array baru yang lebih besar** (biasanya dua kali lipat untuk slice kecil), menyalin data lama ke sana, lalu menambahkan elemen baru. Kalau kapasitas masih cukup, Go cukup menaruh elemen baru di ruang yang tersisa — tanpa alokasi baru sama sekali.
+
+```go
+s := make([]int, 0, 2)
+for i := 0; i < 5; i++ {
+    s = append(s, i)
+    fmt.Printf("len=%d cap=%d slice=%v\n", len(s), cap(s), s)
+}
+```
+
+Salah satu kemungkinan output (angka `cap` bisa sedikit berbeda tergantung versi Go dan arsitektur — yang penting adalah **tren**-nya):
+```
+len=1 cap=2 slice=[0]
+len=2 cap=2 slice=[0 1]
+len=3 cap=4 slice=[0 1 2]
+len=4 cap=4 slice=[0 1 2 3]
+len=5 cap=8 slice=[0 1 2 3 4]
+```
+
+Perhatikan: `cap` tidak naik setiap kali `append` dipanggil — hanya naik saat kapasitas lama tidak cukup lagi, dan biasanya melompat (di sini dari 2 ke 4, lalu 4 ke 8).
+
+## Slicing dengan `[low:high]`
+
+Kamu bisa mengambil "potongan" dari slice (atau array) yang sudah ada, dengan sintaks `[low:high]` — `low` inklusif, `high` eksklusif:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    angka := []int{1, 2, 3, 4, 5}
+
+    fmt.Println(angka[1:4]) // index 1 sampai 3
+    fmt.Println(angka[:2])  // dari awal sampai index 1
+    fmt.Println(angka[3:])  // dari index 3 sampai akhir
+}
+```
+
+Output:
+```
+[2 3 4]
+[1 2]
+[4 5]
+```
+
+`angka[1:4]` mengambil elemen index 1, 2, 3 (bukan 4! `high` tidak ikut disertakan). Kalau `low` atau `high` dikosongkan, artinya "dari awal" atau "sampai akhir".
+
+## Gotcha: Slice Berbagi Underlying Array
+
+Ini bagian paling penting dari pelajaran ini. Slice hasil slicing dari slice lain **bisa berbagi underlying array yang sama** — mengubah satu slice bisa diam-diam mengubah slice lainnya!
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    asli := []int{1, 2, 3, 4, 5}
+    potongan := asli[1:3]
+    potongan[0] = 99
+
+    fmt.Println("asli    :", asli)
+    fmt.Println("potongan:", potongan)
+}
+```
+
+Output:
+```
+asli    : [1 99 3 4 5]
+potongan: [99 3]
+```
+
+`potongan` bukan salinan independen dari `asli` — dia hanya "jendela" yang menunjuk ke bagian underlying array yang sama. Mengubah `potongan[0]` sebenarnya mengubah `asli[1]`, karena keduanya menunjuk ke slot memori yang sama persis.
+
+Ini juga bisa terjadi lewat `append()`, kalau kapasitas masih cukup:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    asli := make([]int, 5, 5)
+    copy(asli, []int{1, 2, 3, 4, 5})
+
+    depan := asli[0:2]         // len 2, cap 5 (masih numpang di underlying array asli)
+    depan = append(depan, 999) // cukup ruang -> tidak realokasi, nimpa asli[2]!
+
+    fmt.Println("asli :", asli)
+    fmt.Println("depan:", depan)
+}
+```
+
+Output:
+```
+asli : [1 2 999 4 5]
+depan: [1 2 999]
+```
+
+`depan` cuma punya `len` 2, tapi `cap`-nya ikut `cap(asli)` yaitu 5 (dihitung dari `cap(asli) - low`). Karena masih ada ruang, `append` menaruh `999` langsung di `asli[2]` — menimpa data asli tanpa kamu sadari!
+
+Bandingkan kalau kapasitasnya **sudah penuh** (`cap == len`, tidak ada ruang tersisa): `append` terpaksa mengalokasikan underlying array baru untuk menampung elemen tambahan, dan sejak saat itu kedua slice jadi sepenuhnya independen — mengubah salah satunya tidak lagi memengaruhi yang lain.
+
+:::warning
+Aturannya: **kalau kapasitas cukup, append menimpa underlying array yang sama** (bisa memengaruhi slice lain). **Kalau kapasitas tidak cukup, Go mengalokasikan array baru** (slice jadi independen). Kalau kamu butuh salinan yang benar-benar independen sejak awal, pakai `copy()` ke slice baru, bukan mengandalkan slicing biasa.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa menampung hasil `append()`:**
+   ```go
+   s := []int{1, 2, 3}
+   append(s, 4)     // hasilnya dibuang! s tidak berubah
+   fmt.Println(s)   // masih [1 2 3], bukan [1 2 3 4]
+   ```
+   Solusi: selalu tulis `s = append(s, 4)`.
+
+2. **Mengakses index di luar panjang slice:**
+   ```go
+   angka := []int{1, 2, 3}
+   fmt.Println(angka[5]) // panic: runtime error: index out of range [5] with length 3
+   ```
+   Beda dari array, kesalahan ini selalu jadi *panic* saat runtime, karena panjang slice bisa berubah-ubah dan tidak diketahui pasti saat compile.
+
+3. **Mengubah slice hasil slicing, tidak sadar underlying array-nya ikut berubah:**
+   ```go
+   asli := []int{1, 2, 3}
+   bagian := asli[0:2]
+   bagian[0] = 100 // asli[0] ikut jadi 100!
+   ```
+   Solusi: kalau butuh independensi, buat salinan eksplisit dengan `copy()`:
+   ```go
+   bagian := make([]int, 2)
+   copy(bagian, asli[0:2]) // sekarang benar-benar independen
+   ```
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l2-ex1"
+  title="Slicing Range yang Tepat"
+  description="Ubah range slicing agar mencetak `[2 3 4]` (elemen index 1 sampai 3)."
+  type="code-output"
+  expectedOutput="[2 3 4]"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    angka := []int{1, 2, 3, 4, 5}
+    fmt.Println(angka[0:3])
+}`}
+  hints={["Ingat: low inklusif, high eksklusif.", "Ganti angka[0:3] menjadi angka[1:4]."]}
+  explanation="angka[1:4] mengambil index 1, 2, 3 (elemen bernilai 2, 3, 4) — index 4 tidak ikut karena high bersifat eksklusif."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l2-ex2"
+  title="len() dan cap() dengan make()"
+  description="Ubah program agar mencetak `len: 3` dan `cap: 10`, sesuai slice yang dibuat dengan panjang 3 dan kapasitas 10."
+  type="code-output"
+  expectedOutput="len: 3
+cap: 10"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    s := make([]int, 3, 8)
+    fmt.Println("len:", len(s))
+    fmt.Println("cap:", cap(s))
+}`}
+  hints={["Argumen ketiga di make() adalah kapasitas.", "Ganti make([]int, 3, 8) menjadi make([]int, 3, 10)."]}
+  explanation="make([]int, 3, 10) membuat slice dengan panjang 3 dan kapasitas 10 — len() dan cap() masing-masing mengembalikan angka itu."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l2-ex3"
+  title="Berbagi Underlying Array"
+  description="Kalau slice B dibuat dari slice A lewat `B := A[1:3]`, lalu kamu ubah `B[0]`, apa yang terjadi pada A?"
+  type="multiple-choice"
+  options={["A tidak berubah, karena B adalah salinan independen", "A ikut berubah, karena A dan B berbagi underlying array yang sama", "Program akan panic saat compile", "A hanya berubah kalau ukurannya lebih dari 10"]}
+  correctIndex={1}
+  hints={["Ingat gotcha yang dibahas di pelajaran ini.", "Slicing tidak membuat salinan baru — dia menunjuk ke data yang sama."]}
+  explanation="Slice hasil slicing (seperti A[1:3]) berbagi underlying array yang sama dengan slice aslinya. Mengubah elemen di B lewat index akan mengubah elemen yang sama di A juga."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Slice literal | `[]int{1, 2, 3}` |
+| Buat dengan ukuran & kapasitas | `make([]int, len, cap)` |
+| Panjang saat ini | `len(s)` |
+| Kapasitas sebelum realokasi | `cap(s)` |
+| Tambah elemen | `s = append(s, nilai)` |
+| Slicing | `s[low:high]` |
+| Salin independen | `copy(tujuan, sumber)` |
+
+Sekarang kamu paham struktur data paling penting di Go. Berikutnya kita bahas **map** — struktur data key-value untuk menyimpan pasangan data seperti nama dan nilai.

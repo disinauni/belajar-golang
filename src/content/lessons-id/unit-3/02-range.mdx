@@ -1,0 +1,206 @@
+---
+title: "Range"
+unit: 3
+lesson: 2
+description: "Iterasi ringkas atas slice, string, dan map dengan range"
+objectives:
+  - "Memakai range untuk iterasi slice dan array"
+  - "Memakai range untuk iterasi string (dan jebakan UTF-8-nya)"
+  - "Memakai range untuk iterasi map, dan memahami urutannya tidak pasti"
+estimatedTime: 30
+prerequisites: ["unit-3/01-for-loop"]
+difficulty: "beginner"
+tags: ["range", "for", "slice", "map", "iterasi"]
+---
+
+# Range
+
+Menulis `for i := 0; i < len(data); i++ { data[i] }` setiap kali ingin mengiterasi koleksi itu berulang-ulang dan rawan salah ketik. Go punya cara yang lebih ringkas: klausa `range`.
+
+## Range pada Slice
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    buah := []string{"Apel", "Jeruk", "Mangga"}
+
+    for index, nilai := range buah {
+        fmt.Println(index, nilai)
+    }
+}
+```
+
+Output:
+```
+0 Apel
+1 Jeruk
+2 Mangga
+```
+
+## Membedah Range pada Slice
+
+**`for index, nilai := range buah {`** — `range buah` menghasilkan dua nilai di setiap iterasi: `index` (posisi, dimulai dari `0`) dan `nilai` (elemen di posisi itu). Ini jauh lebih ringkas daripada menulis `buah[i]` manual berulang kali.
+
+**Kalau kamu cuma butuh nilainya, bukan index:**
+```go
+for _, nilai := range buah {
+    fmt.Println(nilai)
+}
+```
+Tanda underscore `_` (disebut *blank identifier*) memberitahu Go "saya sengaja mengabaikan nilai ini" — kalau kamu deklarasikan `index` tapi tidak pernah pakai, Go akan error "declared and not used", jadi `_` adalah cara resmi untuk membuang nilai yang tidak dibutuhkan.
+
+**Kalau kamu cuma butuh index-nya saja:**
+```go
+for index := range buah {
+    fmt.Println(index)
+}
+```
+
+## Range pada String
+
+Ini bagian yang butuh perhatian ekstra:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    kata := "Halo"
+
+    for i, r := range kata {
+        fmt.Println(i, r, string(r))
+    }
+}
+```
+
+Output:
+```
+0 72 H
+1 97 a
+2 108 l
+3 111 o
+```
+
+**`for i, r := range kata {`** — untuk string, `range` menghasilkan `i` (posisi **byte**, bukan selalu berurutan rapi 0,1,2,3 untuk karakter non-ASCII) dan `r` yang bertipe `rune` (kode Unicode karakter itu, makanya tercetak sebagai angka seperti `72` untuk `'H'`).
+
+:::note
+Untuk string berisi karakter non-ASCII (misalnya "café" atau emoji), posisi byte dari `range` bisa "meloncat" lebih dari 1 antar iterasi, karena satu karakter Unicode bisa memakai lebih dari 1 byte. Ini topik yang kita bahas lebih dalam saat membahas `string`/`rune`/`byte` di Unit 5 — untuk sekarang, cukup ingat: **`range` pada string mengiterasi per-karakter (rune), bukan per-byte**.
+:::
+
+## Range pada Map
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    nilai := map[string]int{"Budi": 88, "Ani": 92, "Citra": 75}
+
+    for nama, skor := range nilai {
+        fmt.Println(nama, ":", skor)
+    }
+}
+```
+
+Output (urutan bisa berbeda setiap kali dijalankan!):
+```
+Ani : 92
+Citra : 75
+Budi : 88
+```
+
+**`for nama, skor := range nilai {`** — untuk map, `range` menghasilkan `key` dan `value`. Perhatikan output di atas: **urutannya tidak pasti**! Go **sengaja mengacak** urutan iterasi map setiap kali dijalankan, supaya programmer tidak diam-diam bergantung pada urutan tertentu yang sebenarnya tidak dijamin.
+
+:::tip
+Kalau kamu butuh iterasi map dengan urutan yang konsisten (misalnya urut alfabet berdasarkan key), kamu perlu mengumpulkan semua key ke dalam slice dulu, urutkan slice-nya (`sort.Strings`), baru iterasi slice yang sudah terurut itu untuk mengakses map. Kita bahas `sort` lebih lanjut di unit berikutnya.
+:::
+
+## Kesalahan Umum
+
+1. **Mendeklarasikan index tapi tidak dipakai:**
+   ```go
+   for index, nilai := range buah {
+       fmt.Println(nilai)  // ERROR: index declared and not used
+   }
+   ```
+   Solusi: ganti `index` jadi `_` kalau memang tidak dibutuhkan.
+
+2. **Berharap urutan map konsisten:**
+   ```go
+   data := map[string]int{"a": 1, "b": 2, "c": 3}
+   for k := range data {
+       fmt.Println(k)  // urutan BISA berbeda tiap run!
+   }
+   ```
+   Jangan menulis logika yang bergantung pada urutan tertentu saat iterasi map — kalau butuh urutan, urutkan key-nya secara eksplisit.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l2-ex1"
+  title="Jumlahkan dengan Range"
+  description="Lengkapi program agar menjumlahkan semua elemen slice memakai range, hasilnya harus 60."
+  type="code-output"
+  expectedOutput="60"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    angka := []int{10, 20, 30}
+    total := 0
+
+    for _, n := range angka {
+        total += n
+    }
+
+    fmt.Println(total)
+}`}
+  hints={["Pakai _ untuk mengabaikan index karena kita cuma butuh nilainya.", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="range angka menghasilkan index dan nilai tiap iterasi; karena index diabaikan dengan _, hanya nilai (n) yang dijumlahkan: 10+20+30=60."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l2-ex2"
+  title="Urutan Iterasi Map"
+  description="Apakah urutan key saat iterasi map dengan range selalu sama setiap kali program dijalankan?"
+  type="multiple-choice"
+  options={["Ya, selalu urut sesuai penulisan di kode", "Ya, selalu urut alfabet", "Tidak, Go sengaja mengacak urutannya", "Tidak, urutannya berdasarkan panjang key"]}
+  correctIndex={2}
+  hints={["Ingat penjelasan soal map di pelajaran ini.", "Ini keputusan desain Go yang disengaja, bukan bug."]}
+  explanation="Go sengaja mengacak urutan iterasi map setiap kali program dijalankan, supaya programmer tidak diam-diam bergantung pada urutan yang sebenarnya tidak dijamin oleh bahasa."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l2-ex3"
+  title="Lengkapi Blank Identifier"
+  description="Lengkapi kode untuk mengiterasi slice sambil mengabaikan index-nya."
+  type="fill-blank"
+  template={`for {{BLANK}}, nilai := range buah {
+    fmt.Println(nilai)
+}`}
+  blanks={["_"]}
+  hints={["Karakter ini memberitahu Go 'saya sengaja mengabaikan nilai ini'."]}
+  explanation="Underscore (_) adalah blank identifier di Go — dipakai untuk mengabaikan nilai yang tidak dibutuhkan tanpa kena error 'declared and not used'."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Target | Pola | Hasil per iterasi |
+|---|---|---|
+| Slice/Array | `for i, v := range s` | index, nilai |
+| String | `for i, r := range s` | posisi byte, rune |
+| Map | `for k, v := range m` | key, value (urutan acak) |
+| Abaikan salah satu | `for _, v := range s` | blank identifier `_` |
+
+Di pelajaran berikutnya, kita akan bahas **break, continue, dan label** — cara mengontrol alur loop dengan lebih presisi!

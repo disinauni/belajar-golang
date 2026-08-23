@@ -1,0 +1,372 @@
+---
+title: "Final Project"
+unit: 8
+lesson: 4
+description: "Membangun CLI Manajemen Tugas yang menggabungkan seluruh konsep dari Unit 0 sampai Unit 8"
+objectives:
+  - "Merancang dan membangun program Go yang utuh dari nol"
+  - "Menggabungkan struct, slice, error handling, dan JSON dalam satu project"
+  - "Merefleksikan seluruh perjalanan belajar Go dari awal kursus"
+estimatedTime: 120
+prerequisites: ["unit-8/03-json-encoding"]
+difficulty: "intermediate"
+tags: ["project", "final-project", "cli", "capstone"]
+---
+
+# Final Project: CLI Manajemen Tugas
+
+Selamat sampai di penghujung kursus! Kamu sudah melewati 9 unit — dari `fmt.Println("Halo, Dunia!")` yang sederhana, sampai goroutine dan channel yang rumit. Sekarang saatnya membuktikan semuanya menyatu dalam satu project nyata: **CLI Manajemen Tugas (Todo List)**.
+
+Ini bukan cuma project unit — ini **project penutup seluruh kursus**. Kita akan melewati setiap tahap perencanaan seperti biasa, tapi kali ini kamu akan melihat betapa jauh kemampuanmu sudah berkembang.
+
+## Spesifikasi Program
+
+CLI Todo List kita harus bisa:
+
+1. Menambahkan tugas baru (`tambah <judul>`)
+2. Menampilkan semua tugas beserta statusnya (`list`)
+3. Menandai tugas sebagai selesai (`selesai <id>`)
+4. Keluar dari program, menampilkan data tersimpan dalam format JSON (`keluar`)
+
+Contoh interaksi yang diharapkan:
+```
+=== TODO LIST GO ===
+Perintah: tambah <judul> | list | selesai <id> | keluar
+
+> tambah Belajar Go
+Tugas #1 ditambahkan: Belajar Go
+> tambah Latihan goroutine
+Tugas #2 ditambahkan: Latihan goroutine
+> selesai 1
+Tugas ditandai selesai.
+> list
+[x] #1 Belajar Go
+[ ] #2 Latihan goroutine
+> keluar
+Data tersimpan (simulasi): [{"id":1,"judul":"Belajar Go","selesai":true},{"id":2,"judul":"Latihan goroutine","selesai":false}]
+Sampai jumpa!
+```
+
+:::note
+Program ini menyimpan data di memori (slice), bukan ke file fisik — playground Judge0 di situs ini tidak menyediakan filesystem yang bisa ditulis. Bagian "keluar" mencetak data dalam format JSON untuk **mensimulasikan** bagaimana data ini akan disimpan di project sungguhan (misalnya ke file atau database).
+:::
+
+## Tahap 1: Planning
+
+**Data apa yang perlu disimpan?**
+- Daftar tugas — slice dari struct `Tugas`
+- Setiap tugas: ID (`int`), Judul (`string`), status Selesai (`bool`)
+- ID tugas berikutnya yang akan dipakai (`int`, bertambah tiap kali tugas baru ditambahkan)
+
+**Alur program:**
+1. Tampilkan judul dan daftar perintah
+2. Loop selama-lamanya, baca satu baris perintah dari user
+3. Pisahkan nama perintah dari argumennya
+4. Jalankan aksi sesuai perintah (`tambah`, `list`, `selesai`, `keluar`)
+5. Kalau perintah `keluar`, tampilkan data sebagai JSON dan hentikan program
+
+**Edge case yang perlu dipikirkan:**
+- Bagaimana kalau user mengetik `selesai` tanpa menyertakan ID?
+- Bagaimana kalau ID yang dimasukkan bukan angka, atau tidak ditemukan?
+- Bagaimana kalau `list` dipanggil saat belum ada tugas sama sekali?
+
+## Tahap 2: Pseudocode
+
+```
+PROGRAM TodoList:
+    daftarTugas = [] (kosong)
+    idBerikutnya = 1
+
+    TAMPILKAN judul dan daftar perintah
+
+    SELAMA true:
+        BACA satu baris input sebagai perintah
+        PISAHKAN perintah menjadi nama_perintah dan argumen
+
+        JIKA nama_perintah adalah "tambah":
+            BUAT tugas baru dengan idBerikutnya dan argumen sebagai judul
+            TAMBAHKAN ke daftarTugas
+            idBerikutnya = idBerikutnya + 1
+
+        JIKA nama_perintah adalah "list":
+            JIKA daftarTugas kosong:
+                TAMPILKAN "Belum ada tugas."
+            SELAIN ITU:
+                UNTUK SETIAP tugas DI daftarTugas:
+                    TAMPILKAN status, id, judul
+
+        JIKA nama_perintah adalah "selesai":
+            CARI tugas dengan id yang cocok di daftarTugas
+            JIKA ditemukan: tandai selesai = true
+
+        JIKA nama_perintah adalah "keluar":
+            TAMPILKAN daftarTugas sebagai JSON
+            HENTIKAN program
+
+        SELAIN ITU:
+            TAMPILKAN "Perintah tidak dikenali."
+```
+
+## Tahap 3: Implementasi
+
+### Versi 1: Kerangka Dasar
+
+Mulai dari struct dan loop baca-perintah, belum menjalankan aksi apapun:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strings"
+)
+
+type Tugas struct {
+    ID      int
+    Judul   string
+    Selesai bool
+}
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+    var daftarTugas []Tugas
+    idBerikutnya := 1
+
+    fmt.Println("=== TODO LIST GO ===")
+    fmt.Println("Perintah: tambah <judul> | list | selesai <id> | keluar")
+    fmt.Println()
+
+    for {
+        fmt.Print("> ")
+        if !scanner.Scan() {
+            break
+        }
+        input := scanner.Text()
+        parts := strings.SplitN(input, " ", 2)
+        perintah := parts[0]
+
+        // TODO: jalankan aksi sesuai perintah
+
+        fmt.Println("Perintah diterima:", perintah)
+    }
+}
+```
+
+**`scanner.Scan()` sebagai kondisi loop `for { if !scanner.Scan() { break } ... }`** — pola ini membaca input baris demi baris sampai tidak ada input lagi (misalnya saat stdin ditutup), lalu keluar dari loop secara alami.
+
+**`strings.SplitN(input, " ", 2)`** — memisahkan input jadi maksimal 2 bagian di spasi pertama. Untuk `"tambah Belajar Go"`, hasilnya `["tambah", "Belajar Go"]` — judul tugas boleh mengandung spasi, tidak ikut terpotong.
+
+Coba jalankan — program sudah bisa membaca perintah, meskipun belum melakukan apa-apa dengannya.
+
+### Versi 2: Implementasi Lengkap
+
+Sekarang tambahkan logika untuk setiap perintah:
+
+```go
+package main
+
+import (
+    "bufio"
+    "encoding/json"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+type Tugas struct {
+    ID      int    `json:"id"`
+    Judul   string `json:"judul"`
+    Selesai bool   `json:"selesai"`
+}
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+    var daftarTugas []Tugas
+    idBerikutnya := 1
+
+    fmt.Println("=== TODO LIST GO ===")
+    fmt.Println("Perintah: tambah <judul> | list | selesai <id> | keluar")
+    fmt.Println()
+
+    for {
+        fmt.Print("> ")
+        if !scanner.Scan() {
+            break
+        }
+        input := scanner.Text()
+        parts := strings.SplitN(input, " ", 2)
+        perintah := parts[0]
+
+        switch perintah {
+        case "tambah":
+            if len(parts) < 2 {
+                fmt.Println("Format: tambah <judul tugas>")
+                continue
+            }
+            tugasBaru := Tugas{ID: idBerikutnya, Judul: parts[1], Selesai: false}
+            daftarTugas = append(daftarTugas, tugasBaru)
+            idBerikutnya++
+            fmt.Printf("Tugas #%d ditambahkan: %s\n", tugasBaru.ID, tugasBaru.Judul)
+
+        case "list":
+            if len(daftarTugas) == 0 {
+                fmt.Println("Belum ada tugas.")
+                continue
+            }
+            for _, t := range daftarTugas {
+                status := "[ ]"
+                if t.Selesai {
+                    status = "[x]"
+                }
+                fmt.Printf("%s #%d %s\n", status, t.ID, t.Judul)
+            }
+
+        case "selesai":
+            if len(parts) < 2 {
+                fmt.Println("Format: selesai <id>")
+                continue
+            }
+            id, err := strconv.Atoi(parts[1])
+            if err != nil {
+                fmt.Println("ID harus berupa angka.")
+                continue
+            }
+            ditemukan := false
+            for i := range daftarTugas {
+                if daftarTugas[i].ID == id {
+                    daftarTugas[i].Selesai = true
+                    ditemukan = true
+                    break
+                }
+            }
+            if ditemukan {
+                fmt.Println("Tugas ditandai selesai.")
+            } else {
+                fmt.Println("Tugas tidak ditemukan.")
+            }
+
+        case "keluar":
+            data, _ := json.Marshal(daftarTugas)
+            fmt.Println("Data tersimpan (simulasi):", string(data))
+            fmt.Println("Sampai jumpa!")
+            return
+
+        default:
+            fmt.Println("Perintah tidak dikenali.")
+        }
+    }
+}
+```
+
+## Memahami Bagian Penting
+
+### Kenapa `for i := range daftarTugas` untuk `selesai`?
+
+```go
+for i := range daftarTugas {
+    if daftarTugas[i].ID == id {
+        daftarTugas[i].Selesai = true  // mengubah elemen ASLI lewat index
+        ...
+    }
+}
+```
+
+Ingat dari Unit 3: `for _, t := range daftarTugas` memberi **salinan** setiap elemen ke `t` — mengubah `t.Selesai` tidak akan mengubah data di slice aslinya. Untuk benar-benar mengubah elemen di dalam slice, kita mengakses lewat index: `daftarTugas[i]`.
+
+### Kenapa `continue` di dalam `switch` yang ada di dalam `for`?
+
+`continue` melompat ke iterasi `for` berikutnya (kembali ke `fmt.Print("> ")`), melewati sisa kode di `switch` case saat ini — cara alami untuk "batalkan aksi ini, minta perintah baru" tanpa perlu flag `bool` tambahan seperti di project kalkulator Unit 1.
+
+## Tahap 4: Testing
+
+**Test 1: Alur normal**
+```
+tambah Beli susu
+list
+selesai 1
+list
+keluar
+Expected: tugas #1 muncul, lalu tercentang [x] setelah 'selesai 1'
+```
+
+**Test 2: List saat kosong**
+```
+list
+Expected: "Belum ada tugas."
+```
+
+**Test 3: selesai dengan ID tidak valid**
+```
+tambah Test
+selesai abc
+Expected: "ID harus berupa angka."
+```
+
+**Test 4: selesai dengan ID tidak ditemukan**
+```
+tambah Test
+selesai 99
+Expected: "Tugas tidak ditemukan."
+```
+
+**Test 5: Perintah tidak dikenali**
+```
+hapus semua
+Expected: "Perintah tidak dikenali."
+```
+
+:::tip
+Coba jalankan program ini di halaman **Playground** (bukan kotak Latihan) supaya kamu bisa mengetik banyak baris perintah lewat kolom stdin dan melihat seluruh alur interaksi sekaligus.
+:::
+
+## Kode Solusi Lengkap
+
+Kode di Versi 2 di atas sudah merupakan solusi lengkap dan siap jalan — tidak ada versi tambahan yang perlu ditulis ulang. Salin kode tersebut ke Playground, coba berbagai skenario testing di atas, dan amati bagaimana setiap konsep dari 9 unit kursus ini bekerja bersama dalam satu program.
+
+## Challenge Bonus
+
+Sudah selesai? Tantangan tambahan untuk mengasah kemampuanmu lebih jauh:
+
+**Challenge 1: Perintah `hapus`**
+
+Tambahkan perintah `hapus <id>` yang menghapus tugas dari `daftarTugas`. Petunjuk: pakai `append(daftarTugas[:i], daftarTugas[i+1:]...)` untuk menghapus elemen slice di index `i`.
+
+**Challenge 2: Validasi Judul Kosong**
+
+Tolak `tambah` kalau judulnya cuma spasi kosong (pakai `strings.TrimSpace` dari Unit 1, cek apakah hasilnya string kosong).
+
+**Challenge 3: Concurrency — Auto-save Berkala**
+
+Kamu sudah belajar goroutine dan channel di Unit 7. Coba tambahkan goroutine terpisah yang "menyimpan" (mencetak JSON) daftar tugas setiap beberapa aksi, berjalan concurrent dengan loop utama — gunakan `sync.Mutex` untuk melindungi akses ke `daftarTugas` dari dua goroutine sekaligus.
+
+## Refleksi: Perjalanan Belajarmu
+
+Lihat betapa jauh kamu sudah melangkah. Setiap unit menyumbang sesuatu ke project akhir ini:
+
+| Unit | Konsep | Dipakai Untuk |
+|---|---|---|
+| Unit 0 | Setup & Playground | Fondasi menjalankan semua kode di kursus ini |
+| Unit 1 | Variabel, tipe data, string, I/O | `bufio.Scanner`, `strings.SplitN`, `strconv.Atoi` |
+| Unit 2 | Percabangan (`if`, `switch`) | Routing perintah user ke aksi yang tepat |
+| Unit 3 | Perulangan (`for`, `range`) | Loop utama program, menampilkan daftar tugas |
+| Unit 4 | Fungsi, multiple return values | Pola `(hasil, error)` dari `strconv.Atoi` |
+| Unit 5 | Slice | `daftarTugas []Tugas`, `append` |
+| Unit 6 | Struct, method, error handling | `type Tugas struct{...}`, pengecekan `err != nil` |
+| Unit 7 | Concurrency (goroutine, channel) | Fondasi untuk Challenge 3 |
+| Unit 8 | Package, testing, JSON | `encoding/json`, cara berpikir modular |
+
+## Selamat, Kamu Sudah Menguasai Go Dasar!
+
+Kamu baru saja menyelesaikan seluruh kursus **Belajar Golang** — dari `package main` pertamamu sampai membangun aplikasi CLI yang utuh, lengkap dengan concurrency dan JSON encoding. Ini pencapaian besar!
+
+Go adalah bahasa yang dipakai membangun infrastruktur cloud paling penting di dunia — dan sekarang kamu punya fondasi untuk ikut membangunnya. Beberapa langkah lanjutan yang bisa kamu coba:
+
+- **Bangun REST API sungguhan** dengan package `net/http` bawaan Go — konsep `struct`, `error handling`, dan `encoding/json` yang baru kamu kuasai adalah fondasi persis yang dibutuhkan.
+- **Eksplor package pihak ketiga populer** seperti `gin` (web framework) atau `cobra` (CLI framework yang lebih canggih dari `bufio.Scanner` manual).
+- **Coba deploy program Go-mu** — compile dengan `go build`, dan lihat betapa mudahnya mendistribusikan satu file biner tanpa dependency runtime.
+- **Kontribusi ke project open source Go** — banyak project besar (Docker, Kubernetes, dan ribuan lainnya) menerima kontribusi dari programmer di semua level.
+
+Terima kasih sudah menyelesaikan perjalanan ini sampai akhir. Selamat coding, dan sampai jumpa di project Go-mu berikutnya! 🎉

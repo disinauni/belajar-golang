@@ -1,0 +1,211 @@
+---
+title: "Interface"
+unit: 6
+lesson: 4
+description: "Tipe abstrak berisi kumpulan method signature, dipenuhi secara implisit tanpa keyword implements"
+objectives:
+  - "Mendeklarasikan interface dengan kumpulan method signature"
+  - "Memahami implicit interface satisfaction — ciri khas Go"
+  - "Menulis fungsi yang menerima parameter bertipe interface"
+estimatedTime: 40
+prerequisites: ["unit-6/03-embedding"]
+difficulty: "intermediate"
+tags: ["interface", "polymorphism", "implicit"]
+---
+
+# Interface
+
+Ini salah satu fitur paling khas Go. Di banyak bahasa (Java, C#), tipe harus **secara eksplisit** menyatakan `implements NamaInterface`. Di Go, **tidak ada langkah itu sama sekali** — sebuah tipe otomatis memenuhi interface cukup dengan mengimplementasikan semua method yang diminta. Ini disebut **implicit interface satisfaction**, dan ini mengubah cara kamu mendesain program di Go.
+
+## Mendeklarasikan dan Memenuhi Interface
+
+```go
+package main
+
+import "fmt"
+
+type Bentuk interface {
+    Luas() float64
+}
+
+type Persegi struct {
+    Sisi float64
+}
+
+func (p Persegi) Luas() float64 {
+    return p.Sisi * p.Sisi
+}
+
+type Lingkaran struct {
+    Jarijari float64
+}
+
+func (l Lingkaran) Luas() float64 {
+    return 3.14 * l.Jarijari * l.Jarijari
+}
+
+func cetakLuas(b Bentuk) {
+    fmt.Printf("Luas: %.2f\n", b.Luas())
+}
+
+func main() {
+    p := Persegi{Sisi: 4}
+    l := Lingkaran{Jarijari: 3}
+
+    cetakLuas(p)
+    cetakLuas(l)
+}
+```
+
+Output:
+```
+Luas: 16.00
+Luas: 28.26
+```
+
+## Membedah Interface
+
+**`type Bentuk interface { Luas() float64 }`** — mendeklarasikan tipe interface bernama `Bentuk`. Isinya cuma **signature method** (nama, parameter, tipe return) — tidak ada body, tidak ada field.
+
+**`Persegi` dan `Lingkaran`** — perhatikan baik-baik: **tidak ada satu baris pun** yang bilang "Persegi implements Bentuk". Kedua struct ini otomatis memenuhi interface `Bentuk` semata-mata karena masing-masing punya method `Luas() float64` dengan signature persis sama seperti yang diminta interface.
+
+Bayangkan interface seperti lowongan kerja yang cuma menuliskan syarat: "bisa mengemudi mobil". Siapa pun yang punya kemampuan itu otomatis "memenuhi syarat" — tidak peduli latar belakangnya apa, tidak perlu mendaftar secara formal sebagai "pemenuh syarat".
+
+**`func cetakLuas(b Bentuk)`** — parameter `b` bertipe interface `Bentuk`, bukan tipe struct konkret. Artinya fungsi ini bisa menerima **nilai bertipe apa pun**, selama tipenya punya method `Luas() float64`. Inilah kekuatan interface: satu fungsi bisa bekerja dengan banyak tipe berbeda, selama "kontrak" method-nya terpenuhi.
+
+:::tip
+Prinsip ini kadang disebut *duck typing* versi statis: "kalau jalannya seperti bebek dan bersuara seperti bebek, anggap saja itu bebek" — tapi di Go, semua ini tetap dicek ketat saat compile time, bukan saat runtime seperti di Python.
+:::
+
+## Interface Kosong
+
+Interface tanpa method sama sekali, ditulis `interface{}`, bisa diisi nilai **bertipe apa pun** — karena syaratnya kosong, semua tipe otomatis memenuhinya.
+
+```go
+func cetakApapun(v interface{}) {
+    fmt.Println(v)
+}
+
+func main() {
+    cetakApapun(42)
+    cetakApapun("halo")
+    cetakApapun(true)
+}
+```
+
+Output:
+```
+42
+halo
+true
+```
+
+:::warning
+Selalu tulis `interface{}` secara literal seperti di atas untuk interface kosong. Versi Go yang dipakai di kursus ini (dan banyak proyek produksi) belum mendukung alias `any` — fitur itu baru ada di Go 1.18 ke atas.
+:::
+
+:::note
+Signature method harus **persis sama** — termasuk tipe parameter dan tipe return. Kalau `Luas()` mengembalikan `int` padahal interface minta `float64`, tipe itu **tidak** memenuhi interface, walaupun namanya sama.
+:::
+
+## Kesalahan Umum
+
+1. **Tipe return method tidak cocok dengan interface:**
+   ```go
+   func (p Persegi) Luas() int { // seharusnya float64
+       return int(p.Sisi * p.Sisi)
+   }
+
+   func main() {
+       var b Bentuk = Persegi{Sisi: 4}
+       // ERROR: cannot use Persegi{...} (type Persegi) as type Bentuk:
+       // Persegi does not implement Bentuk (wrong type for Luas method)
+   }
+   ```
+
+2. **Method dideklarasikan dengan pointer receiver, tapi dipakai lewat value:**
+   ```go
+   type Segitiga struct {
+       Alas, Tinggi float64
+   }
+
+   func (s *Segitiga) Luas() float64 {
+       return s.Alas * s.Tinggi / 2
+   }
+
+   func main() {
+       var b Bentuk = Segitiga{Alas: 4, Tinggi: 3}
+       // ERROR: cannot use Segitiga{...} (type Segitiga) as type Bentuk:
+       // Segitiga does not implement Bentuk (Luas method has pointer receiver)
+   }
+   ```
+   Kalau method pakai pointer receiver, hanya `*Segitiga` yang memenuhi interface, bukan `Segitiga` biasa. Perbaikannya: `var b Bentuk = &Segitiga{Alas: 4, Tinggi: 3}`.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l4-ex1"
+  title="Implicit Interface Satisfaction"
+  description="Lengkapi program agar mencetak `Suara: Guk guk!` — buat struct Anjing memenuhi interface Hewan tanpa keyword implements."
+  type="code-output"
+  expectedOutput="Suara: Guk guk!"
+  starterCode={`package main
+
+import "fmt"
+
+type Hewan interface {
+    Suara() string
+}
+
+type Anjing struct{}
+
+func (a Anjing) Suara() string {
+    return "Guk guk!"
+}
+
+func main() {
+    var h Hewan = Anjing{}
+    fmt.Printf("Suara: %s\\n", h.Suara())
+}`}
+  hints={["Kode ini sebenarnya sudah benar — coba jalankan.", "Anjing otomatis memenuhi interface Hewan karena punya method Suara() string dengan signature yang sama."]}
+  explanation="Anjing memenuhi interface Hewan cukup dengan mengimplementasikan method Suara() string — tidak perlu deklarasi implements apa pun, inilah implicit interface satisfaction khas Go."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l4-ex2"
+  title="Cara Tipe Memenuhi Interface"
+  description="Bagaimana cara sebuah tipe di Go dinyatakan memenuhi (satisfy) sebuah interface?"
+  type="multiple-choice"
+  options={["Menulis keyword implements diikuti nama interface", "Mengimplementasikan semua method yang diminta interface, dengan signature yang sama persis", "Mendaftarkan tipe itu ke interface lewat fungsi khusus", "Meng-embed interface itu sebagai field bernama sama"]}
+  correctIndex={1}
+  hints={["Go tidak punya keyword implements sama sekali.", "Cukup cocokkan nama method, parameter, dan tipe return-nya."]}
+  explanation="Go memakai implicit interface satisfaction: sebuah tipe otomatis memenuhi interface begitu ia mengimplementasikan semua method yang diminta, dengan signature yang persis sama — tanpa deklarasi eksplisit apa pun."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l4-ex3"
+  title="Lengkapi Deklarasi Interface"
+  description="Lengkapi deklarasi interface Bentuk agar mensyaratkan method Luas yang mengembalikan float64."
+  type="fill-blank"
+  template="type Bentuk interface {\n    Luas() {{BLANK}}\n}"
+  blanks={["float64"]}
+  hints={["Tipe return yang dipakai untuk perhitungan luas biasanya bilangan desimal."]}
+  explanation="Method signature Luas() float64 mensyaratkan setiap tipe yang ingin memenuhi interface Bentuk harus punya method Luas yang mengembalikan nilai float64."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi interface | `type Bentuk interface { Luas() float64 }` |
+| Implicit satisfaction | Cukup implementasikan method-nya, tanpa `implements` |
+| Parameter bertipe interface | `func cetakLuas(b Bentuk)` |
+| Interface kosong | `func cetakApapun(v interface{})` |
+| Gotcha pointer receiver | Hanya `*Tipe` memenuhi interface jika method pakai pointer receiver |
+
+Di pelajaran berikutnya, kita bahas **error handling** — cara Go menangani kegagalan sebagai *value* biasa, bukan lewat exception seperti bahasa lain.

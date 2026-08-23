@@ -1,0 +1,182 @@
+---
+title: "Operator Perbandingan & Logika"
+unit: 2
+lesson: 1
+description: "Membandingkan nilai dan menggabungkan kondisi dengan operator logika"
+objectives:
+  - "Memakai operator perbandingan: == != < > <= >="
+  - "Menggabungkan kondisi dengan operator logika && || !"
+  - "Memahami short-circuit evaluation"
+estimatedTime: 25
+prerequisites: ["unit-1/09-project-kalkulator"]
+difficulty: "beginner"
+tags: ["operator", "perbandingan", "logika", "boolean"]
+---
+
+# Operator Perbandingan & Logika
+
+Program yang cuma menghitung tanpa bisa "mengambil keputusan" itu terbatas — kalkulator kita di Unit 1 masih terasa kaku. Mulai unit ini, kamu akan belajar membuat program yang bisa bereaksi berbeda tergantung situasi. Langkah pertama: memahami operator yang menghasilkan `true`/`false`.
+
+## Operator Perbandingan
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    a := 10
+    b := 7
+
+    fmt.Println(a == b)  // false
+    fmt.Println(a != b)  // true
+    fmt.Println(a > b)   // true
+    fmt.Println(a < b)   // false
+    fmt.Println(a >= 10) // true
+    fmt.Println(b <= 6)  // false
+}
+```
+
+Output:
+```
+false
+true
+true
+false
+true
+false
+```
+
+## Membedah Operator Perbandingan
+
+**`==`** — sama dengan. Perhatikan **dua** tanda sama dengan — beda dari `=` (satu tanda) yang dipakai untuk assignment.
+
+**`!=`** — tidak sama dengan.
+
+**`>` `<` `>=` `<=`** — lebih besar, lebih kecil, lebih besar sama dengan, lebih kecil sama dengan. Semuanya menghasilkan `bool`.
+
+:::tip
+Semua operator ini bisa dipakai untuk `int`, `float64`, dan `string` (perbandingan string di Go berdasarkan urutan alfabet/leksikografis: `"apel" < "jeruk"` bernilai `true`). Tidak bisa dipakai langsung untuk membandingkan slice, map, atau struct yang berisi slice — itu topik lanjutan di unit-unit berikutnya.
+:::
+
+## Operator Logika
+
+Kadang satu kondisi tidak cukup — kamu perlu menggabungkan beberapa syarat sekaligus.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    umur := 17
+    punyaKTP := true
+
+    bolehMemilih := umur >= 17 && punyaKTP
+    fmt.Println(bolehMemilih) // true
+
+    diskonPelajar := umur < 18 || umur > 60
+    fmt.Println(diskonPelajar) // true
+
+    tidakValid := !punyaKTP
+    fmt.Println(tidakValid) // false
+}
+```
+
+Output:
+```
+true
+true
+false
+```
+
+## Membedah Operator Logika
+
+**`&&`** (AND) — hasilnya `true` hanya kalau **kedua** sisi `true`. `umur >= 17 && punyaKTP` bernilai `true` karena keduanya terpenuhi.
+
+**`||`** (OR) — hasilnya `true` kalau **salah satu** sisi `true`. `umur < 18 || umur > 60` bernilai `true` karena `umur > 60` saja sudah cukup (meski `umur < 18` juga `false` di sini — tunggu, `17 < 18` itu `true`! Coba jalankan sendiri dan perhatikan).
+
+**`!`** (NOT) — membalik nilai bool. `!punyaKTP` membalik `true` jadi `false`.
+
+:::note
+**Short-circuit evaluation** — Go **tidak** mengevaluasi sisi kanan `&&`/`||` kalau hasilnya sudah bisa dipastikan dari sisi kiri saja. Kalau sisi kiri `&&` sudah `false`, sisi kanan **tidak pernah dijalankan** (karena hasil AND pasti `false`). Ini berguna untuk kode seperti `data != nil && data.Nilai > 0` — bagian kedua aman dijalankan karena Go sudah tahu tidak akan mengecek `data.Nilai` kalau `data` memang `nil`.
+:::
+
+## Kesalahan Umum
+
+1. **Memakai `=` (assignment) padahal maksudnya `==` (perbandingan):**
+   ```go
+   a := 5
+   if a = 10 {  // ERROR: syntax error, non-boolean condition
+       fmt.Println("ini error!")
+   }
+   ```
+   Kabar baiknya: Go **menolak compile** kesalahan ini secara otomatis, karena `a = 10` adalah statement assignment, bukan ekspresi yang menghasilkan `bool`. Ini beda dari C/C++ yang diam-diam mengizinkannya (dan sering jadi sumber bug).
+
+2. **Membandingkan float64 dengan `==` untuk hasil perhitungan:**
+   ```go
+   hasil := 0.1 + 0.2
+   fmt.Println(hasil == 0.3)  // false! (bukan bug, ini soal presisi floating-point)
+   ```
+   Perhitungan desimal punya keterbatasan presisi di hampir semua bahasa pemrograman. Untuk membandingkan float64 "kurang lebih sama", biasanya dipakai selisih kecil (`math.Abs(a-b) < 0.0001`) alih-alih `==` langsung.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u2l1-ex1"
+  title="Cek Kelayakan"
+  description="Lengkapi program agar mencetak <code>true</code> jika umur minimal 17 DAN sudah punya KTP."
+  type="code-output"
+  expectedOutput="true"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    umur := 20
+    punyaKTP := true
+    layak := umur >= 17 && punyaKTP
+    fmt.Println(layak)
+}`}
+  hints={["Gunakan operator && untuk mensyaratkan kedua kondisi terpenuhi.", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="umur >= 17 && punyaKTP bernilai true hanya jika kedua syarat terpenuhi sekaligus."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u2l1-ex2"
+  title="Short-Circuit Evaluation"
+  description="Pada ekspresi <code>false && x()</code>, apakah fungsi x() akan dipanggil?"
+  type="multiple-choice"
+  options={["Ya, selalu dipanggil", "Tidak, karena sisi kiri sudah false", "Tergantung isi fungsi x()", "Program akan error"]}
+  correctIndex={1}
+  hints={["Ingat konsep short-circuit evaluation yang baru dijelaskan.", "Kalau sisi kiri && sudah false, hasil AND pasti false tanpa perlu cek sisi kanan."]}
+  explanation="Go tidak mengevaluasi sisi kanan && kalau sisi kiri sudah false, karena hasilnya sudah pasti false. x() tidak pernah dipanggil."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u2l1-ex3"
+  title="Lengkapi Operator NOT"
+  description="Lengkapi operator untuk membalik nilai boolean punyaKTP."
+  type="fill-blank"
+  template="tidakPunyaKTP := {{BLANK}}punyaKTP"
+  blanks={["!"]}
+  hints={["Operator ini hanya satu karakter, membalik true jadi false dan sebaliknya."]}
+  explanation="!punyaKTP membalik nilai boolean — jika punyaKTP true, hasilnya false, dan sebaliknya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Operator | Fungsi | Contoh |
+|---|---|---|
+| `==` `!=` | Sama dengan, tidak sama dengan | `a == b` |
+| `<` `>` `<=` `>=` | Perbandingan urutan | `umur >= 17` |
+| `&&` | AND (kedua sisi harus true) | `a && b` |
+| `\|\|` | OR (salah satu true) | `a \|\| b` |
+| `!` | NOT (membalik nilai) | `!valid` |
+
+Di pelajaran berikutnya, kita akan pakai operator-operator ini untuk membuat program benar-benar "mengambil keputusan" dengan **if-else**!

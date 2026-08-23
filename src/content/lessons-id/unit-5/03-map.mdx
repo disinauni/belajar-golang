@@ -1,0 +1,269 @@
+---
+title: "Map"
+unit: 5
+lesson: 3
+description: "Struktur data key-value di Go — menyimpan dan mencari data lewat kunci, bukan index angka"
+objectives:
+  - "Membuat dan mengakses map dengan literal dan make()"
+  - "Mengecek keberadaan key dengan pola comma-ok"
+  - "Menghapus entry dengan delete() dan memahami urutan iterasi yang tidak terjamin"
+estimatedTime: 35
+prerequisites: ["unit-5/02-slice"]
+difficulty: "beginner"
+tags: ["map", "data-structure", "key-value"]
+---
+
+# Map
+
+Slice mengakses data lewat index angka — `data[0]`, `data[1]`, dan seterusnya. Tapi kadang kamu ingin mengakses data lewat **nama**, bukan posisi: nilai ujian si "Andi", stok barang bernama "Apel". Untuk itu, Go punya `map` — struktur data key-value, mirip kamus.
+
+## Membuat Map
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    nilai := map[string]int{
+        "Andi": 90,
+        "Budi": 85,
+    }
+
+    fmt.Println(nilai)
+    fmt.Println("Nilai Andi:", nilai["Andi"])
+}
+```
+
+Output:
+```
+map[Andi:90 Budi:85]
+Nilai Andi: 90
+```
+
+## Membedah Map Literal
+
+**`map[string]int{...}`** — tipe map ditulis `map[TipeKey]TipeValue`. Di sini, key-nya bertipe `string` (nama siswa) dan value-nya bertipe `int` (nilai). Kamu bisa memakai tipe apa saja untuk value, tapi key harus tipe yang bisa dibandingkan (`==`) — biasanya `string`, angka, atau `bool`.
+
+**`nilai["Andi"]`** — mengakses value lewat key, mirip cara kamu mengakses elemen slice lewat index, tapi di sini "index"-nya berupa string.
+
+**`fmt.Println(nilai)`** mencetak `map[Andi:90 Budi:85]` — perhatikan urutannya **berdasarkan abjad key** (Andi sebelum Budi). Ini bukan kebetulan: `fmt` sengaja mengurutkan key saat mencetak map, supaya output selalu konsisten dan mudah dibaca.
+
+## Membuat Map dengan `make()`
+
+Kalau kamu belum tahu isinya di awal, buat map kosong dengan `make()`, lalu isi belakangan:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    stok := make(map[string]int)
+    stok["Apel"] = 50
+    stok["Jeruk"] = 30
+
+    fmt.Println(stok)
+    fmt.Println("Jumlah jenis barang:", len(stok))
+}
+```
+
+Output:
+```
+map[Apel:50 Jeruk:30]
+Jumlah jenis barang: 2
+```
+
+`len(stok)` pada map mengembalikan jumlah **pasangan key-value** yang tersimpan, bukan jumlah karakter atau semacamnya.
+
+## Mengecek Keberadaan Key: Pola Comma-Ok
+
+Ini bagian penting: mengakses key yang **tidak ada** di map tidak menghasilkan error — Go diam-diam mengembalikan zero value dari tipe value-nya. Ini bisa membingungkan!
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    stok := map[string]int{"Apel": 50, "Jeruk": 30}
+
+    jumlah, ada := stok["Mangga"]
+    if ada {
+        fmt.Println("Stok mangga:", jumlah)
+    } else {
+        fmt.Println("Mangga tidak ada di stok")
+    }
+}
+```
+
+Output:
+```
+Mangga tidak ada di stok
+```
+
+**`jumlah, ada := stok["Mangga"]`** — ini pola **comma-ok**. Nilai kedua (`ada`, bertipe `bool`) memberi tahu apakah key itu benar-benar ada di map. Kalau kamu cuma menulis `jumlah := stok["Mangga"]` (tanpa `ada`), kamu akan dapat `0` — dan tidak bisa membedakan "Mangga memang stoknya 0" dari "Mangga tidak pernah ada di data sama sekali".
+
+:::warning
+`m[key]` tanpa comma-ok itu jebakan klasik. Kalau tipe value-nya `int`, key yang tidak ada terlihat sama persis dengan key yang nilainya memang `0`. Selalu pakai `v, ok := m[key]` kalau perbedaan itu penting buat logikamu.
+:::
+
+## Menghapus Entry dengan `delete()`
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    stok := map[string]int{"Apel": 50, "Jeruk": 30, "Mangga": 10}
+    delete(stok, "Jeruk")
+
+    fmt.Println(stok)
+}
+```
+
+Output:
+```
+map[Apel:50 Mangga:10]
+```
+
+`delete(stok, "Jeruk")` menghapus pasangan key-value dengan key `"Jeruk"`. Kalau key-nya tidak ada, `delete` tidak melakukan apa-apa — tidak error, tidak panic.
+
+## Urutan Iterasi Tidak Terjamin
+
+Ingat, `fmt.Println` mengurutkan key saat mencetak map — tapi itu perlakuan khusus dari `fmt`. Kalau kamu **iterasi manual** dengan `for range`, urutannya **sengaja diacak** oleh Go setiap kali program dijalankan!
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    nilai := map[string]int{"Citra": 88, "Andi": 90, "Budi": 85}
+
+    var namaNama []string
+    for nama := range nilai {
+        namaNama = append(namaNama, nama)
+    }
+    sort.Strings(namaNama)
+
+    for _, nama := range namaNama {
+        fmt.Println(nama, ":", nilai[nama])
+    }
+}
+```
+
+Output:
+```
+Andi : 90
+Budi : 85
+Citra : 88
+```
+
+Kalau kamu langsung menulis `for nama, n := range nilai { fmt.Println(nama, n) }`, urutannya bisa berbeda setiap kali dijalankan. Solusinya: kumpulkan semua key ke slice, urutkan dengan `sort.Strings`, baru iterasi lewat slice yang sudah terurut itu.
+
+:::note
+Kenapa Go sengaja mengacak urutan `for range` pada map? Supaya programmer tidak diam-diam bergantung pada urutan tertentu yang sebenarnya tidak dijamin — kalau kamu butuh urutan, urutkan sendiri secara eksplisit seperti contoh di atas.
+:::
+
+## Kesalahan Umum
+
+1. **Mengakses key yang tidak ada tanpa comma-ok, mengira itu error:**
+   ```go
+   stok := map[string]int{"Apel": 50}
+   fmt.Println(stok["Mangga"]) // Output: 0 — bukan error, tapi zero value!
+   ```
+
+2. **Menulis ke map yang belum di-`make()` (nil map):**
+   ```go
+   var stok map[string]int // nil map, belum diinisialisasi
+   stok["Apel"] = 50       // ERROR: panic: assignment to entry in nil map
+   ```
+   Membaca dari nil map itu aman (hasilnya zero value), tapi **menulis** ke nil map selalu panic. Solusi: selalu `make()` dulu sebelum menulis.
+
+3. **Mengandalkan urutan `for range` pada map:**
+   ```go
+   for nama, nilaiSiswa := range dataSiswa {
+       fmt.Println(nama, nilaiSiswa) // urutan berbeda tiap kali dijalankan!
+   }
+   ```
+   Solusi: kumpulkan key ke slice, urutkan dengan `sort.Strings`, baru iterasi.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l3-ex1"
+  title="Akses Value dengan Key yang Benar"
+  description="Ubah program agar mencetak `Stok jeruk: 30`."
+  type="code-output"
+  expectedOutput="Stok jeruk: 30"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    stok := map[string]int{"Apel": 50, "Jeruk": 30}
+    fmt.Println("Stok jeruk:", stok["Apel"])
+}`}
+  hints={["Key yang diakses harus sesuai dengan yang ditampilkan di teks.", "Ganti stok[\"Apel\"] menjadi stok[\"Jeruk\"]."]}
+  explanation='stok["Jeruk"] mengambil value dari key "Jeruk", yaitu 30 — bukan dari key "Apel".'
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l3-ex2"
+  title="Pola Comma-Ok"
+  description="Perbaiki program agar mencetak `Kunci tidak ditemukan` saat key tidak ada di map."
+  type="code-output"
+  expectedOutput="Kunci tidak ditemukan"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    umur := map[string]int{"Andi": 20, "Budi": 22}
+
+    _, ada := umur["Citra"]
+    if ada {
+        fmt.Println("Kunci ditemukan")
+    } else {
+        fmt.Println("Kunci ditemukan")
+    }
+}`}
+  hints={["Perhatikan pesan di dalam blok else — masih salah.", "Ganti pesan di dalam else menjadi \"Kunci tidak ditemukan\"."]}
+  explanation='ada bernilai false karena "Citra" tidak ada di map umur, jadi blok else yang berjalan — pesannya harus mencerminkan itu.'
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l3-ex3"
+  title="Zero Value pada Key yang Tidak Ada"
+  description="Apa yang terjadi kalau kamu mengakses key yang tidak ada di `map[string]int` tanpa memakai pola comma-ok?"
+  type="multiple-choice"
+  options={["Program panic saat runtime", "Go mengembalikan zero value dari tipe value (misalnya 0), tanpa memberi tahu key itu sebenarnya tidak ada", "Program gagal compile", "Go mengembalikan nil"]}
+  correctIndex={1}
+  hints={["Ingat bagian 'jebakan klasik' di pelajaran ini.", "Membaca key yang tidak ada itu aman, tapi hasilnya bisa membingungkan."]}
+  explanation="Mengakses key yang tidak ada tanpa comma-ok mengembalikan zero value dari tipe value-nya (0 untuk int, string kosong untuk string, dst) — tanpa ada tanda bahwa key itu sebenarnya tidak pernah ada."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Tipe map | `map[string]int` |
+| Map literal | `map[string]int{"a": 1}` |
+| Buat map kosong | `make(map[string]int)` |
+| Akses value | `m["key"]` |
+| Cek keberadaan key | `v, ok := m["key"]` |
+| Hapus entry | `delete(m, "key")` |
+| Jumlah entry | `len(m)` |
+| Urutan iterasi | Tidak terjamin — urutkan manual kalau perlu |
+
+Kita sudah punya array, slice, dan map — tiga struktur data inti Go. Berikutnya kita kembali ke string, tapi kali ini menyelami lebih dalam: **string, rune, dan byte**.

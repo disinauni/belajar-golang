@@ -1,0 +1,220 @@
+---
+title: "Select & Buffered Channel"
+unit: 7
+lesson: 3
+description: "Menunggu banyak channel sekaligus dengan select, dan channel berkapasitas dengan buffered channel"
+objectives:
+  - "Membuat dan memakai buffered channel dengan make(chan T, kapasitas)"
+  - "Memahami kapan buffered channel blocking dan kapan tidak"
+  - "Menggunakan select untuk menunggu beberapa channel sekaligus"
+  - "Menutup channel dengan close() dan mendeteksi channel yang sudah closed"
+estimatedTime: 35
+prerequisites: ["unit-7/02-channels"]
+difficulty: "intermediate"
+tags: ["select", "buffered-channel", "close", "concurrency", "unit-7"]
+---
+
+# Select & Buffered Channel
+
+Di lesson sebelumnya kita belajar channel unbuffered yang selalu blocking sampai ada pasangan siap. Sekarang kita akan belajar dua alat tambahan: **buffered channel** (channel dengan "kotak penyimpanan" sehingga tidak selalu blocking) dan **select** (menunggu beberapa channel sekaligus, seperti `switch` tapi untuk channel).
+
+Bayangkan buffered channel seperti **kotak pos** dengan slot terbatas: kamu bisa memasukkan surat tanpa menunggu tukang pos datang, selama slotnya belum penuh. Sementara `select` seperti resepsionis yang menjaga beberapa telepon sekaligus — begitu salah satu berdering, dia langsung mengangkatnya.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan string, 2) // buffered channel, kapasitas 2
+
+    ch <- "pesan 1" // tidak blocking, karena buffer masih ada slot
+    ch <- "pesan 2" // tidak blocking, slot terakhir terisi
+
+    close(ch) // tutup channel, tidak ada pengiriman lagi
+
+    for pesan := range ch {
+        fmt.Println("Terima:", pesan)
+    }
+}
+```
+
+Output:
+
+```
+Terima: pesan 1
+Terima: pesan 2
+```
+
+## Membedah Konsep
+
+### Buffered Channel: `make(chan T, kapasitas)`
+
+```go
+ch := make(chan string, 2)
+```
+
+Argumen kedua pada `make` menentukan **kapasitas buffer** channel. Buffered channel ini bisa menampung sampai 2 nilai **tanpa blocking**, meskipun belum ada goroutine lain yang siap menerima.
+
+- Selama buffer **belum penuh**, `ch <- v` **tidak blocking** — langsung lanjut ke baris berikutnya.
+- Kalau buffer **sudah penuh**, `ch <- v` akan **blocking** sampai ada slot kosong (misalnya karena ada goroutine lain yang menerima).
+- Menerima dari buffered channel yang **kosong** tetap blocking, sama seperti unbuffered channel.
+
+:::note
+Channel unbuffered yang kita pelajari di lesson sebelumnya sebenarnya sama dengan buffered channel berkapasitas 0 — `make(chan int)` setara `make(chan int, 0)`.
+:::
+
+### Menutup Channel: `close(ch)`
+
+```go
+close(ch)
+```
+
+`close` menandai channel bahwa **tidak akan ada pengiriman lagi**. Setelah ditutup:
+- Kamu masih bisa **menerima** semua nilai yang sudah ada di buffer.
+- Mengirim ke channel yang sudah `close` akan **panic**.
+- Menerima dari channel yang sudah `close` dan sudah kosong akan langsung mengembalikan **zero value**, bukan blocking.
+
+### Mendeteksi Channel Closed: `v, ok := <-ch`
+
+```go
+v, ok := <-ch
+if !ok {
+    fmt.Println("Channel sudah ditutup dan kosong")
+}
+```
+
+Bentuk penerimaan dua-nilai ini memberi tahu apakah nilai `v` benar-benar dikirim (`ok == true`) atau channel sudah closed dan kosong sehingga `v` cuma zero value (`ok == false`). Ini penting supaya kamu tidak salah mengira zero value sebagai data asli yang dikirim.
+
+### `range` pada Channel
+
+```go
+for pesan := range ch {
+    fmt.Println("Terima:", pesan)
+}
+```
+
+Loop `range` pada channel otomatis menerima nilai satu per satu sampai channel **closed dan kosong**, lalu loop berhenti dengan sendirinya. Ini cara paling umum untuk membaca semua nilai dari channel tanpa perlu mengecek `ok` manual.
+
+### `select`: Menunggu Beberapa Channel
+
+```go
+select {
+case v1 := <-ch1:
+    fmt.Println("Dari ch1:", v1)
+case v2 := <-ch2:
+    fmt.Println("Dari ch2:", v2)
+default:
+    fmt.Println("Tidak ada channel yang siap")
+}
+```
+
+`select` menunggu **beberapa channel sekaligus**, lalu menjalankan `case` untuk channel yang **pertama siap**. Kalau beberapa channel siap bersamaan, Go memilih salah satu **secara acak** (bukan urutan penulisan). Blok `default` (opsional) langsung dijalankan kalau **tidak ada** channel yang siap sama sekali — membuat `select` jadi non-blocking.
+
+:::tip
+`select` tanpa `default` akan blocking sampai salah satu `case`-nya siap — mirip menunggu telepon mana pun yang berdering duluan. Dengan `default`, `select` langsung "menyerah" kalau semua channel masih sepi, cocok untuk polling non-blocking.
+:::
+
+## Kesalahan Umum
+
+1. **Buffer penuh tapi mengira tidak akan blocking:**
+   ```go
+   ch := make(chan int, 2)
+   ch <- 1
+   ch <- 2
+   ch <- 3 // BUG: blocking! Buffer kapasitas 2 sudah penuh, dan
+   // tidak ada goroutine lain yang menerima.
+   ```
+   Buffered channel cuma menunda blocking sampai buffer penuh — bukan menghilangkan sifat blocking sama sekali.
+
+2. **Mengirim ke channel yang sudah ditutup:**
+   ```go
+   ch := make(chan int, 1)
+   close(ch)
+   ch <- 5 // ERROR RUNTIME: panic: send on closed channel
+   ```
+   Setelah `close(ch)`, channel itu tidak boleh menerima pengiriman lagi — Go akan panic kalau dipaksa.
+
+3. **Lupa bahwa menutup channel dua kali itu panic:**
+   ```go
+   ch := make(chan int)
+   close(ch)
+   close(ch) // ERROR RUNTIME: panic: close of closed channel
+   ```
+   Cukup `close` satu kali saja, biasanya dilakukan oleh goroutine **pengirim** (bukan penerima), setelah semua pengiriman selesai.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u7l3-ex1"
+  title="Buffered Channel Tanpa Blocking"
+  description="Lengkapi program agar mengirim tiga angka ke buffered channel berkapasitas 3 tanpa blocking, lalu tutup dan cetak semuanya dengan range."
+  type="code-output"
+  expectedOutput="Angka: 10
+Angka: 20
+Angka: 30"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int, 3)
+
+    ch <- 10
+    ch <- 20
+    ch <- 30
+
+    close(ch)
+
+    for angka := range ch {
+        fmt.Println("Angka:", angka)
+    }
+}`}
+  hints={["Program ini sudah lengkap — coba jalankan dulu untuk melihat hasilnya.", "Karena kapasitas buffer 3 dan cuma 3 nilai dikirim, tidak ada pengiriman yang blocking.", "range ch otomatis berhenti begitu channel closed dan kosong."]}
+  explanation="Kapasitas buffer (3) sama dengan jumlah nilai yang dikirim (3), jadi ketiga pengiriman ch <- v tidak ada yang blocking. Setelah close(ch), loop for range ch membaca semua nilai yang tersisa di buffer secara berurutan lalu berhenti otomatis."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l3-ex2"
+  title="Deteksi Channel Closed"
+  description="Apa nilai <code>ok</code> ketika kita menerima dari channel yang sudah <code>close()</code> dan sudah kosong, memakai bentuk <code>v, ok := &lt;-ch</code>?"
+  type="multiple-choice"
+  options={["ok bernilai false, dan v berisi zero value dari tipe channel tersebut", "ok selalu bernilai true selama channel pernah dibuat", "Program akan panic karena channel sudah ditutup", "ok bernilai true tapi v selalu bernilai nil apapun tipenya"]}
+  correctIndex={0}
+  hints={["ok memberi tahu apakah nilai benar-benar dikirim oleh pengirim, bukan sekadar zero value.", "Menerima dari channel closed yang kosong TIDAK panic — beda dengan MENGIRIM ke channel closed."]}
+  explanation="Ketika channel sudah close() dan seluruh buffernya sudah habis diterima, setiap penerimaan berikutnya langsung mengembalikan zero value dari tipe channel dengan ok bernilai false — ini menandakan tidak ada lagi data asli yang dikirim, murni sinyal channel sudah selesai."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l3-ex3"
+  title="Lengkapi Select Non-Blocking"
+  description="Lengkapi select agar langsung menjalankan blok default ketika channel ch belum ada isinya (non-blocking check)."
+  type="fill-blank"
+  template={`select {
+case v := <-ch:
+    fmt.Println("Dapat:", v)
+{{BLANK}}:
+    fmt.Println("Belum ada data")
+}`}
+  blanks={["default"]}
+  hints={["Kata kunci ini membuat select tidak blocking sama sekali.", "Sama namanya dengan case fallback pada switch."]}
+  explanation="Menambahkan case default membuat select langsung dieksekusi tanpa menunggu — kalau tidak ada channel yang siap saat select dievaluasi, blok default langsung dijalankan, bukannya menunggu (blocking)."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Buffered channel | `make(chan int, 3)` |
+| Kirim tanpa blocking (selama ada slot) | `ch <- v` |
+| Tutup channel | `close(ch)` |
+| Baca semua nilai sampai closed | `for v := range ch { ... }` |
+| Deteksi channel closed | `v, ok := <-ch` |
+| Tunggu banyak channel | `select { case ... case ... default: ... }` |
+
+Sekarang kamu sudah bisa mengoordinasikan banyak channel sekaligus. Tapi bagaimana cara memastikan **semua** goroutine benar-benar selesai sebelum lanjut, dan bagaimana melindungi data yang diakses banyak goroutine bersamaan? Itu topik pelajaran berikutnya: **sync.WaitGroup dan Mutex**.

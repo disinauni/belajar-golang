@@ -1,0 +1,225 @@
+---
+title: "String, Rune & Byte"
+unit: 5
+lesson: 4
+description: "Menyelam ke bagaimana Go benar-benar menyimpan teks — dan kenapa len() bisa menipu"
+objectives:
+  - "Memahami string sebagai barisan byte terenkode UTF-8"
+  - "Membedakan hasil len() (jumlah byte) dari jumlah karakter sesungguhnya"
+  - "Memakai []rune(s) untuk indexing karakter yang benar pada teks non-ASCII"
+  - "Memahami hasil for range atas string: index byte + rune, bukan index karakter"
+estimatedTime: 35
+prerequisites: ["unit-5/03-map"]
+difficulty: "intermediate"
+tags: ["string", "rune", "byte", "utf-8", "unicode"]
+---
+
+# String, Rune & Byte
+
+Balik lagi ke string — tapi kali ini kita bongkar sampai ke akarnya. Ingat di pelajaran String Dasar, ada satu kalimat yang sengaja digantung: *"`len()` sebenarnya menghitung jumlah byte, bukan jumlah karakter — kita bahas ini tuntas di Unit 5."* Sekarang saatnya membongkar kenapa itu penting, dan apa yang harus kamu lakukan soal itu.
+
+## `len()` Menghitung Byte, Bukan Karakter
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    kata := "café"
+    fmt.Println("len:", len(kata))
+}
+```
+
+Output:
+```
+len: 5
+```
+
+Tunggu — `"café"` kelihatannya cuma 4 karakter (c-a-f-é), tapi `len()` bilang 5! Ini bukan bug. String di Go **disimpan sebagai barisan byte, terenkode UTF-8** — dan huruf beraksen seperti `é` butuh **2 byte** untuk direpresentasikan, sementara huruf ASCII biasa (`c`, `a`, `f`) cukup 1 byte. Jadi: 3 byte untuk `caf` + 2 byte untuk `é` = 5 byte total, meskipun cuma 4 karakter yang terlihat.
+
+:::fun
+Emoji lebih ekstrem lagi. Coba `len("😀")` — hasilnya `4`, bukan `1`! Emoji itu 1 karakter (1 *code point*), tapi butuh 4 byte penuh di UTF-8 karena berada jauh di luar jangkauan karakter ASCII/Latin.
+:::
+
+## Tiga Istilah yang Perlu Dibedakan
+
+- **`byte`** — alias untuk `uint8`. Satu unit penyimpanan mentah, angka 0-255. String di Go pada dasarnya adalah slice byte yang *read-only*.
+- **`rune`** — alias untuk `int32`. Merepresentasikan **satu code point Unicode**, yaitu satu "karakter" sesungguhnya menurut standar Unicode — entah itu butuh 1, 2, 3, atau 4 byte untuk disimpan.
+- **`string`** — barisan byte yang **berkonvensi** dianggap terenkode UTF-8, tapi Go tidak memaksanya. Karakter ASCII (huruf, angka, simbol umum) selalu pas 1 byte = 1 rune, tapi karakter lain (aksen, huruf non-Latin, emoji) bisa butuh 2-4 byte per rune.
+
+Inilah kenapa untuk teks ASCII murni seperti di pelajaran String Dasar, `len()` kelihatan "benar" — jumlah byte kebetulan sama dengan jumlah karakter. Masalahnya baru muncul begitu teksmu mengandung karakter non-ASCII.
+
+## Indexing String Langsung Mengembalikan Byte, Bukan Karakter
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    kata := "café"
+    fmt.Println(kata[3])
+    fmt.Printf("%c\n", kata[3])
+}
+```
+
+Output:
+```
+195
+Ã
+```
+
+`kata[3]` **tidak** memberi kamu karakter ke-4 (`é`) seperti yang mungkin kamu harapkan. Karena `é` disimpan sebagai 2 byte (`0xC3 0xA9`, alias 195 dan 169 desimal), index 3 cuma memberimu **byte pertama dari dua byte itu** — sebuah nilai `byte` mentah bernilai 195, yang kalau dipaksa dicetak sebagai karakter (`%c`) malah jadi huruf lain sama sekali (`Ã`). Ini persis masalah yang disinggung di pelajaran String Dasar saat mencoba `kata[1:]` — indexing string bekerja per **byte**, bukan per karakter.
+
+## `[]rune(s)`: Indexing Karakter yang Benar
+
+Solusinya: konversi string ke `[]rune` dulu. Ini "mendekode ulang" barisan byte UTF-8 menjadi barisan karakter Unicode sesungguhnya.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    kata := "café"
+    huruf := []rune(kata)
+
+    fmt.Println("Jumlah karakter sesungguhnya:", len(huruf))
+    fmt.Printf("Karakter ke-4: %c\n", huruf[3])
+}
+```
+
+Output:
+```
+Jumlah karakter sesungguhnya: 4
+Karakter ke-4: é
+```
+
+Sekarang `len(huruf)` mengembalikan `4` — jumlah karakter sesungguhnya, bukan jumlah byte — dan `huruf[3]` benar-benar memberi kamu `é`. Setiap elemen `[]rune` adalah satu karakter utuh, tidak peduli berapa byte aslinya.
+
+:::tip
+Aturan praktis: kalau kamu cuma menampilkan atau menggabungkan string, biarkan sebagai `string` biasa — Go sudah menangani encoding dengan benar di `fmt.Println` dan `+`. Tapi begitu kamu perlu **indexing per karakter** atau **menghitung jumlah karakter sesungguhnya** pada teks yang mungkin non-ASCII, konversi dulu ke `[]rune`.
+:::
+
+## `for range` atas String: Index Byte + Rune
+
+Ini bagian yang sering bikin bingung. `for range` atas string **tidak** memberimu index karakter berurutan (0, 1, 2, 3, ...) — dia memberimu **index byte tempat karakter itu dimulai**, plus rune-nya yang sudah didekode dengan benar.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    kata := "café!"
+    for i, r := range kata {
+        fmt.Printf("index=%d rune=%c (kode: %d)\n", i, r, r)
+    }
+}
+```
+
+Output:
+```
+index=0 rune=c (kode: 99)
+index=1 rune=a (kode: 97)
+index=2 rune=f (kode: 102)
+index=3 rune=é (kode: 233)
+index=5 rune=! (kode: 33)
+```
+
+Perhatikan index-nya: `0, 1, 2, 3, 5` — melompat dari 3 ke 5, bukan ke 4! Itu karena `é` di index 3 menghabiskan **2 byte** (index 3 dan 4), jadi karakter berikutnya (`!`) baru mulai di byte index 5. Kabar baiknya: `for range` sudah otomatis mendekode UTF-8 dengan benar untuk kamu — `r` yang kamu terima setiap iterasi selalu satu rune utuh (`é`, bukan dua byte terpisah). Yang perlu kamu ingat cuma: `i` adalah **posisi byte**, bukan nomor urut karakter.
+
+## Kesalahan Umum
+
+1. **Menganggap `len(s)` selalu sama dengan jumlah karakter:**
+   ```go
+   nama := "José"
+   fmt.Println(len(nama)) // 5, bukan 4 -- karena 'é' butuh 2 byte
+   ```
+   Solusi: pakai `len([]rune(nama))` kalau kamu butuh jumlah karakter sesungguhnya.
+
+2. **Indexing string langsung untuk mengambil "karakter" pada teks non-ASCII:**
+   ```go
+   nama := "café"
+   fmt.Printf("%c", nama[3]) // salah! mencetak 'Ã', bukan 'é'
+   ```
+   Solusi: konversi ke `[]rune` dulu, baru index: `[]rune(nama)[3]`.
+
+3. **Lupa mengonversi balik `[]rune` ke `string` setelah dimodifikasi:**
+   ```go
+   kata := "Halo"
+   huruf := []rune(kata)
+   huruf[0] = 'h'
+   fmt.Println(huruf) // mencetak [104 97 108 111], bukan "halo"!
+   ```
+   `[]rune` adalah slice angka (int32), bukan teks — mencetaknya langsung menampilkan kode numeriknya. Solusi: konversi balik dengan `string(huruf)` sebelum menampilkan sebagai teks: `fmt.Println(string(huruf))` akan mencetak `halo` dengan benar.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l4-ex1"
+  title="Jumlah Karakter Sesungguhnya"
+  description="Ubah program agar mencetak `4` — jumlah karakter sesungguhnya dari `café`, bukan jumlah byte-nya."
+  type="code-output"
+  expectedOutput="4"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    kata := "café"
+    fmt.Println(len(kata))
+}`}
+  hints={["len() pada string menghitung byte. Kamu butuh cara lain untuk menghitung karakter.", "Konversi dulu ke []rune sebelum menghitung len(): len([]rune(kata))."]}
+  explanation="len(kata) menghitung byte (hasilnya 5, karena é butuh 2 byte). len([]rune(kata)) mendekode dulu ke karakter Unicode sesungguhnya, hasilnya 4."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l4-ex2"
+  title="Indexing Karakter yang Benar"
+  description="Ubah program agar mencetak `é` — karakter ke-4 dari `café`, menggunakan konversi ke []rune."
+  type="code-output"
+  expectedOutput="é"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    kata := "café"
+    huruf := []rune(kata)
+    fmt.Printf("%c\\n", huruf[0])
+}`}
+  hints={["Karakter ke-4 ada di index 3 (index dimulai dari 0).", "Ganti huruf[0] menjadi huruf[3]."]}
+  explanation="[]rune(kata) mendekode string jadi barisan karakter sesungguhnya, jadi huruf[3] memberi karakter ke-4 yang benar: é."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u5l4-ex3"
+  title="Kenapa Indexing Langsung Bisa Salah"
+  description="Kenapa `kata[3]` pada string `café` tidak menghasilkan karakter `é` yang benar?"
+  type="multiple-choice"
+  options={["Karena string tidak boleh diakses lewat index sama sekali", "Karena indexing string mengembalikan satu byte, sementara é butuh 2 byte untuk direpresentasikan", "Karena huruf beraksen tidak didukung Go", "Karena index harus dimulai dari 1 untuk teks non-ASCII"]}
+  correctIndex={1}
+  hints={["Ingat perbedaan byte dan rune di pelajaran ini.", "é menghabiskan 2 byte di UTF-8 -- index 3 cuma menangkap byte pertamanya."]}
+  explanation="Indexing string di Go selalu mengembalikan satu byte tunggal. Karena 'é' terenkode dalam 2 byte UTF-8, index 3 hanya memberi byte pertamanya saja, bukan karakter utuh -- solusinya konversi ke []rune dulu."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| String adalah byte UTF-8 | `"café"` disimpan sebagai 5 byte |
+| Panjang dalam byte | `len(s)` |
+| Panjang dalam karakter | `len([]rune(s))` |
+| Indexing byte mentah | `s[i]` (bisa salah untuk non-ASCII) |
+| Indexing karakter yang benar | `[]rune(s)[i]` |
+| Iterasi karakter dengan benar | `for i, r := range s` (i = index byte, r = rune) |
+| Konversi rune kembali ke teks | `string(runeSlice)` |
+
+Sekarang kamu benar-benar paham apa yang terjadi di balik setiap string Go. Saatnya menggabungkan array, slice, map, dan pemahaman string ini dalam satu project nyata: **Buku Nilai Siswa**!

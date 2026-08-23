@@ -1,0 +1,187 @@
+---
+title: "Struct Embedding"
+unit: 6
+lesson: 3
+description: "Menyisipkan struct ke struct lain agar field dan method-nya otomatis 'naik' ke struct luar"
+objectives:
+  - "Menyisipkan (embed) satu struct ke dalam struct lain"
+  - "Memahami field dan method promotion"
+  - "Membedakan struct embedding dari inheritance di bahasa lain"
+estimatedTime: 30
+prerequisites: ["unit-6/02-method-receiver"]
+difficulty: "intermediate"
+tags: ["embedding", "struct", "composition"]
+---
+
+# Struct Embedding
+
+Go **tidak punya** konsep inheritance (pewarisan) seperti Java atau C++. Sebagai gantinya, Go punya **struct embedding** — cara menyisipkan satu struct ke struct lain sehingga field dan method-nya otomatis "ikut terbawa". Ini pendekatan Go untuk *code reuse*: komposisi, bukan pewarisan.
+
+## Menyisipkan Struct
+
+```go
+package main
+
+import "fmt"
+
+type Hewan struct {
+    Nama string
+    Umur int
+}
+
+func (h Hewan) Deskripsi() string {
+    return fmt.Sprintf("%s (%d tahun)", h.Nama, h.Umur)
+}
+
+type Anjing struct {
+    Hewan
+    Ras string
+}
+
+func main() {
+    doggo := Anjing{
+        Hewan: Hewan{Nama: "Rex", Umur: 3},
+        Ras:   "Golden Retriever",
+    }
+
+    fmt.Println(doggo.Nama)
+    fmt.Println(doggo.Deskripsi())
+    fmt.Println(doggo.Ras)
+}
+```
+
+Output:
+```
+Rex
+Rex (3 tahun)
+Golden Retriever
+```
+
+## Membedah Struct Embedding
+
+**`type Anjing struct { Hewan; Ras string }`** — perhatikan `Hewan` ditulis **tanpa nama field**, cuma nama tipenya saja. Inilah yang disebut *embedded field*. Field ini otomatis diberi nama sama dengan nama tipenya, yaitu `Hewan`.
+
+**`doggo.Nama`** — meskipun `Nama` didefinisikan di dalam `Hewan`, kamu bisa mengaksesnya langsung dari `doggo` tanpa menulis `doggo.Hewan.Nama`. Ini disebut **field promotion** — field dari struct yang di-embed "naik" ke struct luar.
+
+**`doggo.Deskripsi()`** — hal yang sama juga berlaku untuk method: `Deskripsi()` didefinisikan untuk `Hewan`, tapi bisa dipanggil langsung dari `Anjing`. Ini **method promotion**.
+
+Bayangkan `Anjing` seperti kotak yang di dalamnya ada kotak `Hewan` tanpa label. Karena tidak ada label, semua isi kotak `Hewan` terasa seperti "milik langsung" kotak `Anjing`.
+
+**`doggo.Hewan.Nama`** — jalur lengkapnya tetap ada dan tetap valid. Kadang kamu perlu menulis ini secara eksplisit, misalnya kalau nama field-nya bentrok (lihat Kesalahan Umum).
+
+## Bukan Inheritance — Ini Komposisi
+
+Perbedaan penting: `Anjing` **tidak "menjadi"** `Hewan`. Kamu tidak bisa memperlakukan `Anjing` sebagai `Hewan` secara langsung seperti *upcasting* di bahasa berorientasi objek klasik. Yang terjadi adalah `Anjing` **memiliki** sebuah `Hewan` di dalamnya (relasi "has-a", bukan "is-a"), dan Go cuma mempermudah aksesnya lewat promotion.
+
+Kamu juga bisa **override** method yang ter-promote dengan mendefinisikan method bernama sama langsung di struct luar:
+
+```go
+func (a Anjing) Deskripsi() string {
+    return fmt.Sprintf("%s si %s", a.Nama, a.Ras)
+}
+```
+
+Setelah ini, `doggo.Deskripsi()` memanggil versi milik `Anjing`, bukan lagi versi `Hewan`.
+
+:::tip
+Filosofi Go sering diringkas: *"prefer composition over inheritance"* (utamakan komposisi daripada pewarisan). Struct embedding adalah cara Go mendukung filosofi ini tanpa keyword khusus seperti `extends`.
+:::
+
+:::note
+Embedding tidak terbatas pada struct — kamu juga bisa meng-embed interface ke dalam struct atau interface lain. Kita akan sedikit menyinggung ini di pelajaran berikutnya.
+:::
+
+## Kesalahan Umum
+
+1. **Field ambigu kalau dua struct yang di-embed punya nama field sama:**
+   ```go
+   type A struct{ Nama string }
+   type B struct{ Nama string }
+   type C struct {
+       A
+       B
+   }
+
+   func main() {
+       c := C{A{"X"}, B{"Y"}}
+       fmt.Println(c.Nama) // ERROR: ambiguous selector c.Nama
+   }
+   ```
+   Go tidak tahu `Nama` yang dimaksud milik `A` atau `B` — kamu harus tulis eksplisit `c.A.Nama` atau `c.B.Nama`.
+
+2. **Lupa nama field embedded saat membuat struct literal:**
+   ```go
+   doggo := Anjing{Nama: "Rex"} // ERROR: unknown field 'Nama' in struct literal of type Anjing
+   ```
+   `Nama` bukan field langsung milik `Anjing` — kamu harus mengisinya lewat `Hewan`: `Anjing{Hewan: Hewan{Nama: "Rex"}}`.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l3-ex1"
+  title="Field Promotion"
+  description="Lengkapi program agar mencetak `Karyawan: Sinta, Gaji: 5000000` memakai field yang ter-promote dari struct Orang."
+  type="code-output"
+  expectedOutput="Karyawan: Sinta, Gaji: 5000000"
+  starterCode={`package main
+
+import "fmt"
+
+type Orang struct {
+    Nama string
+}
+
+type Karyawan struct {
+    Orang
+    Gaji int
+}
+
+func main() {
+    k := Karyawan{
+        Orang: Orang{Nama: "Sinta"},
+        Gaji:  5000000,
+    }
+    fmt.Printf("Karyawan: %s, Gaji: %d\\n", k.Nama, k.Gaji)
+}`}
+  hints={["Kode ini sebenarnya sudah benar — coba jalankan.", "k.Nama valid walau Nama didefinisikan di dalam Orang, karena field promotion."]}
+  explanation="Nama adalah field milik struct Orang yang di-embed ke Karyawan. Karena embedding, k.Nama otomatis bisa diakses langsung dari k tanpa perlu menulis k.Orang.Nama."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l3-ex2"
+  title="Embedding vs Inheritance"
+  description="Manakah pernyataan yang paling tepat tentang struct embedding di Go?"
+  type="multiple-choice"
+  options={["Struct embedding adalah bentuk komposisi (has-a), bukan pewarisan (is-a) seperti di bahasa OOP klasik", "Struct embedding membuat struct luar otomatis menjadi subclass struct dalam", "Struct embedding wajib pakai keyword extends", "Struct embedding hanya bisa dipakai untuk satu level, tidak bisa untuk method"]}
+  correctIndex={0}
+  hints={["Go sengaja tidak punya keyword seperti extends atau class.", "Field dan method 'naik' lewat promotion, tapi tipe luar tidak benar-benar 'menjadi' tipe dalam."]}
+  explanation="Struct embedding adalah komposisi: struct luar memiliki (has-a) struct dalam sebagai bagian dari dirinya, dan Go mempermudah akses lewat field/method promotion — tapi ini bukan pewarisan is-a seperti class di Java/C++."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l3-ex3"
+  title="Lengkapi Embedded Field"
+  description="Lengkapi deklarasi struct Anjing agar meng-embed struct Hewan (tanpa nama field eksplisit)."
+  type="fill-blank"
+  template="type Anjing struct {\n    {{BLANK}}\n    Ras string\n}"
+  blanks={["Hewan"]}
+  hints={["Embedded field cukup ditulis nama tipenya saja, tanpa nama field di depannya."]}
+  explanation="Menulis Hewan saja (tanpa nama field) di dalam struct Anjing membuat Hewan menjadi embedded field — field dan method-nya otomatis ter-promote ke Anjing."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Embedded field | `type Anjing struct { Hewan; Ras string }` |
+| Field promotion | `doggo.Nama` (padahal `Nama` milik `Hewan`) |
+| Method promotion | `doggo.Deskripsi()` |
+| Akses eksplisit | `doggo.Hewan.Nama` |
+| Override method | Definisikan ulang method bernama sama di struct luar |
+
+Di pelajaran berikutnya, kita masuk ke salah satu fitur paling khas Go: **interface** — tipe abstrak yang dipenuhi secara implisit, tanpa keyword `implements`.

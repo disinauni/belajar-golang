@@ -1,0 +1,226 @@
+---
+title: "Channel"
+unit: 7
+lesson: 2
+description: "Berkomunikasi antar goroutine dengan aman menggunakan channel"
+objectives:
+  - "Memahami apa itu channel dan kenapa dibutuhkan untuk komunikasi antar goroutine"
+  - "Membuat channel dengan make(chan T)"
+  - "Mengirim dan menerima data lewat channel dengan operator <-"
+  - "Memahami sifat blocking pada unbuffered channel"
+estimatedTime: 40
+prerequisites: ["unit-7/01-goroutines"]
+difficulty: "intermediate"
+tags: ["channel", "concurrency", "chan", "unit-7"]
+---
+
+# Channel
+
+Di lesson sebelumnya kita belajar menjalankan goroutine, tapi ada masalah: bagaimana caranya goroutine "mengembalikan" hasil kerjanya ke `main()`, atau berkomunikasi dengan goroutine lain, secara **aman**? Jawabannya: **channel**.
+
+Bayangkan channel seperti **pipa surat** antar dua ruangan: satu goroutine memasukkan surat (data) ke salah satu ujung pipa, goroutine lain mengambilnya dari ujung yang lain. Go bahkan punya filosofi terkenal soal ini: *"Don't communicate by sharing memory; share memory by communicating"* — jangan berbagi data dengan mengakses variabel yang sama beramai-ramai, tapi kirim data lewat channel.
+
+```go
+package main
+
+import "fmt"
+
+func hitungKuadrat(n int, hasil chan int) {
+    hasil <- n * n // kirim hasil ke channel
+}
+
+func main() {
+    ch := make(chan int) // buat channel bertipe int
+
+    go hitungKuadrat(7, ch)
+
+    nilai := <-ch // terima hasil dari channel (blocking sampai ada data)
+    fmt.Println("Hasil kuadrat:", nilai)
+}
+```
+
+Output:
+
+```
+Hasil kuadrat: 49
+```
+
+## Membedah Konsep
+
+### Membuat Channel: `make(chan int)`
+
+```go
+ch := make(chan int)
+```
+
+`make(chan int)` membuat channel baru bertipe `int` — artinya channel ini cuma bisa mengirim/menerima nilai `int`. Channel, seperti slice dan map, adalah tipe referensi yang harus dibuat dengan `make` sebelum dipakai. Kamu bisa membuat channel dengan tipe apa saja: `chan string`, `chan bool`, `chan float64`, bahkan `chan []int`.
+
+### Mengirim Data: `ch <- nilai`
+
+```go
+hasil <- n * n
+```
+
+Operator `<-` di sebelah **kanan** nama channel berarti **mengirim** nilai ke channel itu. Bacanya seperti panah yang menunjukkan arah aliran data: nilai "mengalir masuk" ke `hasil`.
+
+### Menerima Data: `<-ch`
+
+```go
+nilai := <-ch
+```
+
+Operator `<-` di sebelah **kiri** nama channel (sebelum nama channel) berarti **menerima** nilai dari channel itu. Nilai yang diterima disimpan ke variabel `nilai`.
+
+:::tip
+Cara gampang mengingat arah `<-`: panahnya selalu menunjuk **ke arah tujuan aliran data**. `ch <- v` artinya "v mengalir ke ch". `v := <-ch` artinya "nilai dari ch mengalir ke v".
+:::
+
+### Sifat Blocking Channel (Unbuffered)
+
+Ini bagian **paling penting** untuk dipahami: channel biasa (dibuat tanpa kapasitas, disebut *unbuffered channel*) itu **blocking** di kedua sisi:
+
+- Pengiriman `ch <- v` akan **berhenti (blocking)** sampai ada goroutine lain yang siap menerima dari channel itu.
+- Penerimaan `v := <-ch` akan **berhenti (blocking)** sampai ada goroutine lain yang mengirim sesuatu ke channel itu.
+
+Ini sebenarnya fitur, bukan bug — sifat blocking inilah yang membuat channel bisa dipakai untuk **sinkronisasi**. Di contoh program di atas, baris `nilai := <-ch` di `main()` akan menunggu sampai goroutine `hitungKuadrat` selesai menghitung dan mengirim hasilnya — tanpa perlu `time.Sleep` sama sekali!
+
+```go
+ch := make(chan int)
+go hitungKuadrat(7, ch)
+nilai := <-ch // main() otomatis menunggu di sini sampai ada data masuk
+```
+
+Bandingkan dengan lesson sebelumnya yang butuh `time.Sleep` untuk menebak-nebak durasi — channel menyelesaikan masalah ini secara elegan: `main()` menunggu **persis selama** goroutine butuh waktu, tidak kurang tidak lebih.
+
+:::note
+Channel dan variabel `nil` (belum di-`make`) berbeda! Channel yang belum dibuat dengan `make` bernilai `nil`, dan mengirim/menerima dari channel `nil` akan **blocking selamanya** (deadlock). Selalu pastikan channel sudah di-`make` sebelum dipakai.
+:::
+
+## Kesalahan Umum
+
+1. **Deadlock: menerima dari channel yang tidak akan pernah dikirimi:**
+   ```go
+   func main() {
+       ch := make(chan int)
+       nilai := <-ch // ERROR RUNTIME: fatal error: all goroutines are
+       // asleep - deadlock! (tidak ada goroutine lain yang mengirim)
+       fmt.Println(nilai)
+   }
+   ```
+   Karena tidak ada goroutine lain yang mengirim ke `ch`, `main()` menunggu selamanya — dan Go runtime akan mendeteksi ini sebagai deadlock lalu menghentikan program dengan error.
+
+2. **Lupa channel bersifat blocking, mengira kode berjalan seperti biasa:**
+   ```go
+   func main() {
+       ch := make(chan int)
+       ch <- 5 // BUG: blocking di sini karena belum ada goroutine
+       // penerima — main() adalah satu-satunya "thread" yang berjalan,
+       // jadi dia stuck menunggu dirinya sendiri!
+       fmt.Println(<-ch)
+   }
+   ```
+   Mengirim ke channel unbuffered di goroutine yang sama tanpa penerima lain akan langsung deadlock — karena tidak ada "pihak lain" yang bisa menerima sementara `main()` sendiri sedang sibuk menunggu di baris pengiriman.
+
+3. **Menerima dari channel dua kali padahal cuma dikirimi sekali:**
+   ```go
+   ch := make(chan int)
+   go func() {
+       ch <- 10
+   }()
+   a := <-ch
+   b := <-ch // BUG: blocking selamanya, tidak ada pengiriman kedua!
+   fmt.Println(a, b)
+   ```
+   Setiap channel harus menerima kiriman sebanyak jumlah penerimaan yang dilakukan — kalau tidak seimbang, salah satu sisi akan blocking selamanya.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u7l2-ex1"
+  title="Kirim dan Terima Sederhana"
+  description="Lengkapi program agar mengirim angka 100 ke channel dari goroutine, lalu main() menerima dan mencetaknya."
+  type="code-output"
+  expectedOutput="Diterima: 100"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int)
+
+    go func() {
+        ch <- 100
+    }()
+
+    nilai := <-ch
+    fmt.Println("Diterima:", nilai)
+}`}
+  hints={["Program ini sebenarnya sudah lengkap — coba jalankan dulu untuk melihat outputnya.", "Perhatikan urutan: goroutine mengirim dengan ch <- 100, main menerima dengan <-ch."]}
+  explanation="Goroutine anonim mengirim nilai 100 ke channel ch. main() memblokir di baris <-ch sampai ada data masuk, lalu mencetaknya. Sifat blocking inilah yang membuat main() otomatis menunggu goroutine selesai, tanpa perlu time.Sleep."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l2-ex2"
+  title="Mengumpulkan Hasil dari Beberapa Goroutine"
+  description="Tiga goroutine masing-masing mengirim hasil kuadrat dari 1, 2, dan 3 ke channel yang sama. Kumpulkan ketiganya, urutkan, lalu cetak."
+  type="code-output"
+  expectedOutput="Kuadrat: 1
+Kuadrat: 4
+Kuadrat: 9"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    ch := make(chan int)
+
+    for _, n := range []int{1, 2, 3} {
+        go func(x int) {
+            ch <- x * x
+        }(n)
+    }
+
+    var hasil []int
+    for i := 0; i < 3; i++ {
+        hasil = append(hasil, <-ch)
+    }
+
+    sort.Ints(hasil)
+    for _, h := range hasil {
+        fmt.Println("Kuadrat:", h)
+    }
+}`}
+  hints={["Program ini sudah lengkap dan benar — coba jalankan dulu.", "Perhatikan: kita menerima dari channel sebanyak 3 kali (sejumlah goroutine yang mengirim) memakai loop for i := 0; i < 3; i++.", "sort.Ints dipakai supaya urutan hasil selalu deterministik meski goroutine selesai dengan urutan acak."]}
+  explanation="Setiap goroutine mengirim satu nilai ke channel yang sama. main() menerima persis 3 kali (sejumlah goroutine) lewat loop, mengumpulkan semua hasil ke slice, lalu mengurutkannya dengan sort.Ints sebelum mencetak — ini penting karena goroutine bisa selesai dengan urutan yang berbeda-beda setiap run."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l2-ex3"
+  title="Arah Operator Channel"
+  description="Manakah pernyataan yang benar tentang operator <code>&lt;-</code> pada channel?"
+  type="multiple-choice"
+  options={["ch <- v mengirim v ke channel ch, sedangkan v := <-ch menerima nilai dari ch", "ch <- v dan <-ch selalu berarti hal yang sama, yaitu menerima", "<-ch mengirim nilai ke channel, ch <- v menerima nilai dari channel", "Operator <- hanya bisa dipakai satu arah per program, tidak bisa mengirim dan menerima dalam program yang sama"]}
+  correctIndex={0}
+  hints={["Panah menunjukkan arah aliran data.", "Kalau channel ada di sisi kiri operator (ch <- v), berarti data mengalir MASUK ke channel — itu pengiriman."]}
+  explanation="ch <- v berarti mengirim nilai v ke dalam channel ch (channel di kiri operator, sebagai tujuan). Sebaliknya, v := <-ch berarti menerima nilai dari channel ch dan menyimpannya ke v (channel di kanan operator, sebagai sumber)."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Membuat channel | `ch := make(chan int)` |
+| Mengirim ke channel | `ch <- 42` |
+| Menerima dari channel | `nilai := <-ch` |
+| Sifat unbuffered channel | Blocking di kedua sisi sampai ada pasangan siap |
+| Sinkronisasi tanpa Sleep | Terima dari channel = otomatis menunggu goroutine |
+
+Channel unbuffered itu berguna, tapi kadang kita ingin goroutine bisa mengirim beberapa data dulu **tanpa** langsung menunggu penerima siap. Di pelajaran berikutnya, kita akan belajar **select** dan **buffered channel** untuk kebutuhan itu.

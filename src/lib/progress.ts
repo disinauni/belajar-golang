@@ -182,10 +182,15 @@ function updateStreak(progress: UserProgress): void {
 // ============================================================
 
 // Actual lesson counts per unit — must stay in sync with content files.
-// Only units with published lesson content go here; add unit-2..unit-8 as
-// their content lands (badges for a missing unit simply stay locked).
 const UNIT_LESSON_COUNTS: Record<string, number> = {
   'unit-1': 9,
+  'unit-2': 4,
+  'unit-3': 5,
+  'unit-4': 7,
+  'unit-5': 5,
+  'unit-6': 7,
+  'unit-7': 5,
+  'unit-8': 4,
 }
 
 // unit-1..unit-8 (unit-0 "Persiapan" isn't counted toward badges)

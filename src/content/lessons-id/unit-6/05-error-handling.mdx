@@ -1,0 +1,240 @@
+---
+title: "Error Handling"
+unit: 6
+lesson: 5
+description: "Menangani kegagalan sebagai value biasa dengan pola if err != nil, error wrapping, dan errors.Is/As"
+objectives:
+  - "Membuat error dengan errors.New dan fmt.Errorf"
+  - "Membungkus (wrap) error dengan %w dan memeriksanya dengan errors.Is"
+  - "Mengekstrak custom error type dengan errors.As"
+estimatedTime: 35
+prerequisites: ["unit-6/04-interface"]
+difficulty: "intermediate"
+tags: ["error", "errors", "error-handling"]
+---
+
+# Error Handling
+
+Kamu sudah beberapa kali melihat pola `hasil, err := ...` sejak Unit 1 (ingat `strconv.Atoi`?). Sekarang saatnya memahaminya secara utuh. Di Go, error **bukan** exception yang "dilempar" dan "ditangkap" seperti `try/catch` di bahasa lain — error adalah **value biasa**, sama seperti `int` atau `string`, yang dikembalikan lewat return value dan diperiksa secara eksplisit.
+
+## Membuat dan Memeriksa Error
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+func bagi(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, errors.New("tidak bisa membagi dengan nol")
+    }
+    return a / b, nil
+}
+
+func main() {
+    hasil, err := bagi(10, 0)
+    if err != nil {
+        fmt.Println("Error:", err)
+        return
+    }
+    fmt.Println("Hasil:", hasil)
+}
+```
+
+Output:
+```
+Error: tidak bisa membagi dengan nol
+```
+
+## Membedah Pola Error
+
+**`error`** — tipe interface bawaan Go, didefinisikan kira-kira seperti `type error interface { Error() string }`. Nilai apa pun yang punya method `Error() string` otomatis memenuhi interface ini — sama seperti prinsip interface yang baru kamu pelajari.
+
+**`errors.New("pesan")`** — cara paling sederhana membuat error baru berisi pesan teks. Cocok untuk error sekali pakai yang tidak perlu dibedakan dari error lain.
+
+**`return 0, errors.New(...)`** — pola *multiple return values* yang sudah kamu kenal sejak Unit 4: nilai hasil, lalu error di posisi terakhir. Kalau berhasil, error-nya `nil`.
+
+**`if err != nil { ... }`** — pola paling sering muncul di kode Go mana pun. Selalu periksa error **segera setelah** memanggil fungsi yang mengembalikannya, sebelum memakai nilai hasilnya.
+
+## Membungkus Error dengan %w
+
+Kadang kamu ingin menambahkan konteks ke error tanpa kehilangan informasi error aslinya. Di sinilah `fmt.Errorf` dengan verb `%w` berperan:
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var ErrSaldoKurang = errors.New("saldo tidak cukup")
+
+func tarik(saldo, jumlah float64) (float64, error) {
+    if jumlah > saldo {
+        return saldo, fmt.Errorf("gagal tarik tunai: %w", ErrSaldoKurang)
+    }
+    return saldo - jumlah, nil
+}
+
+func main() {
+    _, err := tarik(50000, 100000)
+    if err != nil {
+        fmt.Println(err)
+        fmt.Println(errors.Is(err, ErrSaldoKurang))
+    }
+}
+```
+
+Output:
+```
+gagal tarik tunai: saldo tidak cukup
+true
+```
+
+**`var ErrSaldoKurang = errors.New(...)`** — dideklarasikan sebagai variabel package-level, disebut *sentinel error*: nilai error tetap yang bisa dibandingkan di tempat lain.
+
+**`fmt.Errorf("gagal tarik tunai: %w", ErrSaldoKurang)`** — `%w` membungkus `ErrSaldoKurang` di dalam error baru, sambil tetap menyimpan "jejak" ke error aslinya (disebut *error chain*). Pesan gabungannya tampil lengkap, tapi identitas error asli tidak hilang.
+
+**`errors.Is(err, ErrSaldoKurang)`** — memeriksa apakah `err`, atau salah satu error yang dibungkusnya, adalah `ErrSaldoKurang`. Mengembalikan `true` walaupun `err` sebenarnya adalah error baru hasil `fmt.Errorf`, karena `errors.Is` menelusuri seluruh *chain*.
+
+## Mengekstrak Detail dengan errors.As
+
+`errors.Is` cocok untuk mencocokkan sentinel error. Kalau kamu butuh **mengambil data** dari custom error type, pakai `errors.As`:
+
+```go
+type ValidasiError struct {
+    Field string
+}
+
+func (e *ValidasiError) Error() string {
+    return fmt.Sprintf("field %s tidak valid", e.Field)
+}
+
+func validasi(umur int) error {
+    if umur < 0 {
+        return &ValidasiError{Field: "umur"}
+    }
+    return nil
+}
+
+func main() {
+    err := validasi(-5)
+    var ve *ValidasiError
+    if errors.As(err, &ve) {
+        fmt.Println("Field bermasalah:", ve.Field)
+    }
+}
+```
+
+Output:
+```
+Field bermasalah: umur
+```
+
+`errors.As(err, &ve)` menelusuri *chain* error mencari yang bertipe `*ValidasiError`, lalu menyalinnya ke `ve` — sehingga kamu bisa mengakses field `ve.Field` secara langsung, bukan cuma pesan teksnya.
+
+:::note
+Error di Go adalah *value* biasa — tidak ada `try`/`catch`/`throw`. Alurnya selalu eksplisit: fungsi mengembalikan error, pemanggil memeriksanya, lalu memutuskan tindakan apa selanjutnya.
+:::
+
+:::tip
+Pola paling umum yang akan kamu tulis ratusan kali di Go: `if err != nil { return err }` — kalau fungsimu tidak tahu cara menangani error itu, teruskan saja ke pemanggil di atasnya.
+:::
+
+## Kesalahan Umum
+
+1. **Memakai `%v` padahal butuh `%w` untuk wrap:**
+   ```go
+   err := fmt.Errorf("gagal: %v", ErrSaldoKurang) // salah, tidak membungkus
+   fmt.Println(errors.Is(err, ErrSaldoKurang)) // false, walau pesannya tampak sama
+   ```
+   `%v` cuma menyisipkan teks pesan errornya, tapi memutus *chain* — `errors.Is` tidak bisa lagi menelusurinya sampai ke error asli.
+
+2. **Mengabaikan error, lalu tetap memakai hasilnya:**
+   ```go
+   hasil, err := bagi(10, 0)
+   fmt.Println(hasil) // 0, padahal error-nya seharusnya ditangani duluan
+   ```
+   Kalau `err` tidak diperiksa, kamu berisiko memakai nilai hasil yang tidak valid tanpa sadar.
+
+3. **Memanggil `errors.As` dengan target bukan pointer:**
+   ```go
+   var ve ValidasiError
+   errors.As(err, ve) // ERROR runtime: errors: target must be a non-nil pointer
+   ```
+   Target `errors.As` **wajib** berupa pointer (misalnya `&ve`), karena `errors.As` perlu menulis hasilnya ke variabel itu.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l5-ex1"
+  title="Membuat dan Memeriksa Error"
+  description="Lengkapi program agar mencetak `Error: umur tidak boleh negatif` ketika umur kurang dari nol."
+  type="code-output"
+  expectedOutput="Error: umur tidak boleh negatif"
+  starterCode={`package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+func cekUmur(umur int) error {
+    if umur < 0 {
+        return errors.New("umur tidak boleh negatif")
+    }
+    return nil
+}
+
+func main() {
+    err := cekUmur(-5)
+    if err != nil {
+        fmt.Println("Error:", err)
+    }
+}`}
+  hints={["Kode ini sebenarnya sudah benar — coba jalankan.", "errors.New membuat error baru berisi pesan teks yang kamu berikan."]}
+  explanation="cekUmur(-5) mengembalikan error dari errors.New karena -5 lebih kecil dari nol, lalu main() mencetaknya dengan format 'Error: <pesan>'."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l5-ex2"
+  title="Fungsi errors.Is"
+  description="Apa fungsi utama <code>errors.Is(err, target)</code>?"
+  type="multiple-choice"
+  options={["Mengonversi err menjadi string", "Memeriksa apakah err, atau salah satu error yang dibungkusnya, sama dengan target", "Membuat error baru dari target", "Menghapus wrapping pada err secara permanen"]}
+  correctIndex={1}
+  hints={["errors.Is menelusuri seluruh error chain, bukan cuma membandingkan langsung.", "Ini paling sering dipakai untuk mencocokkan sentinel error seperti ErrSaldoKurang."]}
+  explanation="errors.Is(err, target) menelusuri seluruh error chain (termasuk error yang dibungkus lewat %w) untuk mencari apakah salah satunya sama dengan target — berguna untuk memeriksa sentinel error tanpa peduli sudah dibungkus berapa lapis."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l5-ex3"
+  title="Lengkapi Error Wrapping"
+  description="Lengkapi format verb agar error asli ikut dibungkus (bisa dilacak dengan errors.Is)."
+  type="fill-blank"
+  template='fmt.Errorf("gagal proses: {{BLANK}}", errAsli)'
+  blanks={["%w"]}
+  hints={["Verb ini diperkenalkan khusus di Go 1.13 untuk membungkus error, beda dari %v biasa."]}
+  explanation="%w membungkus errAsli ke dalam error baru sekaligus mempertahankan jejaknya di error chain, sehingga errors.Is dan errors.As masih bisa menemukannya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Buat error sederhana | `errors.New("pesan")` |
+| Sentinel error | `var ErrX = errors.New("...")` |
+| Bungkus error | `fmt.Errorf("konteks: %w", errAsli)` |
+| Cek sentinel error | `errors.Is(err, ErrX)` |
+| Ekstrak custom error | `errors.As(err, &target)` |
+
+Di pelajaran berikutnya, kita bahas **panic, recover, dan defer** — mekanisme Go untuk error fatal yang benar-benar tak terduga, dan kenapa itu jauh lebih jarang dipakai daripada pola error biasa.

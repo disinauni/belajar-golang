@@ -1,0 +1,361 @@
+---
+title: "Project: Pola Bintang"
+unit: 3
+lesson: 5
+description: "Membuat generator pola bintang yang menggabungkan semua konsep perulangan Unit 3"
+objectives:
+  - "Menggabungkan nested loop untuk membuat beberapa pola berbeda"
+  - "Membaca input user untuk menentukan ukuran pola"
+  - "Menguji program dengan berbagai ukuran input"
+estimatedTime: 60
+prerequisites: ["unit-3/04-nested-loops"]
+difficulty: "beginner"
+tags: ["project", "pola", "nested-loop", "practice"]
+---
+
+# Project: Pola Bintang
+
+Kamu sudah menguasai semua bentuk perulangan Go: `for` dalam tiga variasinya, `range`, `break`/`continue`/label, dan nested loop. Saatnya menggabungkan semuanya jadi satu program nyata — **generator pola bintang** yang bisa mencetak beberapa jenis pola sekaligus.
+
+## Spesifikasi Program
+
+Program kita harus bisa:
+
+1. Meminta user memasukkan **ukuran pola** (jumlah baris)
+2. Meminta user memilih **jenis pola**: segitiga siku-siku, segitiga terbalik, atau piramida
+3. Mencetak pola yang dipilih sesuai ukuran
+
+Contoh interaksi yang diharapkan (ukuran 4, pilihan segitiga):
+```
+=== GENERATOR POLA BINTANG ===
+
+Masukkan ukuran pola: 4
+Pilih pola (1=Segitiga, 2=Segitiga Terbalik, 3=Piramida): 1
+
+*
+**
+***
+****
+```
+
+## Tahap 1: Planning
+
+**Data apa yang perlu disimpan?**
+- Ukuran pola (jumlah baris — `int`)
+- Pilihan jenis pola (`int` atau `string`)
+
+**Alur program:**
+1. Tampilkan judul
+2. Minta input ukuran
+3. Minta input pilihan pola
+4. Cetak pola sesuai pilihan dengan nested loop
+5. Kalau pilihan tidak valid, tampilkan pesan error
+
+**Edge case yang perlu dipikirkan:**
+- Bagaimana kalau ukuran yang dimasukkan 0 atau negatif?
+- Bagaimana kalau pilihan pola bukan 1, 2, atau 3?
+
+## Tahap 2: Pseudocode
+
+```
+PROGRAM PolaBintang:
+    TAMPILKAN judul "GENERATOR POLA BINTANG"
+
+    MINTA input ukuran (int)
+    JIKA ukuran <= 0:
+        TAMPILKAN "Ukuran harus lebih dari 0!"
+        BERHENTI
+
+    MINTA input pilihan (int)
+
+    JIKA pilihan adalah 1 (Segitiga):
+        UNTUK baris DARI 1 SAMPAI ukuran:
+            CETAK baris bintang sebanyak "baris"
+    JIKA pilihan adalah 2 (Segitiga Terbalik):
+        UNTUK baris DARI ukuran SAMPAI 1 (mundur):
+            CETAK baris bintang sebanyak "baris"
+    JIKA pilihan adalah 3 (Piramida):
+        UNTUK baris DARI 1 SAMPAI ukuran:
+            CETAK spasi lalu bintang, rata tengah
+    SELAIN ITU:
+        TAMPILKAN "Pilihan tidak valid!"
+```
+
+## Tahap 3: Implementasi
+
+### Versi 1: Kerangka Dasar
+
+Mulai dari kerangka yang membaca input, belum mencetak pola apapun:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== GENERATOR POLA BINTANG ===")
+    fmt.Println()
+
+    fmt.Print("Masukkan ukuran pola: ")
+    scanner.Scan()
+    ukuran, _ := strconv.Atoi(scanner.Text())
+
+    if ukuran <= 0 {
+        fmt.Println("Ukuran harus lebih dari 0!")
+        return
+    }
+
+    fmt.Print("Pilih pola (1=Segitiga, 2=Segitiga Terbalik, 3=Piramida): ")
+    scanner.Scan()
+    pilihan, _ := strconv.Atoi(scanner.Text())
+
+    fmt.Println()
+    fmt.Println("Ukuran:", ukuran, "Pilihan:", pilihan)
+    // TODO: cetak pola sesuai pilihan
+}
+```
+
+Coba jalankan — program sudah bisa menerima input dan validasi ukuran, meski belum mencetak pola apapun.
+
+### Versi 2: Tambahkan Logika Pola
+
+Sekarang tambahkan logika pencetakan untuk ketiga jenis pola, memakai `switch`:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== GENERATOR POLA BINTANG ===")
+    fmt.Println()
+
+    fmt.Print("Masukkan ukuran pola: ")
+    scanner.Scan()
+    ukuran, _ := strconv.Atoi(scanner.Text())
+
+    if ukuran <= 0 {
+        fmt.Println("Ukuran harus lebih dari 0!")
+        return
+    }
+
+    fmt.Print("Pilih pola (1=Segitiga, 2=Segitiga Terbalik, 3=Piramida): ")
+    scanner.Scan()
+    pilihan, _ := strconv.Atoi(scanner.Text())
+
+    fmt.Println()
+
+    switch pilihan {
+    case 1:
+        for baris := 1; baris <= ukuran; baris++ {
+            fmt.Println(strings.Repeat("*", baris))
+        }
+    case 2:
+        for baris := ukuran; baris >= 1; baris-- {
+            fmt.Println(strings.Repeat("*", baris))
+        }
+    case 3:
+        for baris := 1; baris <= ukuran; baris++ {
+            spasi := strings.Repeat(" ", ukuran-baris)
+            bintang := strings.Repeat("*", 2*baris-1)
+            fmt.Println(spasi + bintang)
+        }
+    default:
+        fmt.Println("Pilihan tidak valid! Gunakan 1, 2, atau 3.")
+    }
+}
+```
+
+Ini adalah versi lengkap generator pola kita! Mari kita pahami bagian-bagian pentingnya.
+
+## Memahami Kode
+
+### strings.Repeat Menggantikan Nested Loop Manual
+
+```go
+fmt.Println(strings.Repeat("*", baris))
+```
+
+Alih-alih menulis nested loop manual untuk mencetak `baris` bintang satu per satu, kita pakai `strings.Repeat("*", baris)` yang mengembalikan string berisi karakter `"*"` diulang sebanyak `baris` kali. Ini tetap "nested" secara konsep (loop luar untuk baris, "loop dalam" digantikan `strings.Repeat`), tapi kodenya lebih ringkas dan mudah dibaca.
+
+### Piramida: Kombinasi Spasi + Bintang
+
+```go
+spasi := strings.Repeat(" ", ukuran-baris)
+bintang := strings.Repeat("*", 2*baris-1)
+fmt.Println(spasi + bintang)
+```
+
+Piramida butuh dua bagian per baris: spasi di kiri (biar bintangnya rata tengah) dan bintang di tengah. Untuk `baris` ke-1 dari `ukuran=4`: spasi `4-1=3`, bintang `2*1-1=1`. Untuk `baris` ke-4: spasi `4-4=0`, bintang `2*4-1=7`. Coba hitung manual di kertas kalau belum yakin polanya!
+
+### Segitiga Terbalik: Loop Mundur
+
+```go
+for baris := ukuran; baris >= 1; baris-- {
+```
+
+Perhatikan `for` di sini dimulai dari `ukuran` dan **mengurang** (`baris--`) sampai `1`. Ini kebalikan dari loop biasa yang naik — Go tidak peduli arahnya, `for` cukup fleksibel untuk kedua arah.
+
+## Tahap 4: Testing
+
+Coba jalankan dengan input berikut:
+
+**Test 1: Segitiga, ukuran 3**
+```
+Ukuran: 3, Pilihan: 1
+Expected:
+*
+**
+***
+```
+
+**Test 2: Segitiga Terbalik, ukuran 3**
+```
+Ukuran: 3, Pilihan: 2
+Expected:
+***
+**
+*
+```
+
+**Test 3: Piramida, ukuran 3**
+```
+Ukuran: 3, Pilihan: 3
+Expected:
+  *
+ ***
+*****
+```
+
+**Test 4: Ukuran 0 (edge case)**
+```
+Ukuran: 0
+Expected: "Ukuran harus lebih dari 0!" (program berhenti sebelum minta pilihan pola)
+```
+
+**Test 5: Pilihan tidak valid**
+```
+Ukuran: 3, Pilihan: 9
+Expected: "Pilihan tidak valid! Gunakan 1, 2, atau 3."
+```
+
+:::tip
+Untuk pola piramida, cara termudah memverifikasi kebenaran kode adalah menghitung manual jumlah spasi dan bintang di kertas untuk 2-3 baris pertama, baru bandingkan dengan output program.
+:::
+
+## Kode Solusi Lengkap (Final Version)
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    // === Header ===
+    fmt.Println("=============================")
+    fmt.Println("  GENERATOR POLA BINTANG GO  ")
+    fmt.Println("=============================")
+    fmt.Println()
+
+    // === Input ===
+    fmt.Print("Masukkan ukuran pola: ")
+    scanner.Scan()
+    ukuran, err := strconv.Atoi(scanner.Text())
+    if err != nil || ukuran <= 0 {
+        fmt.Println("\n[ERROR] Ukuran harus berupa angka lebih dari 0!")
+        return
+    }
+
+    fmt.Print("Pilih pola (1=Segitiga, 2=Segitiga Terbalik, 3=Piramida): ")
+    scanner.Scan()
+    pilihan, _ := strconv.Atoi(scanner.Text())
+
+    fmt.Println()
+
+    // === Cetak Pola ===
+    switch pilihan {
+    case 1:
+        for baris := 1; baris <= ukuran; baris++ {
+            fmt.Println(strings.Repeat("*", baris))
+        }
+    case 2:
+        for baris := ukuran; baris >= 1; baris-- {
+            fmt.Println(strings.Repeat("*", baris))
+        }
+    case 3:
+        for baris := 1; baris <= ukuran; baris++ {
+            spasi := strings.Repeat(" ", ukuran-baris)
+            bintang := strings.Repeat("*", 2*baris-1)
+            fmt.Println(spasi + bintang)
+        }
+    default:
+        fmt.Println("[ERROR] Pilihan tidak valid! Gunakan 1, 2, atau 3.")
+        return
+    }
+
+    fmt.Println("\nTerima kasih telah menggunakan generator pola!")
+}
+```
+
+## Challenge Bonus
+
+Sudah selesai? Coba tantangan tambahan ini:
+
+**Challenge 1: Pola Belah Ketupat**
+
+Gabungkan piramida normal dengan piramida terbalik untuk membentuk belah ketupat penuh. Petunjuk: cetak piramida dulu dari baris `1` sampai `ukuran`, lalu piramida terbalik dari `ukuran-1` turun ke `1`.
+
+**Challenge 2: Pola Angka**
+
+Ganti karakter `"*"` dengan nomor barisnya. Baris ke-3 mencetak `"333"`, bukan `"***"`. Petunjuk: kamu perlu `strconv.Itoa(baris)` untuk mengonversi nomor baris jadi string sebelum di-`Repeat`.
+
+**Challenge 3: Loop Berkali-kali**
+
+Bungkus seluruh program dengan `for { ... }` supaya user bisa mencetak beberapa pola berturut-turut tanpa restart program, keluar dengan mengetik "keluar" atau angka `0`.
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+Dalam project ini, kamu menggunakan **semua konsep perulangan** dari Unit 3:
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| `for` tiga klausa | Iterasi baris dan mundur untuk segitiga terbalik |
+| `switch` | Memilih jenis pola berdasarkan input user |
+| `strings.Repeat` | Mencetak karakter berulang tanpa nested loop manual |
+| `bufio.Scanner` + `strconv.Atoi` | Membaca input ukuran & pilihan dari user |
+| Validasi input | Menangani ukuran tidak valid dengan `if`/`err != nil` |
+
+## Penutup Unit 3
+
+Selamat! Kamu sudah menyelesaikan **Unit 3: Perulangan**. Mari recap:
+
+- Memahami `for` sebagai satu-satunya konstruk loop di Go, dalam tiga bentuk (klausa lengkap, kondisi saja, infinite)
+- Iterasi dengan `range` di atas slice, string, dan map
+- Mengontrol alur loop dengan `break`, `continue`, dan label untuk loop bersarang
+- Menulis dan memahami nested loop, termasuk cara menghitung total iterasinya
+- Membangun program pola bintang yang menggabungkan semuanya
+
+Di **Unit 4**, kamu akan belajar **fungsi** secara mendalam — termasuk salah satu ciri khas Go yang belum kamu sentuh sama sekali: **multiple return values**. Sampai jumpa di sana!

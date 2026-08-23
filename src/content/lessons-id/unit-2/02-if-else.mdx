@@ -1,0 +1,191 @@
+---
+title: "If-Else"
+unit: 2
+lesson: 2
+description: "Membuat program mengambil keputusan dengan if, else if, dan else"
+objectives:
+  - "Menulis percabangan if, else if, dan else"
+  - "Memakai if dengan init-statement — fitur khas Go"
+  - "Memahami kenapa kurung kurawal wajib di Go"
+estimatedTime: 35
+prerequisites: ["unit-2/01-operator-perbandingan-logika"]
+difficulty: "beginner"
+tags: ["if", "else", "percabangan", "init-statement"]
+---
+
+# If-Else
+
+Ini dia — konstruk yang membuat program benar-benar bisa "berpikir". Kalkulator kita sebenarnya sudah memakai `switch` (yang mirip konsepnya) di project Unit 1. Sekarang saatnya kuasai `if-else` secara formal.
+
+## Sintaks Dasar
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    nilai := 85
+
+    if nilai >= 90 {
+        fmt.Println("Grade: A")
+    } else if nilai >= 80 {
+        fmt.Println("Grade: B")
+    } else if nilai >= 70 {
+        fmt.Println("Grade: C")
+    } else {
+        fmt.Println("Grade: D")
+    }
+}
+```
+
+Output:
+```
+Grade: B
+```
+
+## Membedah Sintaks If-Else
+
+**`if nilai >= 90 {`** — perhatikan **tidak ada tanda kurung** di sekitar kondisi (beda dari C++/Java yang menulis `if (nilai >= 90)`). Tapi kurung kurawal `{` **wajib**, bahkan untuk body satu baris — Go tidak mengizinkan `if kondisi cetak();` tanpa `{}` sama sekali.
+
+**`else if nilai >= 80 {`** — dicek hanya kalau kondisi `if` sebelumnya `false`. Bisa dirangkai berapa kali pun.
+
+**`else {`** — dijalankan kalau semua kondisi di atasnya `false`.
+
+Go mengecek kondisi **dari atas ke bawah**, dan berhenti di kondisi pertama yang `true` — sisanya diabaikan (persis seperti `switch` yang sudah kamu lihat).
+
+:::note
+Kenapa kurung kurawal wajib? Ini keputusan desain Go untuk menghindari bug klasik "dangling else" di C — di mana lupa menulis `{}` bisa membuat baris kedua tanpa sengaja tidak ikut ter-eksekusi di dalam blok if. Dengan mewajibkan `{}`, ambiguitas semacam ini tidak mungkin terjadi di Go.
+:::
+
+## If dengan Init-Statement
+
+Ini fitur yang tidak dimiliki kebanyakan bahasa lain: kamu bisa mendeklarasikan variabel **tepat sebelum** kondisi, dalam satu baris yang sama.
+
+```go
+package main
+
+import "fmt"
+
+func bagi(a, b int) (int, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("tidak bisa membagi dengan nol")
+    }
+    return a / b, nil
+}
+
+func main() {
+    if hasil, err := bagi(10, 2); err == nil {
+        fmt.Println("Hasil:", hasil)
+    } else {
+        fmt.Println("Error:", err)
+    }
+}
+```
+
+Output:
+```
+Hasil: 5
+```
+
+## Membedah Init-Statement
+
+**`if hasil, err := bagi(10, 2); err == nil {`** — ada dua bagian dipisah titik koma: `hasil, err := bagi(10, 2)` (init-statement, dijalankan sekali sebelum pengecekan) dan `err == nil` (kondisi sesungguhnya).
+
+Keuntungan besar pola ini: variabel `hasil` dan `err` **hanya hidup di dalam blok if/else ini** — begitu keluar dari blok, keduanya tidak bisa diakses lagi. Ini menjaga scope tetap rapi, tidak "membocorkan" variabel sementara ke bagian kode lain.
+
+:::tip
+Pola `if hasil, err := fungsi(); err == nil { ... }` sangat umum di kode Go idiomatik, terutama untuk memeriksa error tanpa mengotori scope di luar blok if. Kamu akan sering melihat pola ini setelah belajar error handling di Unit 6.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa kurung kurawal:**
+   ```go
+   if nilai >= 90
+       fmt.Println("A")  // ERROR: missing condition in if statement
+   ```
+   `{}` wajib, tidak ada pengecualian, bahkan untuk satu baris.
+
+2. **Mencoba mengakses variabel init-statement di luar blok:**
+   ```go
+   if hasil, err := bagi(10, 2); err == nil {
+       fmt.Println(hasil)
+   }
+   fmt.Println(hasil)  // ERROR: undefined: hasil
+   ```
+   `hasil` dan `err` cuma hidup selama blok `if`/`else if`/`else` yang terkait — persis seperti scope variabel di dalam fungsi.
+
+3. **Menambahkan tanda kurung di sekitar kondisi (tidak error, tapi tidak idiomatik):**
+   ```go
+   if (nilai >= 90) {  // jalan, tapi gofmt/reviewer akan minta dihapus
+       fmt.Println("A")
+   }
+   ```
+   Secara teknis ini tetap compile, tapi konvensi Go (ditegakkan oleh tool `gofmt`) adalah tanpa tanda kurung.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u2l2-ex1"
+  title="Tentukan Kategori Umur"
+  description="Lengkapi program agar mencetak <code>Remaja</code> untuk umur 13-17, dan pastikan hasilnya benar untuk umur 15."
+  type="code-output"
+  expectedOutput="Remaja"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    umur := 15
+
+    if umur < 13 {
+        fmt.Println("Anak-anak")
+    } else if umur <= 17 {
+        fmt.Println("Remaja")
+    } else {
+        fmt.Println("Dewasa")
+    }
+}`}
+  hints={["Urutan pengecekan dari atas ke bawah — umur 15 tidak < 13, jadi lanjut ke else if.", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="umur=15 gagal di kondisi pertama (< 13), lalu cocok di else if (<= 17), jadi mencetak 'Remaja'."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u2l2-ex2"
+  title="Kurung Kurawal di Go"
+  description="Kenapa kurung kurawal <code>{ }</code> wajib di setiap blok if di Go, meski body-nya cuma satu baris?"
+  type="multiple-choice"
+  options={["Supaya kode terlihat lebih rapi saja", "Untuk menghindari ambiguitas dangling-else seperti di C", "Karena Go tidak mendukung satu baris kode", "Tidak ada alasan khusus, cuma konvensi"]}
+  correctIndex={1}
+  hints={["Ingat penjelasan soal keputusan desain Go di pelajaran ini.", "Ini soal keamanan kode, bukan sekadar estetika."]}
+  explanation="Mewajibkan {} menghindari bug klasik dangling-else yang sering terjadi di C/C++ ketika programmer lupa menulis kurung kurawal."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u2l2-ex3"
+  title="Lengkapi Init-Statement"
+  description="Lengkapi pola if dengan init-statement untuk memeriksa error dari pemanggilan fungsi."
+  type="fill-blank"
+  template="if hasil, err := bagi(10, 2){{BLANK}} err == nil {"
+  blanks={[";"]}
+  hints={["Init-statement dan kondisi dipisah satu karakter tanda baca."]}
+  explanation="Titik koma memisahkan init-statement (hasil, err := bagi(10, 2)) dari kondisi sesungguhnya (err == nil)."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| If dasar | `if x > 0 { ... }` |
+| Else if | `else if x < 0 { ... }` |
+| Else | `else { ... }` |
+| Init-statement | `if v, err := f(); err == nil { ... }` |
+| Kurung kurawal | **wajib**, tanpa kurung di kondisi |
+
+Di pelajaran berikutnya, kita akan bahas **switch** secara formal — alternatif yang lebih ringkas dari deretan panjang `else if`!

@@ -52,7 +52,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '5-7',
     projectTitle: { id: 'Game Tebak Angka', en: 'Number Guessing Game' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-2/01-operator-perbandingan-logika', title: { id: 'Operator Perbandingan & Logika', en: 'Comparison & Logical Operators' }, estimatedTime: 25, isProject: false },
       { slug: 'unit-2/02-if-else', title: { id: 'If-Else', en: 'If-Else' }, estimatedTime: 35, isProject: false },
@@ -70,7 +70,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '6-8',
     projectTitle: { id: 'Pola Bintang Generator', en: 'Star Pattern Generator' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-3/01-for-loop', title: { id: 'For Loop', en: 'For Loop' }, estimatedTime: 35, isProject: false },
       { slug: 'unit-3/02-range', title: { id: 'Range', en: 'Range' }, estimatedTime: 30, isProject: false },
@@ -89,7 +89,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '8-10',
     projectTitle: { id: 'Batu Gunting Kertas', en: 'Rock Paper Scissors' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-4/01-apa-itu-fungsi', title: { id: 'Apa itu Fungsi?', en: 'What is a Function?' }, estimatedTime: 25, isProject: false },
       { slug: 'unit-4/02-parameter-return', title: { id: 'Parameter & Return', en: 'Parameters & Return' }, estimatedTime: 30, isProject: false },
@@ -110,7 +110,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '8-10',
     projectTitle: { id: 'Buku Nilai Siswa', en: 'Student Grade Book' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-5/01-array', title: { id: 'Array', en: 'Arrays' }, estimatedTime: 30, isProject: false },
       { slug: 'unit-5/02-slice', title: { id: 'Slice', en: 'Slices' }, estimatedTime: 45, isProject: false },
@@ -129,7 +129,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '9-11',
     projectTitle: { id: 'Bank Account Sederhana', en: 'Simple Bank Account' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-6/01-struct', title: { id: 'Struct', en: 'Structs' }, estimatedTime: 35, isProject: false },
       { slug: 'unit-6/02-method-receiver', title: { id: 'Method & Receiver', en: 'Methods & Receivers' }, estimatedTime: 40, isProject: false },
@@ -150,7 +150,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '8-10',
     projectTitle: { id: 'Worker Pool', en: 'Worker Pool' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-7/01-goroutines', title: { id: 'Goroutine', en: 'Goroutines' }, estimatedTime: 35, isProject: false },
       { slug: 'unit-7/02-channels', title: { id: 'Channel', en: 'Channels' }, estimatedTime: 40, isProject: false },
@@ -169,7 +169,7 @@ export const CURRICULUM_ID: UnitMetadata[] = [
     },
     estimatedHours: '8-10',
     projectTitle: { id: 'Final Project', en: 'Final Project' },
-    isAvailable: false,
+    isAvailable: true,
     lessons: [
       { slug: 'unit-8/01-package-module', title: { id: 'Package & Module', en: 'Packages & Modules' }, estimatedTime: 35, isProject: false },
       { slug: 'unit-8/02-testing', title: { id: 'Testing dengan go test', en: 'Testing with go test' }, estimatedTime: 40, isProject: false },

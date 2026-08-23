@@ -1,0 +1,270 @@
+---
+title: "Project: Game Tebak Angka"
+unit: 2
+lesson: 4
+description: "Membuat game tebak angka yang menggabungkan semua konsep percabangan di Unit 2"
+objectives:
+  - "Menggabungkan if-else dan switch dalam satu program"
+  - "Memakai package math/rand untuk menghasilkan angka acak"
+  - "Membangun game interaktif dengan batas percobaan"
+estimatedTime: 60
+prerequisites: ["unit-2/03-switch"]
+difficulty: "beginner"
+tags: ["project", "percabangan", "random", "game"]
+---
+
+# Project: Game Tebak Angka
+
+Saatnya menerapkan semua yang kamu pelajari di Unit 2 — operator perbandingan, operator logika, if-else, dan switch — untuk membuat game sederhana: **Tebak Angka**.
+
+## Spesifikasi Program
+
+Game kita harus bisa:
+
+1. Menghasilkan angka rahasia acak antara 1-100
+2. Meminta user menebak berulang kali (maksimal 7 percobaan)
+3. Memberi petunjuk "terlalu tinggi" atau "terlalu rendah" setiap tebakan salah
+4. Mengumumkan menang/kalah di akhir
+
+Contoh interaksi yang diharapkan:
+```
+=== TEBAK ANGKA (1-100) ===
+Kamu punya 7 kesempatan.
+
+Tebakan ke-1: 50
+Terlalu tinggi!
+
+Tebakan ke-2: 25
+Terlalu rendah!
+
+Tebakan ke-3: 37
+Tepat! Kamu menang dalam 3 percobaan.
+```
+
+## Tahap 1: Planning
+
+**Data apa yang perlu disimpan?**
+- Angka rahasia (`int`, hasil random 1-100)
+- Tebakan user di setiap percobaan (`int`)
+- Jumlah percobaan yang sudah dipakai (`int`)
+- Status menang/kalah (`bool`)
+
+**Alur program:**
+1. Generate angka rahasia acak
+2. Loop maksimal 7 kali:
+   - Minta tebakan user
+   - Bandingkan dengan angka rahasia
+   - Kalau tepat: menang, keluar dari loop
+   - Kalau salah: beri petunjuk tinggi/rendah
+3. Kalau 7 percobaan habis tanpa menang: kalah, tampilkan angka yang benar
+
+**Edge case yang perlu dipikirkan:**
+- Bagaimana kalau user menebak tepat di percobaan terakhir?
+- Bagaimana kalau user menebak angka yang sama berulang kali?
+
+## Tahap 2: Pseudocode
+
+```
+PROGRAM TebakAngka:
+    angkaRahasia = random(1, 100)
+    maksPercobaan = 7
+
+    UNTUK percobaan DARI 1 SAMPAI maksPercobaan:
+        MINTA tebakan dari user
+        JIKA tebakan == angkaRahasia:
+            TAMPILKAN "Tepat! Menang dalam " + percobaan + " percobaan"
+            KELUAR dari program
+        JIKA tebakan > angkaRahasia:
+            TAMPILKAN "Terlalu tinggi!"
+        SELAIN ITU:
+            TAMPILKAN "Terlalu rendah!"
+
+    TAMPILKAN "Kalah! Angka yang benar: " + angkaRahasia
+```
+
+## Tahap 3: Implementasi
+
+Karena `for` loop baru dibahas formal di Unit 3, versi pertama ini kita buat sederhana dulu — cukup satu kali tebak, sebelum nanti dibungkus loop di Challenge Bonus.
+
+### Versi 1: Satu Kali Tebak
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strconv"
+    "time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    angkaRahasia := rand.Intn(100) + 1 // 1-100
+
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== TEBAK ANGKA (1-100) ===")
+    fmt.Print("Tebakanmu: ")
+    scanner.Scan()
+    tebakan, _ := strconv.Atoi(scanner.Text())
+
+    if tebakan == angkaRahasia {
+        fmt.Println("Tepat!")
+    } else if tebakan > angkaRahasia {
+        fmt.Println("Terlalu tinggi!")
+    } else {
+        fmt.Println("Terlalu rendah!")
+    }
+}
+```
+
+Coba jalankan beberapa kali — perhatikan angka rahasianya berubah tiap kali program dijalankan.
+
+### Versi 2: Batasi Percobaan dengan Switch untuk Status
+
+Sekarang tambahkan pelacakan percobaan dan pengumuman hasil akhir, memakai `switch` untuk merapikan pesan status:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strconv"
+    "time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    angkaRahasia := rand.Intn(100) + 1
+
+    scanner := bufio.NewScanner(os.Stdin)
+    percobaan := 1
+    menang := false
+
+    fmt.Println("=== TEBAK ANGKA (1-100) ===")
+    fmt.Println("Kamu punya 3 kesempatan (versi demo).")
+    fmt.Println()
+
+    fmt.Printf("Tebakan ke-%d: ", percobaan)
+    scanner.Scan()
+    tebakan, _ := strconv.Atoi(scanner.Text())
+
+    switch {
+    case tebakan == angkaRahasia:
+        menang = true
+    case tebakan > angkaRahasia:
+        fmt.Println("Terlalu tinggi!")
+    default:
+        fmt.Println("Terlalu rendah!")
+    }
+
+    if menang {
+        fmt.Printf("\nTepat! Kamu menang dalam %d percobaan.\n", percobaan)
+    } else {
+        fmt.Printf("\nBelum tepat. Angka rahasianya %d.\n", angkaRahasia)
+    }
+}
+```
+
+Ini adalah versi dasarnya! Mari kita pahami bagian-bagian pentingnya.
+
+## Memahami Kode
+
+### Angka Acak dengan math/rand
+
+```go
+rand.Seed(time.Now().UnixNano())
+angkaRahasia := rand.Intn(100) + 1
+```
+
+`rand.Seed(...)` memberi "titik awal" acak berdasarkan waktu saat ini — tanpa ini, program akan menghasilkan urutan angka "acak" yang **sama persis** setiap kali dijalankan (karena Go 1.13.5 tidak auto-seed seperti versi lebih baru). `rand.Intn(100)` menghasilkan angka acak dari `0` sampai `99`, jadi kita tambah `1` supaya rentangnya jadi `1` sampai `100`.
+
+### Variabel `menang` sebagai Flag
+
+```go
+menang := false
+// ...
+switch {
+case tebakan == angkaRahasia:
+    menang = true
+// ...
+}
+
+if menang {
+    // ...
+}
+```
+
+Sama seperti kalkulator di Unit 1, kita pakai variabel `bool` sebagai "bendera" untuk menandai kondisi tertentu terjadi di dalam blok yang lebih dalam, lalu dicek lagi di luar.
+
+## Tahap 4: Testing
+
+**Test 1: Tebakan tepat**
+```
+Angka rahasia: 42 (disimulasikan)
+Input: 42
+Expected: "Tepat! Kamu menang dalam 1 percobaan."
+```
+
+**Test 2: Tebakan terlalu tinggi**
+```
+Angka rahasia: 42
+Input: 80
+Expected: "Terlalu tinggi!" lalu pesan kalah
+```
+
+**Test 3: Tebakan terlalu rendah**
+```
+Angka rahasia: 42
+Input: 10
+Expected: "Terlalu rendah!" lalu pesan kalah
+```
+
+:::tip
+Karena angkanya acak, kamu tidak bisa tahu pasti nilainya sebelum dijalankan. Untuk testing yang konsisten selama development, kamu bisa sementara mengganti `rand.Intn(100) + 1` dengan angka tetap seperti `42` — lalu kembalikan ke random setelah yakin logikanya benar.
+:::
+
+## Challenge Bonus
+
+Sudah paham dasarnya? Coba tantangan ini untuk melengkapi game-nya:
+
+**Challenge 1: Bungkus dengan Loop**
+
+Ini tantangan utama! Kita belum belajar `for` secara formal (itu Unit 3), tapi kalau kamu penasaran, coba bungkus proses tebak dengan `for percobaan := 1; percobaan <= 7; percobaan++ { ... }` supaya user bisa menebak sampai 7 kali atau sampai menang — gunakan `break` untuk keluar loop begitu menang.
+
+**Challenge 2: Validasi Input**
+
+Tambahkan pengecekan: kalau `strconv.Atoi` gagal (user mengetik bukan angka), tampilkan pesan error dan minta input ulang, tanpa menghitungnya sebagai percobaan.
+
+**Challenge 3: Rentang yang Bisa Disesuaikan**
+
+Ubah program supaya rentang angka rahasia (`1-100`) bisa disesuaikan lewat variabel di awal program, misalnya `1-50` untuk mode mudah atau `1-500` untuk mode sulit.
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| Operator perbandingan (`==`, `>`, `<`) | Membandingkan tebakan dengan angka rahasia |
+| `if-else` | Memberi petunjuk tinggi/rendah |
+| `switch` tanpa ekspresi | Merapikan logika status hasil |
+| `math/rand` | Menghasilkan angka rahasia |
+| `bufio.Scanner` + `strconv.Atoi` | Membaca tebakan dari user |
+| Variabel `bool` sebagai flag | Melacak status menang |
+
+## Penutup Unit 2
+
+Selamat! Kamu sudah menyelesaikan **Unit 2: Percabangan**. Mari recap:
+
+- Membandingkan nilai dengan operator perbandingan
+- Menggabungkan kondisi dengan `&&`, `\|\|`, `!` dan memahami short-circuit evaluation
+- Menulis percabangan dengan `if`, `else if`, `else`, termasuk pola init-statement khas Go
+- Memakai `switch` dengan dan tanpa ekspresi, dan memahami kenapa Go tidak fallthrough otomatis
+- Membangun game interaktif yang menggabungkan semua konsep di atas
+
+Di **Unit 3**, kamu akan belajar **perulangan** — cara membuat program mengulang aksi tanpa menulis kode yang sama berkali-kali. Kamu bahkan sudah mengintipnya sedikit di Challenge Bonus tadi. Sampai jumpa di sana!

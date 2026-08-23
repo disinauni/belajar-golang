@@ -1,0 +1,224 @@
+---
+title: "Goroutine"
+unit: 7
+lesson: 1
+description: "Menjalankan banyak fungsi sekaligus secara konkuren dengan goroutine"
+objectives:
+  - "Memahami apa itu goroutine dan bedanya dengan pemanggilan fungsi biasa"
+  - "Menjalankan goroutine dengan keyword go"
+  - "Memahami kenapa main() tidak menunggu goroutine selesai secara otomatis"
+  - "Mengenali dan menghindari bug loop variable capture pada goroutine"
+estimatedTime: 35
+prerequisites: ["unit-6/07-project-bank-account"]
+difficulty: "intermediate"
+tags: ["goroutine", "concurrency", "go-keyword", "unit-7"]
+---
+
+# Goroutine
+
+Sampai sekarang, setiap baris kode di programmu berjalan **satu per satu**, berurutan — baris 1 selesai, baru baris 2 jalan. Go punya fitur andalan yang mengubah cara berpikir ini: **goroutine**. Dengan satu kata `go`, kamu bisa menyuruh Go menjalankan sebuah fungsi secara **konkuren** — "di latar belakang" — sementara program utama terus jalan.
+
+Bayangkan kamu adalah manajer restoran. Alih-alih memasak satu pesanan sampai selesai baru mulai pesanan berikutnya, kamu punya banyak koki (goroutine) yang bisa masak beberapa pesanan sekaligus. Kamu (fungsi `main`) tinggal membagikan tugas dan lanjut kerja lain.
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func sapa(nama string) {
+    fmt.Println("Halo dari", nama)
+}
+
+func main() {
+    go sapa("goroutine A")
+    go sapa("goroutine B")
+
+    fmt.Println("main() jalan duluan...")
+    time.Sleep(100 * time.Millisecond) // beri waktu goroutine selesai
+    fmt.Println("main() selesai")
+}
+```
+
+Output (urutan dua baris pertama bisa bertukar, tapi baris pembuka & penutup selalu di posisinya):
+
+```
+main() jalan duluan...
+Halo dari goroutine A
+Halo dari goroutine B
+main() selesai
+```
+
+## Membedah Konsep
+
+### Keyword `go`
+
+```go
+go sapa("goroutine A")
+```
+
+Menambahkan `go` di depan pemanggilan fungsi membuat Go menjalankan fungsi itu sebagai goroutine baru — **tanpa menunggu fungsi itu selesai**. Baris berikutnya (`fmt.Println("main() jalan duluan...")`) langsung dieksekusi, meskipun `sapa("goroutine A")` mungkin belum sempat mencetak apapun.
+
+Goroutine itu **ringan** — bukan seperti thread OS yang berat. Program Go bisa menjalankan ribuan bahkan jutaan goroutine sekaligus, karena Go runtime yang mengelola penjadwalannya (bukan sistem operasi langsung), dengan memori awal cuma sekitar 2KB per goroutine.
+
+### `main()` Tidak Menunggu Goroutine
+
+Ini poin **paling penting** untuk dipahami di awal:
+
+```go
+func main() {
+    go sapa("goroutine A")
+    // main() TIDAK berhenti di sini untuk menunggu sapa() selesai!
+}
+```
+
+Begitu `main()` mencapai akhir fungsinya dan **return**, seluruh program langsung berhenti — termasuk semua goroutine yang belum selesai, langsung "terpotong" begitu saja, tanpa peringatan apapun. Itu sebabnya di contoh di atas kita pakai `time.Sleep(100 * time.Millisecond)` — supaya `main()` memberi cukup waktu untuk goroutine selesai sebelum program berakhir.
+
+:::warning
+`time.Sleep` hanyalah cara **sementara** dan tidak reliable untuk menunggu goroutine — kita cuma menebak-nebak berapa lama goroutine butuh waktu. Cara yang benar dan pasti adalah `sync.WaitGroup`, yang akan kita pelajari di Lesson 4. Anggap `time.Sleep` di lesson ini sebagai "tongkat penyangga sementara" untuk belajar konsep goroutine, bukan solusi produksi.
+:::
+
+### Konkuren Bukan Berarti Selalu Paralel
+
+```go
+go sapa("goroutine A")
+go sapa("goroutine B")
+```
+
+Dua goroutine ini **konkuren** — Go runtime bisa menjalankannya bergantian atau benar-benar bersamaan (tergantung jumlah CPU core yang tersedia). Karena penjadwalannya di luar kendali kita, **urutan cetak `goroutine A` dan `goroutine B` tidak dijamin** — kadang A duluan, kadang B duluan. Ini hal yang wajar dalam concurrency, dan salah satu alasan kita butuh alat sinkronisasi seperti channel (Lesson 2) dan `sync.WaitGroup` (Lesson 4).
+
+:::tip
+Konkuren (*concurrent*) dan paralel (*parallel*) itu beda! Konkuren berarti "mengelola banyak hal sekaligus" (bisa bergantian di 1 core), sementara paralel berarti "benar-benar mengerjakan banyak hal di waktu yang sama" (butuh banyak core). Goroutine memungkinkan keduanya, tergantung environment yang menjalankannya.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa menunggu goroutine, program berakhir duluan:**
+   ```go
+   func main() {
+       go fmt.Println("Pesan ini mungkin tidak pernah tercetak!")
+       // BUG: main() langsung selesai, goroutine di atas mungkin belum
+       // sempat jalan sama sekali!
+   }
+   ```
+   Tanpa cara menunggu (seperti `time.Sleep` sementara, atau `sync.WaitGroup` yang benar), goroutine bisa "terpotong" sebelum sempat mengerjakan apapun.
+
+2. **Loop variable capture — bug goroutine paling klasik di Go:**
+   ```go
+   func main() {
+       for i := 0; i < 3; i++ {
+           go func() {
+               fmt.Println(i) // BUG: kemungkinan besar mencetak "3 3 3"!
+           }()
+       }
+       time.Sleep(100 * time.Millisecond)
+   }
+   ```
+   Di versi Go yang dipakai situs ini (sebelum Go 1.22), variabel loop `i` **dibagi (shared)** oleh semua iterasi — bukan disalin baru tiap iterasi. Karena goroutine baru benar-benar membaca `i` belakangan (setelah loop mungkin sudah selesai), semua goroutine bisa membaca nilai `i` yang sama, yaitu `3`.
+
+   **Solusi klasik**: kirim `i` sebagai *parameter* ke closure goroutine, supaya tiap goroutine punya salinannya sendiri:
+   ```go
+   func main() {
+       for i := 0; i < 3; i++ {
+           go func(n int) {
+               fmt.Println(n) // benar: 0, 1, 2 tercetak (urutan antar
+               // goroutine bisa acak, tapi nilainya pasti benar)
+           }(i)
+       }
+       time.Sleep(100 * time.Millisecond)
+   }
+   ```
+   Dengan mengirim `i` sebagai argumen `n`, nilai `i` saat itu langsung **disalin** ke parameter `n` milik goroutine tersebut — jadi tidak ikut berubah meski `i` di loop terus bertambah.
+
+3. **Menganggap goroutine dijamin selesai duluan:**
+   ```go
+   go prosesLambat()
+   fmt.Println("Selesai!") // BUG: goroutine belum tentu selesai duluan
+   ```
+   `go` cuma "menjadwalkan" eksekusi, bukan menjamin urutan selesai. Jangan pernah berasumsi soal urutan tanpa mekanisme sinkronisasi eksplisit.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u7l1-ex1"
+  title="Fix Loop Variable Capture"
+  description="Program di bawah SEHARUSNYA mencetak `Worker 0`, `Worker 1`, `Worker 2` (urutan boleh beda, tapi angkanya harus 0, 1, 2). Perbaiki bug loop variable capture agar hasilnya benar — dan urutkan hasil sebelum mencetak agar output deterministik."
+  type="code-output"
+  expectedOutput="Worker 0
+Worker 1
+Worker 2"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "sort"
+    "sync"
+)
+
+func main() {
+    var mu sync.Mutex
+    var hasil []int
+    var wg sync.WaitGroup
+
+    for i := 0; i < 3; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            mu.Lock()
+            hasil = append(hasil, i) // BUG: perbaiki agar i tidak shared
+            mu.Unlock()
+        }()
+    }
+
+    wg.Wait()
+    sort.Ints(hasil)
+    for _, n := range hasil {
+        fmt.Println("Worker", n)
+    }
+}`}
+  hints={["Kirim i sebagai parameter ke closure goroutine, misalnya func(n int) { ... }(i).", "Panggil goroutine-nya dengan (i) di akhir agar nilai i saat itu tersalin ke parameter baru.", "Jangan lupa ganti semua pemakaian i di dalam closure menjadi n."]}
+  explanation="Karena variabel loop i dibagi (shared) oleh semua iterasi di versi Go ini, goroutine yang membaca i belakangan bisa melihat nilai i yang sudah berubah. Solusinya: kirim i sebagai argumen ke closure — go func(n int) { ... }(i) — sehingga tiap goroutine mendapat salinannya sendiri lewat parameter n."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l1-ex2"
+  title="Kenapa main() Perlu Menunggu?"
+  description="Kenapa program <code>func main() { go fmt.Println(&quot;Halo&quot;) }</code> <strong>berisiko</strong> tidak mencetak apapun sama sekali?"
+  type="multiple-choice"
+  options={["Karena main() langsung selesai dan program berakhir tanpa menunggu goroutine sempat jalan", "Karena fmt.Println tidak boleh dipanggil di dalam goroutine", "Karena keyword go butuh dua argumen", "Karena goroutine hanya bisa dipakai dengan fungsi bernama, bukan fungsi built-in"]}
+  correctIndex={0}
+  hints={["Ingat: go menjalankan fungsi secara konkuren tanpa menunggu selesai.", "Begitu main() return, seluruh program (termasuk goroutine yang belum selesai) langsung berhenti."]}
+  explanation="go fmt.Println(...) menjadwalkan goroutine baru lalu main() langsung lanjut ke baris berikutnya (yang dalam kasus ini tidak ada lagi), sehingga main() langsung return dan program berakhir — goroutine yang belum sempat jalan pun ikut terpotong."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l1-ex3"
+  title="Goroutine Sederhana dengan Sleep"
+  description="Lengkapi program agar mencetak `Selesai!` setelah goroutine mencetak `Bekerja...` (gunakan time.Sleep sebagai penyangga sementara)."
+  type="fill-blank"
+  template={`go bekerja()
+time.{{BLANK}}(100 * time.Millisecond)
+fmt.Println("Selesai!")`}
+  blanks={["Sleep"]}
+  hints={["Fungsi ini ada di package time dan menghentikan eksekusi sejenak.", "Namanya diawali huruf besar karena dia exported dari package time."]}
+  explanation="time.Sleep menjeda eksekusi main() sejenak, memberi kesempatan goroutine bekerja() untuk selesai dulu sebelum main() lanjut mencetak Selesai!. ini hanya solusi sementara untuk belajar — solusi produksinya adalah sync.WaitGroup."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Menjalankan goroutine | `go namaFungsi(argumen)` |
+| main() tidak menunggu | goroutine terpotong kalau main() return duluan |
+| Penyangga sementara | `time.Sleep(100 * time.Millisecond)` |
+| Loop variable capture (bug) | `for i := 0; i < n; i++ { go func() { pakai(i) }() }` — salah |
+| Fix loop variable capture | `for i := 0; i < n; i++ { go func(n int) { pakai(n) }(i) }` — benar |
+
+Goroutine baru berguna kalau ada cara aman untuk mereka **berkomunikasi** dan berbagi hasil satu sama lain. Di pelajaran berikutnya, kita akan belajar **channel** — "pipa" yang menghubungkan goroutine agar bisa saling kirim data dengan aman.

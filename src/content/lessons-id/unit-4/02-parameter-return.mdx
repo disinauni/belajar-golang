@@ -1,0 +1,196 @@
+---
+title: "Parameter & Return"
+unit: 4
+lesson: 2
+description: "Mengirim data ke dalam fungsi lewat parameter, dan mengambil hasilnya lewat return value"
+objectives:
+  - "Mendeklarasikan fungsi dengan parameter bertipe eksplisit"
+  - "Mengembalikan nilai tunggal dari fungsi dengan return"
+  - "Memakai penulisan ringkas untuk parameter berurutan yang bertipe sama"
+estimatedTime: 30
+prerequisites: ["unit-4/01-apa-itu-fungsi"]
+difficulty: "beginner"
+tags: ["parameter", "return", "fungsi", "function"]
+---
+
+# Parameter & Return
+
+Fungsi `sapa()` di pelajaran sebelumnya selalu mencetak pesan yang sama persis — tidak fleksibel. Fungsi jadi jauh lebih berguna ketika bisa **menerima data** (parameter) dan **mengembalikan hasil** (return value). Mari kita buat fungsi yang benar-benar "bekerja" dengan data yang kamu berikan.
+
+## Fungsi dengan Parameter dan Return
+
+```go
+package main
+
+import "fmt"
+
+func tambah(a int, b int) int {
+    hasil := a + b
+    return hasil
+}
+
+func main() {
+    total := tambah(3, 4)
+    fmt.Println(total)
+    fmt.Println(tambah(10, 20))
+}
+```
+
+Output:
+```
+7
+30
+```
+
+## Membedah Parameter dan Return
+
+**`func tambah(a int, b int) int`** — mari pecah:
+- `a int, b int` — daftar **parameter**: variabel yang menerima nilai dari pemanggil, masing-masing dengan tipe eksplisit. Berbeda dari Python atau JavaScript, di Go **setiap parameter wajib punya tipe** — tidak ada parameter "tanpa tipe"
+- `int` (setelah tanda kurung) — **tipe return value**: tipe data yang akan dikembalikan fungsi ini
+
+**`return hasil`** — mengembalikan nilai `hasil` ke pemanggil, sekaligus **langsung menghentikan** eksekusi fungsi di titik itu juga. Kode setelah `return` dalam fungsi yang sama tidak akan pernah dijalankan.
+
+**`tambah(3, 4)`** — memanggil fungsi dengan **argumen** `3` dan `4`. Argumen ini disalin ke parameter `a` dan `b` di dalam fungsi. Nilai yang dikembalikan (`7`) bisa langsung dipakai — disimpan ke variabel (`total := tambah(3, 4)`) atau dipakai langsung (`fmt.Println(tambah(10, 20))`).
+
+Bayangkan fungsi seperti mesin vending: kamu masukkan uang (argumen), mesin memprosesnya (body fungsi), dan kamu menerima barang (return value) di ujungnya.
+
+### Penulisan Ringkas untuk Parameter Bertipe Sama
+
+Kalau beberapa parameter berurutan punya tipe yang sama, kamu bisa menuliskan tipenya sekali saja di akhir:
+
+```go
+func tambah(a, b int) int {
+    return a + b
+}
+```
+
+Ini setara persis dengan `func tambah(a int, b int) int` — cuma lebih ringkas. Aturannya: tipe cukup ditulis setelah parameter **terakhir** dalam grup yang bertipe sama.
+
+:::note
+**Parameter dilewatkan by value (disalin)** — ketika kamu memanggil `tambah(3, 4)`, nilai `3` dan `4` **disalin** ke dalam parameter `a` dan `b`. Mengubah `a` di dalam fungsi **tidak** memengaruhi variabel asli di pemanggil. Ini beda dengan beberapa bahasa lain yang melewatkan objek by reference secara default.
+:::
+
+:::tip
+Kalau grup parameter tipenya campuran, kamu bisa gabungkan gaya ringkas dan eksplisit: `func buatProfil(nama string, umur, tinggi int)` — `umur` dan `tinggi` sama-sama `int` jadi cukup ditulis sekali, tapi `nama` beda tipe jadi tetap perlu ditulis eksplisit.
+:::
+
+## Contoh: Parameter Campuran
+
+```go
+package main
+
+import "fmt"
+
+func perkenalan(nama string, umur int) string {
+    return nama + " berumur " + fmt.Sprint(umur) + " tahun"
+}
+
+func main() {
+    fmt.Println(perkenalan("Rani", 20))
+}
+```
+
+Output:
+```
+Rani berumur 20 tahun
+```
+
+Perhatikan `fmt.Sprint(umur)` — dipakai untuk mengonversi `int` menjadi `string` supaya bisa digabung dengan `+`. Go tidak mengizinkan menggabung `string` dan `int` langsung dengan `+` (beda tipe, harus dikonversi dulu — sama seperti prinsip konversi tipe yang sudah kamu pelajari di Unit 1).
+
+## Kesalahan Umum
+
+1. **Lupa menulis tipe return, tapi tetap ada statement `return`:**
+   ```go
+   func tambah(a, b int) { // ERROR: tidak ada tipe return dideklarasikan
+       return a + b        // ERROR: too many return values
+   }
+   ```
+   Kalau fungsi mengembalikan nilai, tipe return **wajib** dideklarasikan setelah daftar parameter.
+
+2. **Fungsi dengan tipe return tapi lupa `return` di beberapa alur:**
+   ```go
+   func absolut(n int) int {
+       if n < 0 {
+           return -n
+       }
+       // ERROR: missing return at end of function
+   }
+   ```
+   Go **memaksa** setiap alur eksekusi yang mungkin harus diakhiri dengan `return` kalau fungsinya punya tipe return — compiler akan menolak kalau ada jalur yang "lolos" tanpa return.
+
+3. **Mengira parameter diubah di dalam fungsi akan memengaruhi variabel asli:**
+   ```go
+   func gandakan(n int) {
+       n = n * 2
+   }
+
+   func main() {
+       angka := 5
+       gandakan(angka)
+       fmt.Println(angka) // tetap 5, bukan 10 — karena n cuma salinan
+   }
+   ```
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l2-ex1"
+  title="Fungsi Luas Persegi Panjang"
+  description="Lengkapi fungsi <code>luas</code> agar mengembalikan hasil perkalian panjang dan lebar, lalu cetak hasilnya untuk panjang=8, lebar=5."
+  type="code-output"
+  expectedOutput="40"
+  starterCode={`package main
+
+import "fmt"
+
+func luas(panjang, lebar int) int {
+    return panjang * lebar
+}
+
+func main() {
+    fmt.Println(luas(8, 5))
+}`}
+  hints={["Fungsi luas sudah lengkap — coba jalankan dulu untuk memastikan hasilnya 40.", "panjang * lebar untuk panjang=8 dan lebar=5 adalah 40."]}
+  explanation="luas(8, 5) mengembalikan 8 * 5 = 40, karena kedua parameter panjang dan lebar bertipe int (ditulis ringkas: 'panjang, lebar int')."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l2-ex2"
+  title="Parameter Adalah Salinan"
+  description="Fungsi <code>ubah(n int)</code> mengisi <code>n = 99</code> di dalam bodinya. Kalau dipanggil dengan <code>ubah(angka)</code> di mana <code>angka</code> awalnya bernilai 10, apa nilai <code>angka</code> setelah pemanggilan tersebut?"
+  type="multiple-choice"
+  options={["10, karena parameter dilewatkan by value (disalin)", "99, karena parameter dilewatkan by reference", "Error saat compile", "0, karena angka belum diinisialisasi"]}
+  correctIndex={0}
+  hints={["Ingat: parameter di Go adalah salinan nilai, bukan referensi ke variabel asli.", "Mengubah n di dalam ubah() tidak menyentuh variabel angka di main()."]}
+  explanation="Parameter di Go dilewatkan by value — n hanyalah salinan dari angka. Mengubah n menjadi 99 di dalam ubah() tidak memengaruhi variabel angka yang asli, jadi nilainya tetap 10."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l2-ex3"
+  title="Lengkapi Tipe Return"
+  description="Lengkapi deklarasi fungsi yang mengembalikan nilai bertipe int."
+  type="fill-blank"
+  template={`func kali(a, b int) {{BLANK}} {
+    return a * b
+}`}
+  blanks={["int"]}
+  hints={["Tipe return ditulis setelah tanda kurung parameter, sebelum kurung kurawal pembuka."]}
+  explanation="Karena fungsi ini mengembalikan hasil perkalian dua int, tipe return-nya harus 'int', ditulis setelah daftar parameter: func kali(a, b int) int."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Parameter eksplisit | `func f(a int, b int)` |
+| Parameter ringkas (tipe sama) | `func f(a, b int)` |
+| Tipe return | `func f(a, b int) int` |
+| Mengembalikan nilai | `return hasil` |
+| Parameter = salinan (by value) | Mengubah parameter tidak memengaruhi variabel asli |
+
+Sejauh ini fungsi kita cuma bisa mengembalikan **satu** nilai. Di pelajaran berikutnya kita akan belajar salah satu fitur paling khas Go: **multiple return values** — mengembalikan lebih dari satu nilai sekaligus dari satu fungsi.

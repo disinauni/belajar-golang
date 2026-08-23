@@ -1,0 +1,211 @@
+---
+title: "Method & Receiver"
+unit: 6
+lesson: 2
+description: "Menempelkan fungsi ke struct dengan method, dan memahami beda value receiver vs pointer receiver"
+objectives:
+  - "Mendeklarasikan method dengan sintaks receiver"
+  - "Membedakan value receiver dan pointer receiver"
+  - "Memilih jenis receiver yang tepat sesuai kebutuhan"
+estimatedTime: 40
+prerequisites: ["unit-6/01-struct"]
+difficulty: "intermediate"
+tags: ["method", "receiver", "pointer", "struct"]
+---
+
+# Method & Receiver
+
+Struct yang cuma menyimpan data itu berguna, tapi struct akan jauh lebih berguna kalau punya **perilaku** — fungsi yang "menempel" langsung padanya. Di Go, fungsi seperti ini disebut **method**, dan cara menempelkannya disebut **receiver**.
+
+## Mendeklarasikan Method
+
+```go
+package main
+
+import "fmt"
+
+type Persegi struct {
+    Sisi float64
+}
+
+func (p Persegi) Luas() float64 {
+    return p.Sisi * p.Sisi
+}
+
+func main() {
+    kotak := Persegi{Sisi: 4}
+    fmt.Println(kotak.Luas())
+}
+```
+
+Output:
+```
+16
+```
+
+## Membedah Sintaks Method
+
+**`func (p Persegi) Luas() float64 { ... }`** — ini method, bukan fungsi biasa. Bedanya cuma satu: ada `(p Persegi)` di antara `func` dan nama method. Bagian ini disebut **receiver** — memberitahu Go "method ini menempel pada tipe `Persegi`".
+
+Bayangkan receiver seperti label "milik siapa" pada sebuah barang. `func Luas(p Persegi) float64` (fungsi biasa) dan `func (p Persegi) Luas() float64` (method) sebenarnya melakukan hal serupa — tapi method bisa dipanggil dengan `kotak.Luas()`, jauh lebih natural daripada `Luas(kotak)`.
+
+**`p`** — nama receiver, dipilih bebas (konvensinya singkat, biasanya huruf awal nama tipe). Di dalam body method, `p` berfungsi seperti parameter biasa yang mewakili instance struct yang memanggilnya.
+
+**`kotak.Luas()`** — memanggil method. Go otomatis mengisi `p` dengan `kotak`.
+
+## Value Receiver vs Pointer Receiver
+
+Ini bagian **paling penting** dari method di Go: ada dua jenis receiver, dan bedanya krusial.
+
+```go
+package main
+
+import "fmt"
+
+type Persegi struct {
+    Sisi float64
+}
+
+// Value receiver — bekerja pada SALINAN
+func (p Persegi) UbahSisiSalah(baru float64) {
+    p.Sisi = baru
+}
+
+// Pointer receiver — bekerja pada data ASLI
+func (p *Persegi) UbahSisi(baru float64) {
+    p.Sisi = baru
+}
+
+func main() {
+    kotak := Persegi{Sisi: 4}
+
+    kotak.UbahSisiSalah(10)
+    fmt.Println(kotak.Sisi) // 4 -- tidak berubah!
+
+    kotak.UbahSisi(10)
+    fmt.Println(kotak.Sisi) // 10 -- berubah!
+}
+```
+
+Output:
+```
+4
+10
+```
+
+## Membedah Value vs Pointer Receiver
+
+**Value receiver `(p Persegi)`** — Go membuat **salinan** (copy) dari struct saat method dipanggil. Semua perubahan pada `p` di dalam method hanya terjadi pada salinan itu, hilang begitu method selesai. Bayangkan ini seperti memberi orang lain **fotokopi** dokumenmu — mereka boleh mencoret-coret fotokopinya sepuasnya, dokumen aslimu tetap bersih.
+
+**Pointer receiver `(p *Persegi)`** — Go memberikan **alamat memori** struct asli, bukan salinan. Perubahan pada `p` langsung mengubah data aslinya. Ini seperti memberikan **kunci rumah asli**, bukan fotokopi — siapa pun yang pegang kunci itu bisa benar-benar mengubah isi rumah.
+
+**`kotak.UbahSisi(10)`** — perhatikan, `kotak` bukan pointer, tapi ini tetap valid! Go otomatis mengubahnya jadi `(&kotak).UbahSisi(10)` di belakang layar, selama `kotak` adalah variabel yang bisa diambil alamatnya (*addressable*).
+
+:::tip
+Kapan pakai pointer receiver? Setiap kali method **perlu mengubah** data struct aslinya. Kapan pakai value receiver? Kalau method cuma **membaca** data (seperti `Luas()` di atas) dan tidak pernah mengubahnya.
+:::
+
+:::warning
+Kalau salah satu method suatu tipe pakai pointer receiver, konvensi Go menyarankan **semua** method tipe itu pakai pointer receiver juga — walaupun method tersebut cuma membaca data. Ini menjaga konsistensi dan menghindari kebingungan tentang tipe mana yang sebenarnya kamu pegang.
+:::
+
+## Kesalahan Umum
+
+1. **Memakai value receiver padahal butuh mengubah data asli:**
+   ```go
+   type Counter struct {
+       Jumlah int
+   }
+
+   func (c Counter) Tambah() { // ERROR logika: value receiver, bukan pointer
+       c.Jumlah++
+   }
+
+   func main() {
+       c := Counter{}
+       c.Tambah()
+       c.Tambah()
+       fmt.Println(c.Jumlah) // 0 -- bukan 2, karena Tambah() cuma mengubah salinan
+   }
+   ```
+   Kode ini compile tanpa error, tapi hasilnya salah secara logika — jebakan klasik pemula Go.
+
+2. **Memanggil method pointer receiver pada value yang tidak addressable:**
+   ```go
+   type Kucing struct{ Umur int }
+   func (k *Kucing) TambahUmur() { k.Umur++ }
+
+   func main() {
+       kucings := map[string]Kucing{"Tom": {Umur: 3}}
+       kucings["Tom"].TambahUmur() // ERROR: cannot call pointer method on kucings["Tom"]
+   }
+   ```
+   Nilai di dalam map **tidak addressable** — Go tidak bisa mengambil alamatnya, jadi method dengan pointer receiver tidak bisa dipanggil langsung di sana.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l2-ex1"
+  title="Method dengan Pointer Receiver"
+  description="Lengkapi program agar method Setor benar-benar mengubah Saldo, sehingga tercetak `Saldo: 150`."
+  type="code-output"
+  expectedOutput="Saldo: 150"
+  starterCode={`package main
+
+import "fmt"
+
+type Tabungan struct {
+    Saldo int
+}
+
+func (t *Tabungan) Setor(jumlah int) {
+    t.Saldo = t.Saldo + jumlah
+}
+
+func main() {
+    t := Tabungan{Saldo: 100}
+    t.Setor(50)
+    fmt.Printf("Saldo: %d\\n", t.Saldo)
+}`}
+  hints={["Kode ini sebenarnya sudah benar — coba jalankan dulu.", "Perhatikan receiver Setor sudah pakai tanda * (pointer receiver), sehingga perubahan Saldo tersimpan."]}
+  explanation="Karena Setor pakai pointer receiver (*Tabungan), perubahan t.Saldo di dalam method langsung mengubah data asli t, bukan salinannya — sehingga Saldo akhirnya 100 + 50 = 150."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l2-ex2"
+  title="Value vs Pointer Receiver"
+  description="Method dengan value receiver mengubah field struct di dalam body-nya. Apa yang terjadi pada struct aslinya setelah method selesai?"
+  type="multiple-choice"
+  options={["Struct asli tidak berubah — hanya salinannya yang berubah", "Struct asli ikut berubah", "Program gagal compile", "Program panic saat runtime"]}
+  correctIndex={0}
+  hints={["Value receiver bekerja pada salinan (copy) struct, bukan data aslinya.", "Kode-nya tetap compile dengan sukses — masalahnya murni logika, bukan syntax."]}
+  explanation="Value receiver menerima salinan struct, jadi perubahan field di dalam method hanya berlaku pada salinan itu dan hilang begitu method selesai. Untuk mengubah data asli, method harus pakai pointer receiver."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l2-ex3"
+  title="Lengkapi Pointer Receiver"
+  description="Lengkapi deklarasi method agar memakai pointer receiver bertipe *Mobil."
+  type="fill-blank"
+  template="func (m {{BLANK}}Mobil) Isi(liter int) {"
+  blanks={["*"]}
+  hints={["Pointer receiver ditandai dengan satu simbol sebelum nama tipe."]}
+  explanation="Menambahkan * sebelum nama tipe (func (m *Mobil) ...) membuat method memakai pointer receiver, sehingga bisa mengubah data struct aslinya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi method | `func (p Persegi) Luas() float64 { ... }` |
+| Value receiver | `func (p Persegi) Metode()` — bekerja pada salinan |
+| Pointer receiver | `func (p *Persegi) Metode()` — bekerja pada data asli |
+| Panggil method | `kotak.Luas()` |
+| Auto address | `kotak.UbahSisi(10)` sama dengan `(&kotak).UbahSisi(10)` |
+
+Di pelajaran berikutnya, kita akan belajar **struct embedding** — cara menyisipkan satu struct ke struct lain sehingga field dan method-nya otomatis "naik" ke struct luar.

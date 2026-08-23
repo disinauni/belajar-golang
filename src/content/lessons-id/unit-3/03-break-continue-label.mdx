@@ -1,0 +1,219 @@
+---
+title: "Break, Continue & Label"
+unit: 3
+lesson: 3
+description: "Mengontrol alur loop dengan break, continue, dan label untuk loop bersarang"
+objectives:
+  - "Memakai break untuk menghentikan loop lebih awal"
+  - "Memakai continue untuk melompati satu iterasi"
+  - "Memakai label untuk mengontrol loop bersarang dari luar"
+estimatedTime: 25
+prerequisites: ["unit-3/02-range"]
+difficulty: "beginner"
+tags: ["break", "continue", "label", "loop"]
+---
+
+# Break, Continue & Label
+
+Kamu sudah memakai `break` sekilas di pelajaran For Loop. Sekarang mari kuasai `break`, pasangannya `continue`, dan satu trik khusus Go untuk loop bersarang: **label**.
+
+## Break: Menghentikan Loop
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i <= 10; i++ {
+        if i == 5 {
+            break
+        }
+        fmt.Println(i)
+    }
+    fmt.Println("Loop selesai")
+}
+```
+
+Output:
+```
+1
+2
+3
+4
+Loop selesai
+```
+
+**`break`** langsung menghentikan loop **sepenuhnya**, melompat ke baris setelah loop berakhir. Perhatikan angka `5` tidak pernah tercetak — begitu `i == 5`, loop langsung berhenti.
+
+## Continue: Melompati Satu Iterasi
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i <= 6; i++ {
+        if i%2 == 0 {
+            continue
+        }
+        fmt.Println(i)
+    }
+}
+```
+
+Output:
+```
+1
+3
+5
+```
+
+**`continue`** melompati **sisa kode di iterasi saat ini** dan langsung lanjut ke iterasi berikutnya (klausa post tetap dijalankan). Di sini, setiap `i` genap dilompati — `fmt.Println(i)` tidak pernah tercapai untuk angka genap, jadi hanya angka ganjil yang tercetak.
+
+:::tip
+Bedanya `break` dan `continue`: `break` = "berhenti total", `continue` = "lewati yang ini, lanjut ke berikutnya". Kalau kamu bingung membedakan, bayangkan `break` seperti keluar dari ruangan, `continue` seperti melewati satu meja untuk lanjut ke meja berikutnya di ruangan yang sama.
+:::
+
+## Label untuk Loop Bersarang
+
+Ini fitur khas Go yang jarang ada di bahasa lain: `break`/`continue` biasa hanya mempengaruhi loop **terdalam** tempat ia ditulis. Kalau kamu punya loop di dalam loop dan ingin `break` sampai ke loop **terluar**, kamu butuh **label**.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+cariAngka:
+    for i := 1; i <= 3; i++ {
+        for j := 1; j <= 3; j++ {
+            if i*j == 6 {
+                fmt.Println("Ditemukan:", i, "x", j, "= 6")
+                break cariAngka
+            }
+            fmt.Println("Coba:", i, "x", j)
+        }
+    }
+    fmt.Println("Pencarian selesai")
+}
+```
+
+Output:
+```
+Coba: 1 x 1
+Coba: 1 x 2
+Coba: 1 x 3
+Coba: 2 x 1
+Coba: 2 x 2
+Ditemukan: 2 x 3 = 6
+Pencarian selesai
+```
+
+## Membedah Label
+
+**`cariAngka:`** — label, ditulis tepat sebelum keyword `for` yang ingin ditandai. Namanya bebas, konvensinya camelCase seperti nama variabel.
+
+**`break cariAngka`** — menghentikan **loop yang punya label itu**, bukan cuma loop terdalam. Tanpa label, `break` di sini hanya akan menghentikan loop `j` bagian dalam, lalu loop `i` bagian luar tetap lanjut berjalan — bukan itu yang kita mau.
+
+:::note
+`continue label` juga valid — melompat ke iterasi berikutnya dari loop yang punya label tersebut, bukan cuma loop terdalam. Pola ini jarang dipakai untuk kasus sederhana, tapi sangat berguna saat kamu butuh mencari sesuatu di dalam struktur data bersarang (matriks, grid, dsb).
+:::
+
+## Kesalahan Umum
+
+1. **Mengira break biasa keluar dari SEMUA loop bersarang:**
+   ```go
+   for i := 1; i <= 3; i++ {
+       for j := 1; j <= 3; j++ {
+           if i*j == 6 {
+               break  // cuma keluar loop j, loop i tetap lanjut!
+           }
+       }
+   }
+   ```
+   Kalau maksudnya keluar dari kedua loop sekaligus, kamu butuh label — `break` tanpa label hanya mempengaruhi loop terdekat.
+
+2. **Lupa continue tetap menjalankan klausa post:**
+   ```go
+   for i := 0; i < 5; i++ {
+       if i == 2 {
+           continue  // i++ tetap jalan, loop tidak macet
+       }
+       fmt.Println(i)
+   }
+   ```
+   `continue` tidak melompati klausa post (`i++`) — kalau kamu lupa ini dan mengira perlu increment manual sebelum `continue`, kamu bisa tidak sengaja melompati dua nilai sekaligus.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l3-ex1"
+  title="Lewati Kelipatan 3"
+  description="Lengkapi program agar mencetak angka 1-6 kecuali kelipatan 3."
+  type="code-output"
+  expectedOutput="1
+2
+4
+5"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i <= 6; i++ {
+        if i%3 == 0 {
+            continue
+        }
+        fmt.Println(i)
+    }
+}`}
+  hints={["continue melompati sisa kode di iterasi itu, lanjut ke iterasi berikutnya.", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="continue melompati fmt.Println(i) setiap kali i adalah kelipatan 3 (3 dan 6), sehingga hanya 1, 2, 4, 5 yang tercetak."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l3-ex2"
+  title="Break di Loop Bersarang"
+  description="Tanpa label, break di dalam loop bagian dalam (nested) akan menghentikan loop yang mana?"
+  type="multiple-choice"
+  options={["Semua loop sekaligus", "Hanya loop terdalam tempat break ditulis", "Hanya loop terluar", "Program langsung berhenti total"]}
+  correctIndex={1}
+  hints={["Ingat kenapa label dibutuhkan sama sekali.", "break biasa itu 'lokal' terhadap loop tempat ia berada."]}
+  explanation="break tanpa label hanya menghentikan loop terdekat/terdalam tempat ia ditulis. Untuk menghentikan loop terluar dari dalam loop bersarang, kamu perlu break dengan label."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l3-ex3"
+  title="Lengkapi Break dengan Label"
+  description="Lengkapi kode untuk keluar dari loop luar yang berlabel 'cari' dari dalam loop bersarang."
+  type="fill-blank"
+  template={`cari:
+for i := 0; i < 3; i++ {
+    for j := 0; j < 3; j++ {
+        if i == j {
+            break {{BLANK}}
+        }
+    }
+}`}
+  blanks={["cari"]}
+  hints={["Nama label yang sama seperti yang dideklarasikan di atas loop luar."]}
+  explanation="break cari menghentikan loop luar yang diberi label 'cari', bukan hanya loop dalam tempat break ditulis."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Efek |
+|---|---|
+| `break` | Hentikan loop terdekat sepenuhnya |
+| `continue` | Lompati sisa iterasi, lanjut ke berikutnya |
+| `label:` | Beri nama pada loop |
+| `break label` / `continue label` | Kontrol loop luar dari dalam loop bersarang |
+
+Di pelajaran berikutnya, kita akan bahas **nested loops** lebih dalam — loop di dalam loop untuk membuat pola dan tabel!

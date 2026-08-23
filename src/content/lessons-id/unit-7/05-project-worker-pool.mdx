@@ -1,0 +1,464 @@
+---
+title: "Project: Worker Pool"
+unit: 7
+lesson: 5
+description: "Membangun pola worker pool klasik yang menggabungkan goroutine, channel, WaitGroup, dan Mutex"
+objectives:
+  - "Merancang pola worker pool dari planning sampai implementasi"
+  - "Menggabungkan goroutine, channel job/result, WaitGroup, dan Mutex dalam satu program"
+  - "Menguji program concurrency dengan berbagai skenario jumlah worker dan job"
+estimatedTime: 90
+prerequisites: ["unit-7/04-sync-waitgroup-mutex"]
+difficulty: "intermediate"
+tags: ["project", "worker-pool", "concurrency", "goroutine", "channel", "practice", "integration"]
+---
+
+# Project: Worker Pool
+
+Selamat! Kamu sudah mempelajari semua konsep dasar concurrency di Unit 7: goroutine, channel, select, buffered channel, WaitGroup, dan Mutex. Sekarang saatnya menggabungkan semuanya dalam satu pola yang **sangat umum** dipakai di dunia nyata — **Worker Pool**.
+
+Worker pool dipakai di mana-mana: web server yang memproses banyak request, image processor yang mengubah ukuran ribuan foto, script yang mengirim ribuan email. Alih-alih memproses satu per satu (lambat) atau membuat goroutine tak terbatas (boros resource), worker pool membatasi jumlah "pekerja" yang berjalan bersamaan, sambil tetap memproses banyak pekerjaan secara konkuren.
+
+## Spesifikasi Program
+
+Worker pool kita harus bisa:
+
+1. Menerima kumpulan **job** (angka-angka yang perlu diproses)
+2. Membagikan job ke sejumlah **worker** (goroutine) yang berjalan bersamaan
+3. Setiap worker memproses job (menghitung kuadratnya) dan mengirim **result**
+4. Mengumpulkan semua result setelah seluruh worker selesai
+5. Menampilkan hasil akhir secara **terurut dan deterministik**
+
+Contoh output yang diharapkan (3 worker memproses 6 job):
+```
+=== WORKER POOL ===
+Jumlah worker : 3
+Jumlah job    : 6
+
+Job 1 -> Hasil 1
+Job 2 -> Hasil 4
+Job 3 -> Hasil 9
+Job 4 -> Hasil 16
+Job 5 -> Hasil 25
+Job 6 -> Hasil 36
+
+Semua job selesai diproses!
+```
+
+## Tahap 1: Planning
+
+Sebelum menulis kode, mari pikirkan komponen apa saja yang dibutuhkan:
+
+**Data apa yang perlu disimpan?**
+- Channel **job**: tempat mengirim pekerjaan yang harus diproses (`chan int`)
+- Channel **result**: tempat worker mengirim hasil (`chan Result`, berupa struct berisi job asli dan hasilnya)
+- `sync.WaitGroup`: menunggu semua worker selesai
+- Jumlah worker dan jumlah job (angka biasa)
+
+**Alur program:**
+1. Buat channel job dan channel result
+2. Jalankan beberapa goroutine worker yang membaca dari channel job
+3. Kirim semua job ke channel job, lalu tutup channel job
+4. Setiap worker memproses job dan mengirim ke channel result, lalu memanggil `wg.Done()`
+5. Goroutine terpisah menunggu semua worker selesai (`wg.Wait()`), lalu menutup channel result
+6. Program utama mengumpulkan semua result dari channel result
+7. Urutkan dan tampilkan hasil
+
+**Edge case yang perlu dipikirkan:**
+- Bagaimana kalau jumlah worker lebih banyak dari jumlah job?
+- Bagaimana memastikan channel result ditutup **setelah** semua worker selesai, bukan sebelum atau tidak sama sekali?
+- Bagaimana memastikan output selalu terurut meski worker selesai dengan urutan acak?
+
+## Tahap 2: Pseudocode
+
+```
+PROGRAM WorkerPool:
+    BUAT channel jobs (buffered, kapasitas = jumlah job)
+    BUAT channel results (buffered, kapasitas = jumlah job)
+    BUAT WaitGroup wg
+
+    UNTUK setiap worker (1 sampai jumlahWorker):
+        wg.Add(1)
+        JALANKAN goroutine worker(id, jobs, results, wg):
+            UNTUK setiap job yang diterima dari jobs:
+                hasil = job * job
+                KIRIM Result{job, hasil} ke results
+            wg.Done()
+
+    UNTUK setiap job (1 sampai jumlahJob):
+        KIRIM job ke channel jobs
+    TUTUP channel jobs
+
+    JALANKAN goroutine terpisah:
+        wg.Wait()
+        TUTUP channel results
+
+    KUMPULKAN semua result dari channel results ke dalam slice
+    URUTKAN slice berdasarkan nomor job
+    TAMPILKAN setiap result
+```
+
+Perhatikan pola pentingnya: **menutup channel results harus menunggu semua worker selesai** — makanya kita pakai goroutine terpisah yang memanggil `wg.Wait()` baru `close(results)`, supaya `main()` tetap bisa membaca dari `results` di waktu yang sama tanpa saling menunggu (deadlock).
+
+## Tahap 3: Implementasi
+
+### Versi 1: Kerangka Dasar (2 Worker, Job Sederhana)
+
+Mulai dari kerangka paling sederhana: 2 worker yang memproses job dan mencetak hasilnya langsung (belum terurut):
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func worker(id int, jobs <-chan int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for j := range jobs {
+        fmt.Println("Worker", id, "memproses job", j, "-> hasil", j*j)
+    }
+}
+
+func main() {
+    jobs := make(chan int, 5)
+    var wg sync.WaitGroup
+
+    for w := 1; w <= 2; w++ {
+        wg.Add(1)
+        go worker(w, jobs, &wg)
+    }
+
+    for j := 1; j <= 5; j++ {
+        jobs <- j
+    }
+    close(jobs)
+
+    wg.Wait()
+}
+```
+
+Coba jalankan — kamu akan melihat job diproses oleh 2 worker berbeda, tapi urutan cetaknya **acak** setiap kali dijalankan (tergantung worker mana yang lebih cepat mengambil job). Ini normal untuk concurrency, tapi belum cocok untuk exercise yang butuh output deterministik — makanya versi berikutnya kita kumpulkan dulu ke channel result, lalu urutkan sebelum dicetak.
+
+### Versi 2: Tambahkan Channel Result dan Pengurutan
+
+Sekarang kita tambahkan channel `results`, struct untuk membawa data job+hasil, dan pengurutan supaya output selalu konsisten:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+    "sync"
+)
+
+type Result struct {
+    Job    int
+    Hasil  int
+}
+
+func worker(id int, jobs <-chan int, results chan<- Result, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for j := range jobs {
+        results <- Result{Job: j, Hasil: j * j}
+    }
+}
+
+func main() {
+    jumlahWorker := 3
+    jumlahJob := 6
+
+    jobs := make(chan int, jumlahJob)
+    results := make(chan Result, jumlahJob)
+    var wg sync.WaitGroup
+
+    fmt.Println("=== WORKER POOL ===")
+    fmt.Println("Jumlah worker :", jumlahWorker)
+    fmt.Println("Jumlah job    :", jumlahJob)
+    fmt.Println()
+
+    for w := 1; w <= jumlahWorker; w++ {
+        wg.Add(1)
+        go worker(w, jobs, results, &wg)
+    }
+
+    for j := 1; j <= jumlahJob; j++ {
+        jobs <- j
+    }
+    close(jobs)
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    var semuaHasil []Result
+    for r := range results {
+        semuaHasil = append(semuaHasil, r)
+    }
+
+    sort.Slice(semuaHasil, func(i, j int) bool {
+        return semuaHasil[i].Job < semuaHasil[j].Job
+    })
+
+    for _, r := range semuaHasil {
+        fmt.Printf("Job %d -> Hasil %d\n", r.Job, r.Hasil)
+    }
+
+    fmt.Println()
+    fmt.Println("Semua job selesai diproses!")
+}
+```
+
+Ini adalah worker pool yang lengkap! Mari kita pahami bagian-bagian pentingnya.
+
+## Memahami Kode
+
+### Tipe Channel Terarah: `<-chan int` dan `chan<- Result`
+
+```go
+func worker(id int, jobs <-chan int, results chan<- Result, wg *sync.WaitGroup) {
+```
+
+- `jobs <-chan int` — parameter ini cuma boleh **menerima** dari channel (*receive-only*), tidak boleh mengirim.
+- `results chan<- Result` — parameter ini cuma boleh **mengirim** ke channel (*send-only*), tidak boleh menerima.
+
+Ini bukan tipe channel baru, cuma **pembatasan** dari `chan int` dan `chan Result` biasa. Go compiler akan menolak kalau kamu mencoba mengirim ke `jobs` atau menerima dari `results` di dalam fungsi `worker` — ini membantu mencegah bug secara otomatis, karena `worker` memang cuma boleh menerima job dan mengirim hasil, bukan sebaliknya.
+
+### Pola "Tutup Setelah Wait" dalam Goroutine Terpisah
+
+```go
+go func() {
+    wg.Wait()
+    close(results)
+}()
+
+var semuaHasil []Result
+for r := range results {
+    semuaHasil = append(semuaHasil, r)
+}
+```
+
+Ini pola **paling penting** di worker pool. Kalau kita panggil `wg.Wait()` langsung di `main()` (bukan di goroutine terpisah) sebelum membaca `results`, program akan **deadlock**: `main()` menunggu semua worker selesai, tapi worker sendiri **terhenti** karena channel `results` penuh dan tidak ada yang membacanya (karena `main()` sedang menunggu, bukan membaca).
+
+Solusinya: jalankan `wg.Wait()` di goroutine terpisah. Goroutine ini menunggu semua worker `Done()`, baru menutup `results`. Sementara itu, `main()` bebas membaca dari `results` dengan `range` — begitu semua worker selesai dan `results` ditutup, loop `range results` otomatis berhenti.
+
+### Struct `Result` untuk Membawa Pasangan Data
+
+```go
+type Result struct {
+    Job   int
+    Hasil int
+}
+```
+
+Karena worker berjalan konkuren, kita tidak bisa mengandalkan urutan pengiriman ke channel untuk tahu job mana yang menghasilkan hasil mana. Makanya setiap hasil dibungkus dalam struct `Result` yang membawa **kedua** informasi (nomor job asli dan hasilnya) sekaligus — ini yang memungkinkan kita mengurutkan ulang di akhir.
+
+### Mengurutkan Hasil dengan `sort.Slice`
+
+```go
+sort.Slice(semuaHasil, func(i, j int) bool {
+    return semuaHasil[i].Job < semuaHasil[j].Job
+})
+```
+
+`sort.Slice` mengurutkan slice `semuaHasil` berdasarkan aturan yang kita tentukan sendiri lewat *fungsi pembanding* — di sini kita urutkan berdasarkan `Job`, dari kecil ke besar. Langkah ini **wajib** dilakukan sebelum mencetak, karena worker menyelesaikan job dengan urutan yang **tidak bisa diprediksi**.
+
+## Tahap 4: Testing
+
+Program yang menyangkut concurrency harus diuji berkali-kali (karena urutan proses internal bisa berbeda tiap run), memastikan **hasil akhirnya** tetap konsisten:
+
+**Test 1: Jalankan berkali-kali, cek hasil akhir selalu sama**
+```
+Jalankan program 5 kali berturut-turut.
+Expected: urutan "Job 1 -> Hasil 1" sampai "Job 6 -> Hasil 36" selalu
+sama persis di setiap run, meski urutan internal worker memproses
+job bisa berbeda-beda.
+```
+
+**Test 2: Worker lebih banyak dari job**
+```
+jumlahWorker = 10, jumlahJob = 3
+Expected: tetap cuma 3 hasil yang tercetak (Job 1, 2, 3) — worker
+yang tidak kebagian job otomatis berhenti begitu channel jobs
+ditutup dan kosong.
+```
+
+**Test 3: Cuma 1 worker (jadi sekuensial)**
+```
+jumlahWorker = 1, jumlahJob = 5
+Expected: 1 worker memproses semua job satu per satu, hasil tetap
+benar meski tidak ada konkurensi nyata.
+```
+
+**Test 4: Job lebih banyak dari kapasitas buffer**
+```
+Jika channel jobs dibuat dengan kapasitas lebih kecil dari
+jumlahJob, program tetap harus berjalan benar — pengiriman job
+akan blocking sebentar menunggu worker mengosongkan buffer,
+tapi hasil akhirnya tetap sama.
+```
+
+:::tip
+Untuk program concurrency, "benar sekali jalan" tidak cukup — jalankan berkali-kali untuk memastikan tidak ada race condition tersembunyi. Go bahkan punya flag khusus untuk ini: `go run -race main.go`, yang mendeteksi race condition secara otomatis saat program berjalan.
+:::
+
+## Kode Solusi Lengkap (Final Version)
+
+Berikut kode lengkap yang sudah rapi dengan komentar:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+    "sync"
+)
+
+// Result membawa pasangan job asli dan hasilnya, supaya urutan
+// tetap bisa dilacak meski worker berjalan konkuren.
+type Result struct {
+    Job   int
+    Hasil int
+}
+
+// worker mengambil job dari channel jobs, memprosesnya, dan
+// mengirim hasilnya ke channel results. defer wg.Done() memastikan
+// WaitGroup selalu diberi tahu meski terjadi hal tak terduga.
+func worker(id int, jobs <-chan int, results chan<- Result, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for j := range jobs {
+        results <- Result{Job: j, Hasil: j * j}
+    }
+}
+
+func main() {
+    jumlahWorker := 3
+    jumlahJob := 6
+
+    jobs := make(chan int, jumlahJob)
+    results := make(chan Result, jumlahJob)
+    var wg sync.WaitGroup
+
+    // === Header ===
+    fmt.Println("=== WORKER POOL ===")
+    fmt.Println("Jumlah worker :", jumlahWorker)
+    fmt.Println("Jumlah job    :", jumlahJob)
+    fmt.Println()
+
+    // === Jalankan worker ===
+    for w := 1; w <= jumlahWorker; w++ {
+        wg.Add(1)
+        go worker(w, jobs, results, &wg)
+    }
+
+    // === Kirim semua job ===
+    for j := 1; j <= jumlahJob; j++ {
+        jobs <- j
+    }
+    close(jobs)
+
+    // === Tutup results setelah semua worker selesai ===
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    // === Kumpulkan semua hasil ===
+    var semuaHasil []Result
+    for r := range results {
+        semuaHasil = append(semuaHasil, r)
+    }
+
+    // === Urutkan supaya output deterministik ===
+    sort.Slice(semuaHasil, func(i, j int) bool {
+        return semuaHasil[i].Job < semuaHasil[j].Job
+    })
+
+    // === Tampilkan hasil ===
+    for _, r := range semuaHasil {
+        fmt.Printf("Job %d -> Hasil %d\n", r.Job, r.Hasil)
+    }
+
+    fmt.Println()
+    fmt.Println("Semua job selesai diproses!")
+}
+```
+
+Output:
+```
+=== WORKER POOL ===
+Jumlah worker : 3
+Jumlah job    : 6
+
+Job 1 -> Hasil 1
+Job 2 -> Hasil 4
+Job 3 -> Hasil 9
+Job 4 -> Hasil 16
+Job 5 -> Hasil 25
+Job 6 -> Hasil 36
+
+Semua job selesai diproses!
+```
+
+## Challenge Bonus
+
+Sudah selesai? Coba tantangan tambahan ini untuk menguji kemampuanmu:
+
+**Challenge 1: Hitung Job per Worker**
+
+Tambahkan penghitung (dilindungi `Mutex`) yang mencatat berapa job diproses oleh masing-masing worker, lalu tampilkan ringkasannya di akhir program:
+```go
+var mu sync.Mutex
+jobPerWorker := make(map[int]int)
+
+// di dalam worker, sebelum mengirim ke results:
+mu.Lock()
+jobPerWorker[id]++
+mu.Unlock()
+```
+
+**Challenge 2: Job yang Bisa Gagal**
+
+Modifikasi `Result` agar punya field `Error error`. Buat job dengan angka negatif dianggap gagal (`Hasil: 0, Error: fmt.Errorf("job %d tidak valid", j)`), lalu pisahkan penampilan hasil sukses dan gagal.
+
+**Challenge 3: Batasi Waktu dengan Select dan Timeout**
+
+Gunakan `select` dengan `time.After(...)` untuk membatasi waktu tunggu saat membaca dari `results` — kalau tidak ada hasil masuk dalam waktu tertentu, program mencetak pesan timeout dan berhenti menunggu (petunjuk: `case <-time.After(2 * time.Second):` sebagai salah satu `case` di dalam `select`).
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+Dalam project ini, kamu menggunakan **hampir semua konsep** dari Unit 7:
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| `go worker(...)` | Menjalankan banyak worker sebagai goroutine |
+| Channel `jobs` (buffered) | Membagikan pekerjaan ke worker |
+| Channel `results` (buffered) | Mengumpulkan hasil dari worker |
+| Channel terarah `<-chan`/`chan<-` | Membatasi arah pemakaian channel di parameter fungsi |
+| `close(jobs)` | Memberi tahu worker tidak ada job lagi |
+| `for range jobs` | Worker mengambil job sampai channel closed |
+| `sync.WaitGroup` (`Add`/`Done`/`Wait`) | Menunggu semua worker selesai sebelum menutup results |
+| Goroutine terpisah untuk `wg.Wait()` + `close()` | Menghindari deadlock saat menutup channel results |
+| `sort.Slice` | Membuat output deterministik meski proses konkuren |
+
+## Penutup Unit 7
+
+Selamat! Kamu sudah menyelesaikan **Unit 7: Concurrency** — salah satu fitur paling khas dan powerful dari Go! Mari recap apa yang sudah kamu kuasai:
+
+- Menjalankan fungsi secara konkuren dengan `go` dan memahami goroutine tidak ditunggu otomatis oleh `main()`
+- Menghindari bug klasik loop variable capture pada goroutine
+- Berkomunikasi antar goroutine dengan aman lewat channel (`make`, `<-`, sifat blocking)
+- Memakai buffered channel dan `select` untuk skenario yang lebih fleksibel, termasuk mendeteksi channel closed
+- Menunggu banyak goroutine selesai dengan `sync.WaitGroup`
+- Melindungi data bersama dari race condition dengan `sync.Mutex`
+- Membangun pola worker pool yang menggabungkan semua konsep di atas menjadi program nyata
+
+Concurrency adalah salah satu alasan utama Go dipilih untuk membangun server, tools infrastruktur, dan sistem berskala besar — dan sekarang kamu punya fondasi kuat untuk itu.
+
+Di **Unit 8: Practical Go**, kamu akan belajar bekal yang dibutuhkan untuk project Go nyata: mengorganisir kode dengan package dan module, menulis test dengan `go test`, dan bertukar data lewat JSON. Semua konsep dari Unit 1 sampai Unit 7 akan kamu pakai untuk membangun **Final Project** yang menggabungkan semuanya.
+
+Terus semangat belajar — kamu sudah menguasai salah satu bagian tersulit sekaligus paling menarik dari Go!

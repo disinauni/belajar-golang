@@ -1,0 +1,199 @@
+---
+title: "Variadic Functions"
+unit: 4
+lesson: 4
+description: "Fungsi yang bisa menerima jumlah argumen berapa pun, memakai sintaks ...tipe"
+objectives:
+  - "Mendeklarasikan variadic function dengan sintaks ...tipe"
+  - "Memahami bahwa parameter variadic diperlakukan sebagai slice di dalam fungsi"
+  - "Memanggil variadic function dengan slice memakai spread operator ..."
+estimatedTime: 25
+prerequisites: ["unit-4/03-multiple-return-values"]
+difficulty: "beginner"
+tags: ["variadic", "spread", "fungsi", "slice"]
+---
+
+# Variadic Functions
+
+Bagaimana kalau kamu ingin fungsi yang bisa menjumlahkan 2 angka, atau 5 angka, atau bahkan 0 angka — tanpa harus menulis versi berbeda untuk tiap jumlah argumen? Go punya jawabannya: **variadic functions**, fungsi yang bisa menerima jumlah argumen berapa pun untuk satu parameter.
+
+## Fungsi Variadic Sederhana
+
+```go
+package main
+
+import "fmt"
+
+func jumlahkan(angka ...int) int {
+    total := 0
+    for _, n := range angka {
+        total += n
+    }
+    return total
+}
+
+func main() {
+    fmt.Println(jumlahkan(1, 2, 3))
+    fmt.Println(jumlahkan(10, 20, 30, 40))
+    fmt.Println(jumlahkan())
+}
+```
+
+Output:
+```
+6
+100
+0
+```
+
+## Membedah Sintaks Variadic
+
+**`angka ...int`** — titik tiga (`...`) sebelum tipe menandakan parameter ini **variadic**: bisa menerima nol, satu, atau berapa pun argumen bertipe `int`. Di dalam fungsi, `angka` diperlakukan sebagai `[]int` (slice of int) — kamu bisa memakai `range` di atasnya seperti slice biasa. (Kita akan bahas slice secara detail di Unit 5 — untuk sekarang, anggap saja `[]int` sebagai "kumpulan angka int yang berurutan".)
+
+**`for _, n := range angka`** — melakukan iterasi ke setiap elemen di `angka`, mengumpulkannya ke `total`.
+
+**`jumlahkan()`** tanpa argumen sama sekali — tetap valid! `angka` di dalam fungsi menjadi slice kosong, loop `range` tidak berjalan sama sekali, dan fungsi mengembalikan `0` (nilai awal `total`).
+
+Bayangkan parameter variadic seperti keranjang belanja yang elastis — kamu bisa memasukkan berapa pun barang ke dalamnya, bahkan mengosongkannya sama sekali, dan keranjang itu tetap "satu keranjang" yang bisa kamu proses sekaligus.
+
+:::note
+Parameter variadic **wajib** jadi parameter **terakhir** dalam daftar parameter, dan hanya boleh ada **satu** parameter variadic per fungsi. `func f(a int, b ...string)` valid, tapi `func f(a ...int, b string)` atau `func f(a ...int, b ...string)` tidak diizinkan Go.
+:::
+
+## Memanggil dengan Slice: Spread Operator
+
+Kalau data yang ingin kamu kirim sudah berupa slice, kamu bisa "membongkarnya" jadi argumen individual dengan spread operator `...` setelah nama variabelnya:
+
+```go
+package main
+
+import "fmt"
+
+func jumlahkan(angka ...int) int {
+    total := 0
+    for _, n := range angka {
+        total += n
+    }
+    return total
+}
+
+func main() {
+    daftarAngka := []int{5, 10, 15}
+    fmt.Println(jumlahkan(daftarAngka...))
+}
+```
+
+Output:
+```
+30
+```
+
+**`daftarAngka...`** — titik tiga **setelah** nama variabel slice artinya "sebarkan isi slice ini sebagai argumen-argumen terpisah", bukan mengirim slice itu sebagai satu argumen tunggal. Tanpa `...` di sini, Go akan menolak compile karena tipe tidak cocok (`[]int` bukan `int`).
+
+:::tip
+Titik tiga (`...`) punya dua peran berbeda tergantung posisinya: di **deklarasi parameter** (`func f(x ...int)`), artinya "kumpulkan argumen jadi slice". Di **pemanggilan fungsi** (`f(slice...)`), artinya "sebarkan slice jadi argumen individual". Dua arah yang berlawanan, simbol yang sama!
+:::
+
+## Contoh Nyata: fmt.Println Sendiri Variadic!
+
+Kamu sebenarnya sudah memakai variadic function sejak Unit 1 tanpa sadar:
+
+```go
+fmt.Println("a", "b", "c") // menerima 3 argumen
+fmt.Println(1, 2)          // menerima 2 argumen
+fmt.Println()              // menerima 0 argumen
+```
+
+Signature aslinya kira-kira `func Println(a ...interface{}) (n int, err error)` — itu sebabnya `fmt.Println` bisa menerima berapa pun argumen dengan tipe apa pun.
+
+## Kesalahan Umum
+
+1. **Mengirim slice tanpa spread operator:**
+   ```go
+   daftarAngka := []int{1, 2, 3}
+   jumlahkan(daftarAngka) // ERROR: cannot use daftarAngka (type []int) as type int
+   ```
+   Tanpa `...`, Go mengira kamu ingin mengirim `daftarAngka` sebagai satu argumen `int` — padahal tipenya `[]int`. Solusinya: `jumlahkan(daftarAngka...)`.
+
+2. **Menaruh parameter variadic bukan di posisi terakhir:**
+   ```go
+   func cetak(label string, angka ...int, catatan string) { // ERROR
+       // ...
+   }
+   ```
+   Parameter variadic harus selalu jadi parameter paling akhir.
+
+3. **Mengira parameter variadic bisa lebih dari satu per fungsi:**
+   ```go
+   func gabung(a ...int, b ...string) { // ERROR: hanya boleh satu variadic
+       // ...
+   }
+   ```
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l4-ex1"
+  title="Cari Nilai Terbesar"
+  description="Lengkapi fungsi variadic <code>terbesar</code> yang mengembalikan nilai terbesar dari sejumlah angka int."
+  type="code-output"
+  expectedOutput="42"
+  starterCode={`package main
+
+import "fmt"
+
+func terbesar(angka ...int) int {
+    maks := angka[0]
+    for _, n := range angka {
+        if n > maks {
+            maks = n
+        }
+    }
+    return maks
+}
+
+func main() {
+    fmt.Println(terbesar(7, 42, 15, 3))
+}`}
+  hints={["Fungsi terbesar sudah lengkap — coba jalankan dulu untuk melihat hasilnya.", "maks dimulai dari elemen pertama, lalu diperbarui setiap kali ketemu angka yang lebih besar."]}
+  explanation="terbesar(7, 42, 15, 3) menelusuri semua angka dan memperbarui maks setiap kali menemukan nilai yang lebih besar, menghasilkan 42 sebagai nilai terbesar."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l4-ex2"
+  title="Memahami Spread Operator"
+  description="Kamu punya variabel slice <code>daftar</code> berisi tiga angka int, dan ingin mengirim isinya ke fungsi variadic <code>jumlahkan(angka ...int)</code>. Cara pemanggilan mana yang benar?"
+  type="multiple-choice"
+  options={["jumlahkan(daftar...)", "jumlahkan(daftar)", "jumlahkan(*daftar)", "jumlahkan(...daftar)"]}
+  correctIndex={0}
+  hints={["Titik tiga diletakkan SETELAH nama variabel slice saat memanggil fungsi, bukan sebelumnya.", "jumlahkan(daftar) akan gagal compile karena tipe tidak cocok (slice vs int)."]}
+  explanation="Spread operator ditulis setelah nama variabel: jumlahkan(daftar...). Ini menyebarkan setiap elemen slice sebagai argumen individual ke parameter variadic."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l4-ex3"
+  title="Lengkapi Parameter Variadic"
+  description="Lengkapi deklarasi parameter agar fungsi bisa menerima jumlah argumen string berapa pun."
+  type="fill-blank"
+  template="func gabungkan(kata {{BLANK}}string) string {"
+  blanks={["..."]}
+  hints={["Simbol titik tiga diletakkan tepat sebelum nama tipe pada deklarasi parameter."]}
+  explanation="Titik tiga sebelum tipe (...string) menandakan parameter variadic — fungsi bisa menerima nol, satu, atau banyak argumen string sekaligus."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi variadic | `func f(x ...int)` |
+| Parameter di dalam fungsi | Diperlakukan sebagai `[]int` |
+| Memanggil dengan argumen individual | `f(1, 2, 3)` |
+| Memanggil dengan slice (spread) | `f(slice...)` |
+| Aturan posisi | Wajib parameter terakhir, cuma boleh satu |
+
+Sekarang mari pelajari kontrol eksekusi yang unik: **`defer`** — cara menunda sebuah aksi sampai fungsi benar-benar selesai, sangat berguna untuk urusan "bersih-bersih" seperti menutup file atau koneksi.

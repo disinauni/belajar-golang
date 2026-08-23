@@ -1,0 +1,213 @@
+---
+title: "Defer"
+unit: 4
+lesson: 5
+description: "Menunda eksekusi sebuah statement sampai fungsi selesai — cara Go menangani cleanup dengan rapi"
+objectives:
+  - "Memahami bahwa defer menunda eksekusi sampai fungsi sekitarnya return"
+  - "Mengetahui urutan LIFO (Last In, First Out) untuk multiple defer"
+  - "Memakai defer untuk tugas cleanup seperti menutup resource"
+estimatedTime: 25
+prerequisites: ["unit-4/04-variadic-functions"]
+difficulty: "beginner"
+tags: ["defer", "lifo", "cleanup", "fungsi"]
+---
+
+# Defer
+
+Bayangkan kamu membuka file, lalu di tengah fungsi ada beberapa jalur `return` berbeda (sukses, error, dll). Di setiap jalur itu, kamu harus ingat menutup file itu — mudah lupa, dan gampang jadi sumber bug. Go punya solusi elegan: `defer`.
+
+## Defer Dasar
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Mulai")
+    defer fmt.Println("Selesai (deferred)")
+    fmt.Println("Tengah")
+}
+```
+
+Output:
+```
+Mulai
+Tengah
+Selesai (deferred)
+```
+
+## Membedah Defer
+
+**`defer fmt.Println("Selesai (deferred)")`** — keyword `defer` menunda pemanggilan `fmt.Println(...)` ini sampai **fungsi yang sedang berjalan** (`main` di sini) benar-benar selesai (sebelum benar-benar return ke pemanggilnya) — **bukan** sampai akhir blok kode terdekat.
+
+Perhatikan urutan output: meskipun `defer` ditulis sebagai baris **kedua**, ia tercetak **terakhir** — setelah `"Tengah"`. Statement lain di bawahnya (`fmt.Println("Tengah")`) tetap jalan dulu secara normal, baru setelah `main()` selesai, statement yang di-defer dijalankan.
+
+Bayangkan `defer` seperti menaruh catatan tempel "matikan lampu sebelum pulang" di pintu — kamu tetap kerja seperti biasa, tapi catatan itu **pasti** dilihat dan dijalankan tepat sebelum kamu benar-benar keluar ruangan.
+
+## Urutan LIFO untuk Multiple Defer
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    defer fmt.Println("Satu")
+    defer fmt.Println("Dua")
+    defer fmt.Println("Tiga")
+    fmt.Println("Fungsi utama berjalan")
+}
+```
+
+Output:
+```
+Fungsi utama berjalan
+Tiga
+Dua
+Satu
+```
+
+Kalau ada **beberapa** statement `defer` dalam satu fungsi, urutan eksekusinya adalah **LIFO** (*Last In, First Out*) — yang di-defer **paling terakhir** dijalankan **paling dulu**. Persis seperti tumpukan piring: piring terakhir yang kamu taruh di atas, itu yang pertama kali kamu ambil lagi.
+
+:::note
+Ingat urutannya dengan analogi tumpukan (*stack*): `defer` menambahkan tugas ke atas tumpukan, dan saat fungsi selesai, tumpukan itu "dibongkar" dari atas ke bawah — jadi yang terakhir masuk, keluar duluan.
+:::
+
+## Jebakan: Argumen Dievaluasi Saat Ini, Bukan Nanti
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    i := 0
+    defer fmt.Println("nilai i saat defer dibuat:", i)
+    i = 100
+    fmt.Println("nilai i sekarang:", i)
+}
+```
+
+Output:
+```
+nilai i sekarang: 100
+nilai i saat defer dibuat: 0
+```
+
+Ini sering mengejutkan pemula: **argumen** dari statement yang di-defer dievaluasi **saat baris `defer` itu dieksekusi**, bukan saat pemanggilannya benar-benar dijalankan nanti. Jadi `i` "difoto" nilainya (`0`) tepat saat `defer` ditulis — meskipun `i` diubah jadi `100` setelahnya, pemanggilan `fmt.Println` yang ditunda tetap memakai nilai `0` yang sudah "dibekukan" itu.
+
+:::warning
+Yang ditunda hanyalah **pemanggilan fungsinya** (kapan fungsi itu benar-benar dijalankan), bukan **evaluasi argumennya**. Kalau kamu butuh nilai *terkini* saat defer benar-benar jalan, bungkus dalam fungsi anonim: `defer func() { fmt.Println(i) }()` — ini akan kita pelajari lebih dalam di pelajaran **Closures** berikutnya.
+:::
+
+## Kegunaan Umum: Cleanup
+
+Pola paling umum untuk `defer` adalah memastikan resource "dibersihkan" tidak peduli lewat jalur mana pun fungsi itu berakhir:
+
+```go
+func prosesData(valid bool) {
+    fmt.Println("Membuka koneksi...")
+    defer fmt.Println("Menutup koneksi.") // pasti jalan, apa pun hasilnya
+
+    if !valid {
+        fmt.Println("Data tidak valid, berhenti di sini.")
+        return // defer TETAP jalan meskipun return lebih awal
+    }
+    fmt.Println("Memproses data...")
+}
+```
+
+Tidak peduli fungsi berhenti lewat `return` di tengah atau sampai akhir kode, statement yang di-defer **selalu** dijalankan — inilah yang membuat `defer` sangat andal untuk cleanup dibanding menaruh kode "penutup" manual di setiap kemungkinan jalur keluar.
+
+## Kesalahan Umum
+
+1. **Mengira defer langsung jalan di urutan kode normal:**
+   ```go
+   defer fmt.Println("A")
+   fmt.Println("B")
+   // Output: B lalu A — bukan A lalu B!
+   ```
+
+2. **Mengira argumen defer dievaluasi belakangan, bukan saat statement defer ditulis:**
+   ```go
+   n := 5
+   defer fmt.Println(n) // n "difoto" sekarang: nilainya 5
+   n = 10
+   // Saat fungsi selesai, tetap mencetak 5, bukan 10
+   ```
+
+3. **Menaruh defer di dalam loop untuk resource yang harusnya ditutup per-iterasi:**
+   ```go
+   for i := 0; i < 1000; i++ {
+       // defer bukaFile(...) di sini akan menumpuk 1000 defer
+       // dan semuanya baru dijalankan setelah SELURUH fungsi selesai,
+       // bukan setiap akhir iterasi — bisa menghabiskan resource!
+   }
+   ```
+   `defer` selalu terikat pada **fungsi** yang sedang berjalan, bukan blok kode terdekat (seperti loop atau `if`).
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l5-ex1"
+  title="Urutan Eksekusi Defer"
+  description="Prediksi urutan output dari program yang punya beberapa statement defer."
+  type="code-output"
+  expectedOutput="Program dimulai
+C
+B
+A"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    defer fmt.Println("A")
+    defer fmt.Println("B")
+    defer fmt.Println("C")
+    fmt.Println("Program dimulai")
+}`}
+  hints={["Ingat: defer berjalan LIFO — yang di-defer terakhir, jalan duluan.", "Statement non-defer (fmt.Println biasa) selalu jalan duluan sebelum semua defer."]}
+  explanation="fmt.Println biasa langsung jalan mencetak 'Program dimulai'. Lalu ketiga defer dijalankan dengan urutan LIFO: C (defer terakhir) duluan, lalu B, lalu A (defer pertama) paling akhir."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l5-ex2"
+  title="Kapan Argumen Defer Dievaluasi"
+  description="Kapan nilai argumen dari statement yang di-defer sebenarnya dievaluasi/ditentukan?"
+  type="multiple-choice"
+  options={["Saat baris defer itu sendiri dieksekusi, bukan saat fungsinya benar-benar dipanggil", "Saat fungsi yang di-defer benar-benar dipanggil di akhir", "Saat program pertama kali di-compile", "Argumen tidak pernah dievaluasi untuk statement defer"]}
+  correctIndex={0}
+  hints={["Ingat contoh variabel i yang 'difoto' nilainya sebelum diubah.", "Yang ditunda cuma pemanggilan fungsinya, bukan evaluasi argumennya."]}
+  explanation="Argumen sebuah defer dievaluasi tepat saat baris defer dieksekusi (nilainya 'dibekukan' saat itu juga). Yang benar-benar ditunda hanyalah pemanggilan fungsinya sampai fungsi sekitarnya selesai."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l5-ex3"
+  title="Lengkapi Statement Defer"
+  description="Lengkapi keyword yang menunda eksekusi sebuah pemanggilan fungsi sampai fungsi sekitarnya selesai."
+  type="fill-blank"
+  template='{{BLANK}} fmt.Println("Selesai")'
+  blanks={["defer"]}
+  hints={["Keyword ini sama dengan nama fitur yang sedang kamu pelajari di pelajaran ini."]}
+  explanation="Keyword 'defer' menunda pemanggilan fungsi yang mengikutinya sampai fungsi yang sedang berjalan benar-benar selesai."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Menunda eksekusi | `defer fmt.Println("selesai")` |
+| Dijalankan saat | Fungsi sekitarnya selesai (sebelum benar-benar return) |
+| Urutan multiple defer | LIFO — terakhir di-defer, pertama dijalankan |
+| Evaluasi argumen | Saat baris defer dieksekusi, bukan saat dijalankan nanti |
+| Kegunaan umum | Cleanup (tutup file, koneksi, dll), pesan penutup |
+
+Sekarang saatnya membahas topik yang sedikit lebih menantang tapi sangat kuat: **closures** — fungsi anonim yang bisa "mengingat" dan mengakses variabel dari scope di luar dirinya. Kita juga akan bongkar satu jebakan klasik yang sering bikin pemula bingung!

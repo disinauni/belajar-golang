@@ -1,0 +1,194 @@
+---
+title: "Testing dengan go test"
+unit: 8
+lesson: 2
+description: "Menulis unit test untuk kode Go dengan package testing dan pola table-driven test"
+objectives:
+  - "Memahami kenapa automated testing penting"
+  - "Menulis test function dengan func TestX(t *testing.T)"
+  - "Memakai pola table-driven test yang idiomatik di Go"
+estimatedTime: 40
+prerequisites: ["unit-8/01-package-module"]
+difficulty: "intermediate"
+tags: ["testing", "go-test", "table-driven-test"]
+---
+
+# Testing dengan go test
+
+Bayangkan kamu punya fungsi `HitungDiskon` yang dipakai di 50 tempat berbeda dalam aplikasimu. Suatu hari kamu "memperbaiki" fungsi itu — ternyata perbaikanmu malah merusak logikanya untuk kasus tertentu. Tanpa test otomatis, kamu baru tahu ada bug setelah user komplain. Dengan test otomatis, kamu tahu **sebelum** kodenya di-deploy.
+
+:::note
+Testing sungguhan butuh file terpisah (`_test.go`) dan perintah `go test` — bukan `go run` — sehingga tidak bisa langsung dijalankan lewat playground satu-file di situs ini. Kode `_test.go` di lesson ini untuk **dibaca dan dipahami**; Latihan di bagian akhir tetap berupa program `package main` yang bisa kamu jalankan.
+:::
+
+## Anatomi Test Function
+
+Misalnya kamu punya fungsi sederhana ini di file `matematika.go`:
+
+```go
+package matematika
+
+func Tambah(a, b int) int {
+    return a + b
+}
+```
+
+Test-nya ditulis di file terpisah bernama `matematika_test.go`:
+
+```go
+package matematika
+
+import "testing"
+
+func TestTambah(t *testing.T) {
+    hasil := Tambah(2, 3)
+    want := 5
+
+    if hasil != want {
+        t.Errorf("Tambah(2, 3) = %d; want %d", hasil, want)
+    }
+}
+```
+
+Menjalankan `go test` di terminal akan meng-compile dan mengeksekusi semua fungsi yang diawali `Test` di package tersebut.
+
+## Membedah Test Function
+
+**Nama file `_test.go`** — Go secara otomatis mengenali file yang diakhiri `_test.go` sebagai file test, dan tidak menyertakannya saat kamu `go build` program biasa.
+
+**`func TestTambah(t *testing.T)`** — nama fungsi test **wajib** diawali `Test` (huruf kapital), diikuti parameter `t *testing.T` — objek yang menyediakan method untuk melaporkan kegagalan.
+
+**`t.Errorf(...)`** — melaporkan test **gagal**, tapi mengizinkan test lain di file yang sama tetap lanjut jalan. Formatnya sama seperti `fmt.Printf`.
+
+**`t.Fatalf(...)`** — mirip `Errorf`, tapi langsung menghentikan test function saat itu juga (dipakai kalau melanjutkan test tidak masuk akal lagi, misalnya setelah error fatal seperti gagal membuka koneksi).
+
+Kalau tidak ada `t.Errorf`/`t.Fatalf` yang dipanggil, test dianggap **lolos (pass)** secara otomatis — Go tidak butuh kamu menulis "assert sukses" secara eksplisit.
+
+## Table-Driven Test — Pola Paling Idiomatik
+
+Daripada menulis satu fungsi test terpisah untuk setiap skenario, idiom Go adalah **table-driven test**: satu slice berisi banyak kasus uji, dijalankan dalam satu loop.
+
+```go
+package matematika
+
+import "testing"
+
+func TestTambah(t *testing.T) {
+    kasus := []struct {
+        nama string
+        a, b int
+        want int
+    }{
+        {"dua positif", 2, 3, 5},
+        {"dengan nol", 0, 5, 5},
+        {"dua negatif", -2, -3, -5},
+    }
+
+    for _, k := range kasus {
+        t.Run(k.nama, func(t *testing.T) {
+            hasil := Tambah(k.a, k.b)
+            if hasil != k.want {
+                t.Errorf("Tambah(%d, %d) = %d; want %d", k.a, k.b, hasil, k.want)
+            }
+        })
+    }
+}
+```
+
+## Membedah Table-Driven Test
+
+**`kasus := []struct{ ... }{ ... }`** — slice berisi anonymous struct, masing-masing merepresentasikan satu skenario uji: nama deskriptif, input (`a`, `b`), dan hasil yang diharapkan (`want`).
+
+**`for _, k := range kasus`** — loop biasa (dari Unit 3!) menjalankan setiap kasus satu per satu.
+
+**`t.Run(k.nama, func(t *testing.T) { ... })`** — menjalankan **subtest** dengan nama `k.nama`. Kalau salah satu kasus gagal, `go test` menunjukkan persis subtest mana yang gagal (misalnya `TestTambah/dua_negatif`), bukan cuma "TestTambah gagal" tanpa detail.
+
+:::tip
+Menambah kasus uji baru ke pola ini cuma butuh menambah satu baris di slice `kasus` — tidak perlu menulis fungsi test baru. Inilah kenapa pola ini begitu populer di komunitas Go.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa awalan `Test` di nama fungsi:**
+   ```go
+   func Tambah2Angka(t *testing.T) { ... }  // ERROR: tidak dikenali sebagai test, go test melewatinya diam-diam
+   ```
+   Go **tidak memberi error** untuk ini — fungsinya cuma dilewati begitu saja, bikin kamu mengira semua test lolos padahal test itu tidak pernah benar-benar jalan.
+
+2. **Memakai `t.Fatalf` di dalam goroutine terpisah:**
+   ```go
+   go func() {
+       t.Fatalf("gagal")  // BERBAHAYA: t.Fatal harus dipanggil dari goroutine yang sama dengan test
+   }()
+   ```
+   `t.Fatal`/`t.FailNow` cuma boleh dipanggil dari goroutine utama test tersebut — topik ini terkait konkurensi yang sudah kamu pelajari di Unit 7.
+
+## Latihan
+
+Karena `go test` tidak bisa dijalankan lewat playground satu-file, latihan berikut mensimulasikan **konsep assertion** (inti dari testing) memakai `package main` biasa — logikanya sama persis dengan `t.Errorf`, cuma dipanggil manual di `main()`.
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u8l2-ex1"
+  title="Simulasi Assertion Sederhana"
+  description="Lengkapi program agar mencetak 'PASS' jika hasil pemanggilan fungsi sesuai harapan."
+  type="code-output"
+  expectedOutput="PASS"
+  starterCode={`package main
+
+import "fmt"
+
+func kuadrat(n int) int {
+    return n * n
+}
+
+func main() {
+    got := kuadrat(4)
+    want := 16
+
+    if got != want {
+        fmt.Println("FAIL")
+    } else {
+        fmt.Println("PASS")
+    }
+}`}
+  hints={["Kode ini sudah benar — kuadrat(4) memang menghasilkan 16.", "Coba jalankan dulu untuk melihat hasilnya."]}
+  explanation="kuadrat(4) menghasilkan 16, sama dengan 'want', sehingga kondisi got != want bernilai false dan program mencetak PASS — inilah logika inti yang dipakai t.Errorf di balik layar."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u8l2-ex2"
+  title="Nama Fungsi Test"
+  description="Fungsi test mana yang akan dikenali dan dijalankan oleh perintah <code>go test</code>?"
+  type="multiple-choice"
+  options={["func testTambah(t *testing.T)", "func TestTambah(t *testing.T)", "func Tambah_Test(t *testing.T)", "func tambahTest(t *testing.T)"]}
+  correctIndex={1}
+  hints={["Awalan yang dicari go test adalah huruf kapital 'Test'.", "Ini juga otomatis membuat fungsinya exported."]}
+  explanation="go test hanya mengenali fungsi yang diawali kapital 'Test', diikuti parameter (t *testing.T). Nama lain akan dilewati begitu saja tanpa peringatan."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u8l2-ex3"
+  title="Struktur Table-Driven Test"
+  description="Lengkapi baris untuk menjalankan setiap kasus uji sebagai subtest bernama sesuai deskripsinya."
+  type="fill-blank"
+  template="t.{{BLANK}}(k.nama, func(t *testing.T) { ... })"
+  blanks={["Run"]}
+  hints={["Method ini menjalankan subtest dengan nama tertentu."]}
+  explanation="t.Run(nama, func) menjalankan subtest bernama 'nama', membuat laporan go test lebih detail saat ada kasus yang gagal."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Keterangan |
+|---|---|
+| File test | Diakhiri `_test.go`, terpisah dari kode biasa |
+| Nama fungsi test | Diawali kapital `Test`, parameter `t *testing.T` |
+| Tandai gagal | `t.Errorf(...)` (lanjut) atau `t.Fatalf(...)` (berhenti) |
+| Table-driven test | Slice kasus uji + loop + `t.Run` |
+
+Di pelajaran berikutnya, kita akan bahas **JSON encoding** — cara mengubah struct Go jadi teks JSON dan sebaliknya, kemampuan penting untuk komunikasi antar aplikasi!

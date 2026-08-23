@@ -1,0 +1,179 @@
+---
+title: "Struct"
+unit: 6
+lesson: 1
+description: "Mengelompokkan data terkait dalam satu tipe kustom dengan struct"
+objectives:
+  - "Mendeklarasikan tipe struct kustom dengan type ... struct"
+  - "Membuat instance struct dengan struct literal"
+  - "Mengakses dan mengubah field struct dengan notasi titik"
+estimatedTime: 35
+prerequisites: ["unit-5/05-project-buku-nilai"]
+difficulty: "intermediate"
+tags: ["struct", "type", "data-modeling"]
+---
+
+# Struct
+
+Sejauh ini kamu menyimpan data terkait di variabel-variabel terpisah — nama di satu variabel, umur di variabel lain, nilai di variabel ketiga. Cara ini cepat berantakan begitu datanya makin kompleks. **Struct** menyelesaikan masalah ini: mengelompokkan beberapa field jadi satu tipe data kustom yang kamu definisikan sendiri.
+
+## Mendefinisikan dan Membuat Struct
+
+```go
+package main
+
+import "fmt"
+
+type Siswa struct {
+    Nama  string
+    Umur  int
+    Nilai float64
+}
+
+func main() {
+    budi := Siswa{
+        Nama:  "Budi",
+        Umur:  17,
+        Nilai: 88.5,
+    }
+
+    fmt.Println(budi.Nama)
+    fmt.Println(budi.Umur)
+    fmt.Println(budi.Nilai)
+}
+```
+
+Output:
+```
+Budi
+17
+88.5
+```
+
+## Membedah Setiap Bagian
+
+**`type Siswa struct { ... }`** — mendefinisikan tipe data baru bernama `Siswa`. Kata kunci `type` selalu dipakai untuk membuat tipe kustom, dan `struct` memberitahu Go bahwa tipe ini adalah kumpulan field.
+
+Bayangkan struct seperti formulir pendaftaran: ada kotak "Nama", kotak "Umur", kotak "Nilai" — masing-masing kotak (field) punya nama dan tipe data sendiri, tapi semuanya jadi satu formulir (struct) yang utuh.
+
+**`Nama string`, `Umur int`, `Nilai float64`** — deklarasi field, sama seperti deklarasi variabel biasa: nama field dulu, lalu tipenya.
+
+**`budi := Siswa{ Nama: "Budi", Umur: 17, Nilai: 88.5 }`** — ini disebut *struct literal*: cara membuat instance/nilai baru dari sebuah tipe struct. Menulis nama field (`Nama:`, `Umur:`, `Nilai:`) sebelum tiap nilai membuat kode lebih jelas dan tidak bergantung urutan deklarasi field.
+
+**`budi.Nama`** — notasi titik (`.`) dipakai untuk mengakses field tertentu dari sebuah struct. Ini notasi titik yang sama seperti saat kamu memanggil `fmt.Println` dari package `fmt` — bedanya di sini kamu mengakses field data, bukan fungsi package.
+
+## Zero Value Struct
+
+Kalau kamu deklarasikan struct tanpa mengisi nilainya, setiap field otomatis diisi *zero value* sesuai tipenya:
+
+```go
+var kosong Siswa
+fmt.Println(kosong)
+// Output: { 0 0}
+```
+
+`Nama` (string) jadi `""`, `Umur` (int) jadi `0`, `Nilai` (float64) jadi `0` — persis seperti zero value variabel biasa yang sudah kamu pelajari di Unit 1.
+
+## Mengubah Field
+
+Field struct bisa diubah setelah instance dibuat, selama kamu punya variabel (bukan konstanta) yang menyimpannya:
+
+```go
+budi.Umur = 18
+fmt.Println(budi.Umur) // 18
+```
+
+:::note
+Struct literal juga bisa ditulis tanpa nama field, cukup mengandalkan urutan nilai sesuai urutan deklarasi field: `Siswa{"Budi", 17, 88.5}`. Tapi gaya ini **rawan bug** — kalau urutan field berubah nanti, kode lama jadi salah tanpa ada error compile. Biasakan selalu pakai nama field seperti contoh di atas.
+:::
+
+:::tip
+Nama field yang diawali huruf besar (seperti `Nama`, `Umur`) berarti field itu *exported* — bisa diakses dari package lain, mengikuti aturan huruf besar/kecil yang sudah kamu pelajari di Unit 1 untuk fungsi.
+:::
+
+## Kesalahan Umum
+
+1. **Urutan salah pada struct literal tanpa nama field:**
+   ```go
+   siswa := Siswa{17, "Budi", 88.5} // ERROR: cannot use 17 (untyped int constant) as string value
+   ```
+   Field pertama `Siswa` adalah `Nama` (string), tapi di sini yang ditulis duluan adalah angka `17` — Go menolak compile karena tipenya tidak cocok dengan urutan field.
+
+2. **Lupa koma di akhir baris pada struct literal multi-baris:**
+   ```go
+   budi := Siswa{
+       Nama:  "Budi",
+       Umur:  17  // ERROR: missing ',' before newline in composite literal
+       Nilai: 88.5,
+   }
+   ```
+   Setiap baris field dalam struct literal multi-baris **wajib** diakhiri koma, termasuk baris sebelum baris terakhir.
+
+3. **Mengakses field yang tidak ada:**
+   ```go
+   fmt.Println(budi.Alamat) // ERROR: budi.Alamat undefined (type Siswa has no field or method Alamat)
+   ```
+   Go memeriksa field struct saat compile time — kalau field tidak dideklarasikan di `type`, kompilasi langsung gagal.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l1-ex1"
+  title="Cetak Data Struct"
+  description="Ubah program agar mencetak `Kota: Jakarta` (ganti nilai field Kota di struct literal)."
+  type="code-output"
+  expectedOutput="Kota: Jakarta"
+  starterCode={`package main
+
+import "fmt"
+
+type Alamat struct {
+    Kota string
+}
+
+func main() {
+    rumah := Alamat{Kota: "Bandung"}
+    fmt.Printf("Kota: %s\\n", rumah.Kota)
+}`}
+  hints={["Kamu cuma perlu mengubah nilai field Kota di struct literal.", "Field Kota diisi dengan string di dalam tanda kutip."]}
+  explanation='Mengubah nilai "Bandung" menjadi "Jakarta" di dalam struct literal Alamat{Kota: "Jakarta"} membuat fmt.Printf mencetak "Kota: Jakarta".'
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l1-ex2"
+  title="Zero Value Struct"
+  description="Field <code>Umur int</code> dideklarasikan tapi <code>var s Siswa</code> dibuat tanpa mengisi nilainya. Apa isi <code>s.Umur</code>?"
+  type="multiple-choice"
+  options={["0 (zero value int)", "nil", "Error saat compile", "Angka acak"]}
+  correctIndex={0}
+  hints={["Ingat aturan zero value untuk masing-masing tipe data dari Unit 1.", "int punya zero value 0, bukan nil — nil hanya untuk pointer, slice, map, interface, channel, dan function."]}
+  explanation="Setiap field struct yang tidak diisi otomatis mendapat zero value sesuai tipenya — int menjadi 0, string menjadi string kosong, dan seterusnya."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l1-ex3"
+  title="Lengkapi Akses Field"
+  description="Lengkapi kode untuk mengakses field Nama dari struct budi."
+  type="fill-blank"
+  template="fmt.Println(budi{{BLANK}}Nama)"
+  blanks={["."]}
+  hints={["Field struct diakses dengan satu karakter tanda baca setelah nama variabelnya."]}
+  explanation="Notasi titik (.) dipakai untuk mengakses field manapun dari sebuah instance struct."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi tipe struct | `type Siswa struct { Nama string }` |
+| Struct literal (nama field) | `Siswa{Nama: "Budi"}` |
+| Akses field | `budi.Nama` |
+| Ubah field | `budi.Umur = 18` |
+| Zero value struct | `var s Siswa` |
+
+Di pelajaran berikutnya, kita akan belajar **method & receiver** — cara "menempelkan" fungsi ke struct supaya struct kita punya perilaku, bukan cuma menyimpan data.

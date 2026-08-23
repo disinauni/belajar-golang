@@ -1,0 +1,377 @@
+---
+title: "Project: Buku Nilai Siswa"
+unit: 5
+lesson: 5
+description: "Menggabungkan map, slice, dan sorting untuk membuat laporan nilai siswa yang rapi dan konsisten"
+objectives:
+  - "Menggabungkan map[string][]int untuk memodelkan data nilai per siswa"
+  - "Menghitung rata-rata, nilai tertinggi, dan nilai terendah"
+  - "Menghasilkan laporan dengan urutan yang konsisten meski sumber datanya map"
+estimatedTime: 90
+prerequisites: ["unit-5/04-string-rune-byte"]
+difficulty: "beginner"
+tags: ["project", "map", "slice", "sort", "practice", "integration"]
+---
+
+# Project: Buku Nilai Siswa
+
+Kamu sudah menguasai semua struktur data inti Unit 5: array, slice, map, dan seluk-beluk string. Sekarang saatnya menggabungkan semuanya dalam satu project nyata — **Buku Nilai Siswa**, program yang menyimpan nilai-nilai ujian beberapa siswa, lalu menghasilkan laporan rata-rata, nilai tertinggi, dan nilai terendah.
+
+Seperti project kalkulator di Unit 1, kita akan melewati setiap tahap secara perlahan: planning, pseudocode, implementasi bertahap, lalu testing.
+
+## Spesifikasi Program
+
+Program buku nilai kita harus bisa:
+
+1. Menyimpan **beberapa nilai ujian** untuk **beberapa siswa**
+2. Menampilkan laporan berisi semua nilai dan **rata-rata** tiap siswa, dengan urutan nama yang **konsisten**
+3. Menemukan **nilai tertinggi** dan **nilai terendah** dari seluruh data, beserta nama pemiliknya
+
+Contoh output yang diharapkan:
+```
+=== LAPORAN NILAI SISWA ===
+
+Andi  : [80 90 75]  (rata-rata: 81.67)
+Budi  : [60 70 65]  (rata-rata: 65.00)
+Citra : [95 92 98]  (rata-rata: 95.00)
+
+Nilai tertinggi: 98 (Citra)
+Nilai terendah : 60 (Budi)
+```
+
+## Tahap 1: Planning
+
+**Data apa yang perlu disimpan?**
+- Nilai-nilai tiap siswa — satu siswa punya **banyak** nilai, dan jumlahnya bisa beda-beda antar siswa. Ini pas dengan `map[string][]int`: key-nya nama siswa (`string`), value-nya daftar nilai (`[]int`, slice karena jumlahnya fleksibel).
+- Nilai tertinggi & terendah yang ditemukan sejauh ini, beserta nama pemiliknya.
+
+Kenapa tidak pakai `struct` untuk merepresentasikan "satu siswa" dengan lebih rapi? Karena `struct` baru kita pelajari di Unit 6 — untuk sekarang, kombinasi map dan slice sudah cukup kuat untuk menyelesaikan masalah ini.
+
+**Alur program:**
+1. Definisikan data nilai siswa
+2. Ambil semua nama siswa dari map, lalu **urutkan** (supaya laporan konsisten setiap dijalankan — ingat, urutan `for range` pada map tidak terjamin!)
+3. Untuk setiap siswa (dalam urutan terurut): hitung total dan rata-rata nilainya, sambil melacak nilai tertinggi/terendah keseluruhan
+4. Cetak laporan lengkap
+
+**Edge case yang perlu dipikirkan:**
+- Rata-rata harus dihitung dengan pembagian desimal (`float64`), bukan pembagian integer yang membulatkan ke bawah
+- Bagaimana kalau seorang siswa punya slice nilai kosong? Harus dijaga supaya tidak membagi dengan nol
+
+## Tahap 2: Pseudocode
+
+```
+PROGRAM Buku Nilai:
+    DATA bukuNilai = { "Andi": [80,90,75], "Budi": [60,70,65], "Citra": [95,92,98] }
+
+    namaSiswa = SEMUA KEY dari bukuNilai
+    URUTKAN namaSiswa secara abjad
+
+    TAMPILKAN judul "LAPORAN NILAI SISWA"
+
+    tertinggi = belum ada
+    terendah = belum ada
+
+    UNTUK SETIAP nama DI namaSiswa (urutan terurut):
+        nilaiList = bukuNilai[nama]
+        JIKA nilaiList kosong: LEWATI siswa ini
+
+        total = JUMLAHKAN semua nilai di nilaiList
+        SELAMA menjumlahkan, PERBARUI tertinggi dan terendah jika ditemukan
+        rataRata = total / jumlah nilai (sebagai desimal)
+
+        TAMPILKAN "nama: nilaiList (rata-rata: rataRata)"
+
+    TAMPILKAN "Nilai tertinggi: tertinggi (nama pemiliknya)"
+    TAMPILKAN "Nilai terendah: terendah (nama pemiliknya)"
+```
+
+## Tahap 3: Implementasi
+
+### Versi 1: Kerangka Dasar
+
+Mulai dari yang paling sederhana — data mentah, dicetak apa adanya lewat `for range` langsung tanpa diurutkan:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    buku := map[string][]int{
+        "Andi":  {80, 90, 75},
+        "Budi":  {60, 70, 65},
+        "Citra": {95, 92, 98},
+    }
+
+    fmt.Println("=== LAPORAN NILAI SISWA ===")
+    fmt.Println()
+
+    for nama, nilai := range buku {
+        fmt.Println(nama, ":", nilai)
+    }
+}
+```
+
+Coba jalankan program ini **beberapa kali**. Perhatikan sesuatu yang aneh: urutan siswa yang tercetak bisa berubah-ubah setiap kali dijalankan! Ini bukan bug di kodemu — ini persis peringatan yang kita bahas di pelajaran Map: `for range` pada map **tidak menjamin urutan**. Untuk laporan yang layak dibaca manusia, kita butuh urutan yang konsisten.
+
+### Versi 2: Tambahkan Logika
+
+Sekarang perbaiki masalah urutan dengan mengurutkan nama siswa terlebih dahulu, dan tambahkan perhitungan rata-rata:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    buku := map[string][]int{
+        "Andi":  {80, 90, 75},
+        "Budi":  {60, 70, 65},
+        "Citra": {95, 92, 98},
+    }
+
+    var namaSiswa []string
+    for nama := range buku {
+        namaSiswa = append(namaSiswa, nama)
+    }
+    sort.Strings(namaSiswa)
+
+    fmt.Println("=== LAPORAN NILAI SISWA ===")
+    fmt.Println()
+
+    for _, nama := range namaSiswa {
+        nilaiList := buku[nama]
+        total := 0
+        for _, n := range nilaiList {
+            total += n
+        }
+        rataRata := float64(total) / float64(len(nilaiList))
+        fmt.Printf("%-6s: %v  (rata-rata: %.2f)\n", nama, nilaiList, rataRata)
+    }
+}
+```
+
+Output:
+```
+=== LAPORAN NILAI SISWA ===
+
+Andi  : [80 90 75]  (rata-rata: 81.67)
+Budi  : [60 70 65]  (rata-rata: 65.00)
+Citra : [95 92 98]  (rata-rata: 95.00)
+```
+
+Sekarang urutannya selalu sama setiap kali dijalankan, dan rata-rata sudah muncul. Tinggal satu fitur lagi: nilai tertinggi dan terendah keseluruhan.
+
+## Memahami Kode
+
+### `map[string][]int` — Map Berisi Slice
+
+```go
+buku := map[string][]int{
+    "Andi": {80, 90, 75},
+    ...
+}
+```
+
+Value dari map ini bertipe `[]int`, bukan `int` tunggal — jadi satu key (nama siswa) bisa menyimpan **banyak** nilai sekaligus. Perhatikan `buku[nama]` mengembalikan seluruh slice nilai siswa itu, siap diiterasi.
+
+### Mengurutkan Key Map dengan `sort.Strings`
+
+```go
+var namaSiswa []string
+for nama := range buku {
+    namaSiswa = append(namaSiswa, nama)
+}
+sort.Strings(namaSiswa)
+```
+
+Ini pola standar untuk mendapat urutan konsisten dari map: kumpulkan semua key ke slice kosong lewat `append` di dalam loop, lalu urutkan slice-nya dengan `sort.Strings`. Setelah ini, iterasi lewat `namaSiswa` (bukan langsung lewat `buku`) selalu memberi urutan yang sama.
+
+### Pembagian Desimal untuk Rata-Rata
+
+```go
+rataRata := float64(total) / float64(len(nilaiList))
+```
+
+`total` dan `len(nilaiList)` sama-sama `int`. Kalau langsung dibagi tanpa konversi (`total / len(nilaiList)`), Go melakukan **pembagian integer** yang membuang sisa desimalnya — `245 / 3` akan jadi `81`, bukan `81.67`. Makanya kedua sisi dikonversi ke `float64` dulu sebelum dibagi.
+
+### Format `%-6s` dan `%v`
+
+```go
+fmt.Printf("%-6s: %v  (rata-rata: %.2f)\n", nama, nilaiList, rataRata)
+```
+
+`%-6s` mencetak string rata kiri dengan lebar minimal 6 karakter (menambah spasi di kanan kalau lebih pendek) — supaya kolom nama rapi sejajar. `%v` adalah *verb* serbaguna yang mencetak nilai apa adanya sesuai tipenya — untuk `[]int`, hasilnya seperti `[80 90 75]`.
+
+## Tahap 4: Testing
+
+**Test 1: Data normal (tiga siswa, jumlah nilai sama)**
+```
+Data: Andi[80,90,75], Budi[60,70,65], Citra[95,92,98]
+Expected rata-rata: Andi 81.67, Budi 65.00, Citra 95.00
+Expected tertinggi: 98 (Citra)
+Expected terendah: 60 (Budi)
+```
+
+**Test 2: Siswa dengan jumlah nilai berbeda**
+```
+Tambahkan "Dedi": {100} -- cuma satu nilai
+Expected rata-rata Dedi: 100.00 (rata-rata dari satu angka ya angka itu sendiri)
+Expected tertinggi baru: 100 (Dedi)
+```
+Ini membuktikan kenapa kita pakai `[]int` (fleksibel), bukan array berukuran tetap — setiap siswa boleh punya jumlah nilai yang berbeda.
+
+**Test 3: Ada dua siswa dengan nilai tertinggi yang sama (seri)**
+```
+Andi punya nilai 98, Citra juga punya nilai 98
+Expected: program tetap jalan, mengambil salah satu (siapa pun yang ditemukan lebih dulu dalam urutan pengecekan)
+```
+
+**Test 4: Siswa dengan slice nilai kosong**
+```
+Tambahkan "Eka": {} -- tidak ada nilai sama sekali
+Expected: baris Eka dilewati (tidak dihitung rata-ratanya), program tidak panic karena pembagian dengan nol
+```
+Ini alasan kenapa kode final di bawah punya pengecekan `if len(nilaiList) == 0 { continue }` sebelum menghitung rata-rata.
+
+:::tip
+Perhatikan Test 4 — ini contoh nyata kenapa memikirkan edge case sejak Tahap 1 itu penting. Tanpa pengecekan itu, `total / len(nilaiList)` dengan `len` bernilai 0 akan menghasilkan `NaN` (Not a Number) untuk `float64`, bukan error yang jelas.
+:::
+
+## Kode Solusi Lengkap (Final Version)
+
+Berikut kode lengkap dengan pelacakan nilai tertinggi dan terendah, plus penanganan edge case:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    // === Data Nilai Siswa ===
+    buku := map[string][]int{
+        "Andi":  {80, 90, 75},
+        "Budi":  {60, 70, 65},
+        "Citra": {95, 92, 98},
+    }
+
+    // === Urutkan nama siswa agar laporan konsisten ===
+    var namaSiswa []string
+    for nama := range buku {
+        namaSiswa = append(namaSiswa, nama)
+    }
+    sort.Strings(namaSiswa)
+
+    // === Header Laporan ===
+    fmt.Println("=== LAPORAN NILAI SISWA ===")
+    fmt.Println()
+
+    tertinggi := -1
+    terendah := -1
+    siswaTertinggi := ""
+    siswaTerendah := ""
+
+    for _, nama := range namaSiswa {
+        nilaiList := buku[nama]
+        if len(nilaiList) == 0 {
+            continue // lewati siswa tanpa nilai, hindari bagi dengan nol
+        }
+
+        total := 0
+        for _, n := range nilaiList {
+            total += n
+            if tertinggi == -1 || n > tertinggi {
+                tertinggi = n
+                siswaTertinggi = nama
+            }
+            if terendah == -1 || n < terendah {
+                terendah = n
+                siswaTerendah = nama
+            }
+        }
+        rataRata := float64(total) / float64(len(nilaiList))
+
+        fmt.Printf("%-6s: %v  (rata-rata: %.2f)\n", nama, nilaiList, rataRata)
+    }
+
+    // === Ringkasan ===
+    fmt.Println()
+    fmt.Printf("Nilai tertinggi: %d (%s)\n", tertinggi, siswaTertinggi)
+    fmt.Printf("Nilai terendah : %d (%s)\n", terendah, siswaTerendah)
+}
+```
+
+Output:
+```
+=== LAPORAN NILAI SISWA ===
+
+Andi  : [80 90 75]  (rata-rata: 81.67)
+Budi  : [60 70 65]  (rata-rata: 65.00)
+Citra : [95 92 98]  (rata-rata: 95.00)
+
+Nilai tertinggi: 98 (Citra)
+Nilai terendah : 60 (Budi)
+```
+
+## Challenge Bonus
+
+Sudah selesai? Coba tantangan tambahan ini:
+
+**Challenge 1: Tambah Siswa Baru**
+
+Tambahkan satu atau dua siswa baru ke `buku`, lengkap dengan nilai-nilainya. Perhatikan bagaimana laporan otomatis menyesuaikan — nama baru akan otomatis masuk ke urutan yang benar (karena `sort.Strings`) tanpa kamu perlu mengubah logika apa pun.
+
+**Challenge 2: Rata-Rata Keseluruhan Kelas**
+
+Tambahkan satu baris tambahan di akhir laporan yang menghitung rata-rata **seluruh kelas** — total semua nilai dari semua siswa, dibagi jumlah total nilai (bukan rata-rata dari rata-rata!). Contoh output tambahan: `Rata-rata kelas: 80.56`.
+
+**Challenge 3: Predikat Huruf**
+
+Tambahkan predikat huruf (A/B/C/D) di samping rata-rata tiap siswa, memakai `if/else` yang sudah kamu pelajari di Unit 2:
+```go
+var predikat string
+switch {
+case rataRata >= 90:
+    predikat = "A"
+case rataRata >= 80:
+    predikat = "B"
+case rataRata >= 70:
+    predikat = "C"
+default:
+    predikat = "D"
+}
+```
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+Dalam project ini, kamu menggabungkan **hampir semua konsep Unit 5**:
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| `map[string][]int` | Menyimpan banyak nilai per nama siswa |
+| Slice (`[]int`, `[]string`) | Menyimpan daftar nilai dan daftar nama |
+| `sort.Strings` | Mengurutkan key map agar laporan konsisten |
+| `for range` atas map dan slice | Iterasi data siswa dan nilai-nilainya |
+| Konversi `float64()` | Pembagian desimal yang akurat untuk rata-rata |
+| `%-6s`, `%v`, `%.2f` di `Printf` | Format laporan yang rapi dan mudah dibaca |
+| Penanganan edge case | Menghindari bagi dengan nol pada slice kosong |
+
+## Penutup Unit 5
+
+Selamat! Kamu sudah menyelesaikan **Unit 5: Struktur Data**! Mari recap apa yang sudah kamu kuasai:
+
+- Array — struktur data berukuran tetap dan sifat value type-nya
+- Slice — struktur data dinamis paling sering dipakai di Go, lengkap dengan `len`/`cap`, `append`, slicing, dan gotcha berbagi underlying array
+- Map — struktur data key-value, pola comma-ok, `delete()`, dan pentingnya mengurutkan hasil iterasi
+- String, rune, dan byte — bagaimana Go benar-benar menyimpan teks, dan cara indexing karakter yang benar untuk teks non-ASCII
+- Menggabungkan semuanya dalam satu project nyata dari planning sampai testing
+
+Struktur data ini adalah tulang punggung hampir setiap program Go yang akan kamu tulis setelah ini. Di **Unit 6**, kamu akan belajar **struct dan interface** — cara membungkus data yang saling berhubungan (seperti "satu siswa" dengan nama, nilai, dan atributnya) ke dalam satu tipe kustom yang rapi, jauh lebih terorganisir dibanding menjinjing map dan slice terpisah seperti yang kita lakukan di project ini.
+
+Terus semangat — kamu sudah setengah jalan menuju Go yang sesungguhnya!

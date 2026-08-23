@@ -1,0 +1,455 @@
+---
+title: "Project: Batu Gunting Kertas"
+unit: 4
+lesson: 7
+description: "Membangun game Batu Gunting Kertas melawan komputer, menggabungkan semua konsep fungsi di Unit 4"
+objectives:
+  - "Memecah program game jadi fungsi-fungsi kecil yang punya tanggung jawab jelas"
+  - "Memakai multiple return values, variadic functions, dan defer dalam satu program nyata"
+  - "Membuat pilihan acak komputer dengan math/rand dan membaca input pemain dengan bufio.Scanner"
+estimatedTime: 75
+prerequisites: ["unit-4/06-closures"]
+difficulty: "beginner"
+tags: ["project", "game", "batu-gunting-kertas", "practice", "integration"]
+---
+
+# Project: Batu Gunting Kertas
+
+Selamat! Kamu sudah mempelajari semua konsep fungsi di Unit 4: deklarasi, parameter & return, multiple return values, variadic functions, defer, dan closures. Sekarang saatnya menggabungkan semuanya dalam project nyata — game **Batu Gunting Kertas** melawan komputer.
+
+Seperti project kalkulator di Unit 1, kita akan melewati setiap tahap: planning, pseudocode, implementasi bertahap, testing, sampai kode solusi lengkap.
+
+## Spesifikasi Program
+
+Game kita harus bisa:
+
+1. Menampilkan judul game dan opsi yang tersedia
+2. Meminta pemain memasukkan pilihannya (`batu`, `gunting`, atau `kertas`)
+3. Membuat komputer memilih secara **acak** dari tiga opsi yang sama
+4. Menentukan pemenang berdasarkan aturan Batu Gunting Kertas
+5. Menampilkan pilihan kedua pihak dan hasil akhirnya
+6. Menangani input yang tidak valid dengan pesan error yang jelas
+
+Aturan menang:
+- **Batu** mengalahkan **Gunting**
+- **Gunting** mengalahkan **Kertas**
+- **Kertas** mengalahkan **Batu**
+- Pilihan sama → **Seri**
+
+Contoh interaksi yang diharapkan:
+```
+=== BATU GUNTING KERTAS ===
+
+Pilihanmu (batu/gunting/kertas): batu
+
+Kamu memilih    : batu
+Komputer memilih: gunting
+
+Hasil: Menang!
+
+Terima kasih sudah bermain!
+```
+
+## Tahap 1: Planning
+
+Sebelum menulis kode, mari pikirkan strukturnya:
+
+**Data apa yang perlu disimpan?**
+- Daftar pilihan yang valid (`batu`, `gunting`, `kertas`) — kita simpan sebagai `[]string` (slice, kita bahas detail di Unit 5, untuk sekarang anggap saja kumpulan string berurutan)
+- Pilihan pemain (`string`, dari input)
+- Pilihan komputer (`string`, hasil acak)
+- Hasil pertandingan (`string`: `"Menang"`, `"Kalah"`, atau `"Seri"`)
+
+**Fungsi apa saja yang dibutuhkan?**
+- `validasiInput` — mengecek apakah pilihan pemain valid, sekaligus memberi pesan error kalau tidak (cocok untuk **multiple return values**)
+- `pilihanKomputer` — memilih satu opsi secara acak dari daftar opsi yang diberikan (cocok untuk **variadic function**, supaya fleksibel menerima daftar opsi berapa pun)
+- `tentukanPemenang` — membandingkan dua pilihan dan mengembalikan hasilnya
+
+**Alur program:**
+1. Tampilkan judul game
+2. Minta input pilihan pemain
+3. Validasi input — kalau tidak valid, tampilkan error dan berhenti
+4. Buat pilihan komputer secara acak
+5. Tentukan pemenang
+6. Tampilkan hasil
+7. Tampilkan pesan penutup (pakai `defer`, supaya tetap tercetak apa pun jalur keluarnya)
+
+**Edge case yang perlu dipikirkan:**
+- Bagaimana kalau pemain mengetik pilihan yang tidak dikenal, misalnya `"senjata"`?
+- Bagaimana kalau pemain mengetik dengan huruf besar, misalnya `"BATU"`?
+
+## Tahap 2: Pseudocode
+
+```
+PROGRAM BatuGuntingKertas:
+    OPSI = ["batu", "gunting", "kertas"]
+
+    TAMPILKAN judul "BATU GUNTING KERTAS"
+    MINTA input pilihanPemain
+    pilihanPemain = ubah ke huruf kecil semua
+
+    (valid, pesanError) = VALIDASI pilihanPemain terhadap OPSI
+    JIKA TIDAK valid:
+        TAMPILKAN pesanError
+        BERHENTI (tapi tetap tampilkan pesan penutup)
+
+    pilihanKomputer = PILIH ACAK dari OPSI
+
+    TAMPILKAN pilihanPemain dan pilihanKomputer
+
+    JIKA pilihanPemain == pilihanKomputer:
+        hasil = "Seri"
+    JIKA (batu vs gunting) ATAU (gunting vs kertas) ATAU (kertas vs batu):
+        hasil = "Menang"
+    SELAIN ITU:
+        hasil = "Kalah"
+
+    TAMPILKAN hasil
+    TAMPILKAN "Terima kasih sudah bermain!" (selalu, lewat defer)
+```
+
+## Tahap 3: Implementasi
+
+### Versi 1: Kerangka Dasar
+
+Mulai dari kerangka yang cuma membaca input pemain dan menampilkan pilihan komputer secara acak, belum ada logika penentuan pemenang:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strings"
+    "time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    scanner := bufio.NewScanner(os.Stdin)
+    opsi := []string{"batu", "gunting", "kertas"}
+
+    fmt.Println("=== BATU GUNTING KERTAS ===")
+    fmt.Println()
+
+    fmt.Print("Pilihanmu (batu/gunting/kertas): ")
+    scanner.Scan()
+    pemain := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+    komputer := opsi[rand.Intn(len(opsi))]
+
+    // TODO: Validasi input
+    // TODO: Tentukan pemenang
+
+    fmt.Println(pemain, "vs", komputer)
+}
+```
+
+Coba jalankan — program sudah bisa menerima input dan membuat komputer memilih secara acak, meskipun belum ada validasi atau penentuan pemenang.
+
+**Kenapa `rand.Seed(time.Now().UnixNano())`?** Tanpa memberi *seed* (angka awal) yang berubah-ubah, generator angka acak Go akan menghasilkan urutan yang **sama persis** setiap kali program dijalankan ulang — komputer akan selalu memilih opsi yang sama! Memakai waktu saat ini (`time.Now().UnixNano()`) sebagai seed memastikan hasilnya benar-benar berbeda tiap sesi.
+
+### Versi 2: Tambahkan Logika
+
+Sekarang tambahkan fungsi-fungsi untuk validasi dan penentuan pemenang:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strings"
+    "time"
+)
+
+func validasiInput(pilihan string, opsi ...string) (bool, string) {
+    for _, o := range opsi {
+        if pilihan == o {
+            return true, ""
+        }
+    }
+    return false, fmt.Sprintf("Pilihan '%s' tidak dikenali. Opsi yang tersedia: %s", pilihan, strings.Join(opsi, ", "))
+}
+
+func pilihanKomputer(opsi ...string) string {
+    return opsi[rand.Intn(len(opsi))]
+}
+
+func tentukanPemenang(pemain, komputer string) string {
+    if pemain == komputer {
+        return "Seri"
+    }
+    if (pemain == "batu" && komputer == "gunting") ||
+        (pemain == "gunting" && komputer == "kertas") ||
+        (pemain == "kertas" && komputer == "batu") {
+        return "Menang"
+    }
+    return "Kalah"
+}
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    defer fmt.Println("\nTerima kasih sudah bermain!")
+
+    scanner := bufio.NewScanner(os.Stdin)
+    opsi := []string{"batu", "gunting", "kertas"}
+
+    fmt.Println("=== BATU GUNTING KERTAS ===")
+    fmt.Println()
+
+    fmt.Print("Pilihanmu (batu/gunting/kertas): ")
+    scanner.Scan()
+    pemain := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+    valid, pesanError := validasiInput(pemain, opsi...)
+    if !valid {
+        fmt.Println("\n[ERROR]", pesanError)
+        return
+    }
+
+    komputer := pilihanKomputer(opsi...)
+    fmt.Printf("\nKamu memilih    : %s\n", pemain)
+    fmt.Printf("Komputer memilih: %s\n", komputer)
+
+    hasil := tentukanPemenang(pemain, komputer)
+    fmt.Printf("\nHasil: %s!\n", hasil)
+}
+```
+
+Ini adalah versi lengkap game kita! Mari pahami bagian-bagian pentingnya.
+
+## Memahami Kode
+
+### Variadic + Multiple Return Values Sekaligus
+
+```go
+func validasiInput(pilihan string, opsi ...string) (bool, string) {
+    for _, o := range opsi {
+        if pilihan == o {
+            return true, ""
+        }
+    }
+    return false, fmt.Sprintf("...")
+}
+```
+
+Fungsi ini menggabungkan **dua** konsep Unit 4 sekaligus: parameter `opsi ...string` adalah **variadic** (bisa menerima daftar opsi valid berapa pun panjangnya, bukan cuma tiga), dan return-nya adalah **multiple return values** `(bool, string)` — status valid/tidak, plus pesan error yang siap ditampilkan kalau tidak valid. Pola ini mirip pola `(hasil, error)` yang kamu pelajari sebelumnya, hanya di sini pesannya berupa `string` biasa, bukan tipe `error`.
+
+### Spread Operator untuk Mengirim Slice
+
+```go
+opsi := []string{"batu", "gunting", "kertas"}
+valid, pesanError := validasiInput(pemain, opsi...)
+komputer := pilihanKomputer(opsi...)
+```
+
+`opsi` didefinisikan **sekali** sebagai slice, lalu disebar (`opsi...`) ke dua fungsi variadic berbeda. Kalau nanti kamu ingin menambah opsi baru (misalnya untuk varian "Batu Gunting Kertas Air"), cukup ubah **satu tempat** — `opsi` — dan kedua fungsi otomatis mengikuti.
+
+### Defer untuk Pesan Penutup yang Selalu Muncul
+
+```go
+defer fmt.Println("\nTerima kasih sudah bermain!")
+```
+
+Statement ini ditaruh di awal `main()`, tapi karena `defer`, ia baru benar-benar dijalankan **tepat sebelum** `main()` selesai — apa pun jalurnya. Coba perhatikan: kalau input pemain tidak valid, program memanggil `return` lebih awal (di tengah fungsi) — tapi pesan "Terima kasih sudah bermain!" tetap tercetak, karena `defer` selalu jalan sebelum fungsi benar-benar berakhir, termasuk lewat `return` di tengah jalan.
+
+### Logika `tentukanPemenang`
+
+```go
+func tentukanPemenang(pemain, komputer string) string {
+    if pemain == komputer {
+        return "Seri"
+    }
+    if (pemain == "batu" && komputer == "gunting") ||
+        (pemain == "gunting" && komputer == "kertas") ||
+        (pemain == "kertas" && komputer == "batu") {
+        return "Menang"
+    }
+    return "Kalah"
+}
+```
+
+Fungsi ini pakai parameter ringkas `pemain, komputer string` (dua parameter bertipe sama, ditulis sekali) dari pelajaran Parameter & Return. Logikanya: cek seri dulu, lalu cek ketiga kombinasi "pemain menang", dan kalau tidak ada yang cocok, berarti komputer yang menang.
+
+## Tahap 4: Testing
+
+Karena pilihan komputer bersifat acak, kita uji dengan mengasumsikan hasil acaknya untuk memverifikasi logikanya benar. Coba jalankan berkali-kali dan cocokkan dengan aturan berikut:
+
+**Test 1: Pemain menang**
+```
+Pemain: batu, Komputer: gunting
+Expected: Hasil: Menang!
+```
+
+**Test 2: Pemain kalah**
+```
+Pemain: gunting, Komputer: batu
+Expected: Hasil: Kalah!
+```
+
+**Test 3: Seri**
+```
+Pemain: kertas, Komputer: kertas
+Expected: Hasil: Seri!
+```
+
+**Test 4: Input tidak valid**
+```
+Pemain: senjata
+Expected: [ERROR] Pilihan 'senjata' tidak dikenali. Opsi yang tersedia: batu, gunting, kertas
+(dan tetap mencetak "Terima kasih sudah bermain!" di akhir, berkat defer)
+```
+
+**Test 5: Input dengan huruf besar**
+```
+Pemain: BATU
+Expected: tetap dianggap valid (karena strings.ToLower menormalkan input)
+```
+
+:::tip
+Karena `pilihanKomputer` memakai angka acak, kamu tidak bisa menebak pasti apa yang akan dipilih komputer. Untuk menguji fungsi `tentukanPemenang` secara terisolasi (tanpa keacakan), kamu bisa memanggilnya langsung dengan nilai tetap, misalnya `tentukanPemenang("batu", "gunting")`, dan memastikan hasilnya `"Menang"` — ini prinsip dasar *unit testing* yang akan kamu pelajari lebih formal di Unit 8.
+:::
+
+## Kode Solusi Lengkap (Final Version)
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strings"
+    "time"
+)
+
+// validasiInput mengecek apakah pilihan ada di daftar opsi yang valid.
+// Memakai variadic + multiple return values sekaligus.
+func validasiInput(pilihan string, opsi ...string) (bool, string) {
+    for _, o := range opsi {
+        if pilihan == o {
+            return true, ""
+        }
+    }
+    return false, fmt.Sprintf("Pilihan '%s' tidak dikenali. Opsi yang tersedia: %s", pilihan, strings.Join(opsi, ", "))
+}
+
+// pilihanKomputer memilih satu opsi secara acak dari daftar opsi yang diberikan.
+func pilihanKomputer(opsi ...string) string {
+    return opsi[rand.Intn(len(opsi))]
+}
+
+// tentukanPemenang membandingkan pilihan pemain dan komputer, dari sudut pandang pemain.
+func tentukanPemenang(pemain, komputer string) string {
+    if pemain == komputer {
+        return "Seri"
+    }
+    if (pemain == "batu" && komputer == "gunting") ||
+        (pemain == "gunting" && komputer == "kertas") ||
+        (pemain == "kertas" && komputer == "batu") {
+        return "Menang"
+    }
+    return "Kalah"
+}
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    defer fmt.Println("\nTerima kasih sudah bermain!")
+
+    scanner := bufio.NewScanner(os.Stdin)
+    opsi := []string{"batu", "gunting", "kertas"}
+
+    // === Header ===
+    fmt.Println("=== BATU GUNTING KERTAS ===")
+    fmt.Println()
+
+    // === Input ===
+    fmt.Print("Pilihanmu (batu/gunting/kertas): ")
+    scanner.Scan()
+    pemain := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+    // === Validasi ===
+    valid, pesanError := validasiInput(pemain, opsi...)
+    if !valid {
+        fmt.Println("\n[ERROR]", pesanError)
+        return
+    }
+
+    // === Pilihan Komputer ===
+    komputer := pilihanKomputer(opsi...)
+    fmt.Printf("\nKamu memilih    : %s\n", pemain)
+    fmt.Printf("Komputer memilih: %s\n", komputer)
+
+    // === Hasil ===
+    hasil := tentukanPemenang(pemain, komputer)
+    fmt.Printf("\nHasil: %s!\n", hasil)
+}
+```
+
+## Challenge Bonus
+
+Sudah selesai? Coba tantangan tambahan ini untuk menguji kemampuanmu:
+
+**Challenge 1: Multiple Rounds dengan Skor**
+
+Bungkus game dalam `for` loop supaya pemain bisa main berkali-kali tanpa restart program. Simpan skor pemain dan komputer di variabel, tambahkan setiap ronde, dan umumkan pemenang keseluruhan sesi di akhir (misalnya saat pemain mengetik `"keluar"`).
+
+**Challenge 2: Pencatat Skor dengan Closure**
+
+Alih-alih variabel skor biasa, coba buat *function factory* seperti di pelajaran Closures untuk mencatat skor:
+
+```go
+func buatPencatatSkor() func() int {
+    skor := 0
+    return func() int {
+        skor++
+        return skor
+    }
+}
+```
+
+Panggil `tambahSkorPemain := buatPencatatSkor()` dan `tambahSkorKomputer := buatPencatatSkor()` di awal sesi multi-round, lalu panggil `tambahSkorPemain()` setiap kali pemain menang untuk mendapatkan skor terbarunya.
+
+**Challenge 3: Tambah Opsi Baru**
+
+Perluas game dengan opsi keempat, misalnya `"air"` — air mengalahkan `batu` dan `gunting`, tapi kalah lawan `kertas`. Perbarui `opsi` dan logika `tentukanPemenang` supaya aturan barunya konsisten dengan aturan lama.
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+Dalam project ini, kamu menggunakan **hampir semua konsep** dari Unit 4:
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| `func` & pemanggilan fungsi | Memecah program jadi `validasiInput`, `pilihanKomputer`, `tentukanPemenang` |
+| Parameter ringkas (tipe sama) | `tentukanPemenang(pemain, komputer string)` |
+| Multiple return values | `validasiInput` mengembalikan `(bool, string)` sekaligus |
+| Variadic functions (`...string`) | Daftar opsi valid dikirim sebagai variadic ke dua fungsi berbeda |
+| Spread operator (`opsi...`) | Mengirim slice `opsi` sebagai argumen variadic |
+| `defer` | Pesan penutup selalu tercetak, bahkan saat program berhenti lebih awal |
+| Closures (Challenge Bonus) | Function factory untuk mencatat skor antar ronde |
+| `math/rand` + `rand.Seed` | Membuat pilihan komputer acak dan berbeda tiap sesi |
+| `bufio.Scanner` | Membaca input pemain |
+
+## Penutup Unit 4
+
+Selamat! Kamu sudah menyelesaikan **Unit 4: Fungsi**! Mari recap apa yang sudah kamu kuasai:
+
+- Mendeklarasikan dan memanggil fungsi untuk memecah program jadi bagian-bagian kecil
+- Memakai parameter bertipe eksplisit dan penulisan ringkas untuk tipe yang sama
+- Mengembalikan lebih dari satu nilai sekaligus, termasuk pola idiomatik `(hasil, error)` dan named return values
+- Menulis variadic function yang menerima jumlah argumen berapa pun, plus spread operator untuk mengirim slice
+- Memakai `defer` untuk menjamin kode cleanup selalu jalan, dengan urutan LIFO untuk multiple defer
+- Membuat closures — fungsi anonim yang menangkap variabel dari scope luar — dan memahami jebakan loop variable klasik di Go 1.13.5
+- Menggabungkan semuanya jadi program game yang utuh, dari planning sampai testing
+
+Fungsi adalah fondasi untuk menulis kode Go yang terorganisir dan reusable — kamu akan memakainya di **setiap** program Go yang kamu tulis setelah ini.
+
+Di **Unit 5: Struktur Data**, kamu akan belajar menyimpan dan memproses kumpulan data dengan **array**, **slice**, **map**, dan **string/rune/byte** — termasuk slice yang sudah sedikit kamu intip di project ini. Project unit itu adalah **Buku Nilai Siswa**, yang akan memakai fungsi-fungsi yang sudah kamu kuasai untuk mengelola data banyak siswa sekaligus.
+
+Terus semangat belajar — kamu sudah membangun fondasi yang sangat solid!

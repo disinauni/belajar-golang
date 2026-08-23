@@ -1,0 +1,228 @@
+---
+title: "Switch"
+unit: 2
+lesson: 3
+description: "Percabangan yang lebih ringkas dengan switch — dan kenapa Go tidak butuh break"
+objectives:
+  - "Menulis percabangan switch dengan beberapa case"
+  - "Memahami bahwa Go tidak fallthrough otomatis (beda dari C++/Java)"
+  - "Memakai switch tanpa ekspresi sebagai alternatif deretan if-else"
+estimatedTime: 30
+prerequisites: ["unit-2/02-if-else"]
+difficulty: "beginner"
+tags: ["switch", "fallthrough", "percabangan"]
+---
+
+# Switch
+
+Kamu sudah memakai `switch` sekilas di project kalkulator Unit 1. Sekarang saatnya kenalan resmi — termasuk satu perbedaan besar dari C++/Java yang wajib kamu tahu.
+
+## Sintaks Dasar
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    hari := "Rabu"
+
+    switch hari {
+    case "Senin":
+        fmt.Println("Awal minggu")
+    case "Rabu":
+        fmt.Println("Tengah minggu")
+    case "Jumat":
+        fmt.Println("Hampir weekend")
+    default:
+        fmt.Println("Hari biasa")
+    }
+}
+```
+
+Output:
+```
+Tengah minggu
+```
+
+## Membedah Switch
+
+**`switch hari {`** — mengevaluasi `hari` sekali, lalu mencocokkannya dengan setiap `case`.
+
+**`case "Rabu":`** — kalau `hari` sama dengan `"Rabu"`, jalankan blok ini.
+
+**`default:`** — dijalankan kalau tidak ada `case` yang cocok. Sifatnya opsional (boleh dihilangkan).
+
+## Tidak Ada Fallthrough Otomatis!
+
+Ini beda paling penting dari C++/Java: di Go, **setiap `case` otomatis berhenti setelah blok-nya selesai** — tidak "jatuh" (fallthrough) ke `case` berikutnya seperti di bahasa lain.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    nilai := 2
+
+    switch nilai {
+    case 1:
+        fmt.Println("Satu")
+    case 2:
+        fmt.Println("Dua")
+    case 3:
+        fmt.Println("Tiga")
+    }
+}
+```
+
+Output:
+```
+Dua
+```
+
+Program **hanya** mencetak `"Dua"` — tidak lanjut mencetak `"Tiga"` walau tidak ada `break` yang ditulis. Ini beda besar dari C++, di mana kamu **wajib** menulis `break` di akhir setiap `case`, kalau tidak eksekusi akan "jatuh" (fallthrough) ke `case` berikutnya.
+
+:::note
+Kalau kamu memang **ingin** perilaku fallthrough (jarang dipakai, tapi kadang berguna), Go menyediakan keyword eksplisit `fallthrough`:
+```go
+switch nilai {
+case 1:
+    fmt.Println("Satu")
+    fallthrough
+case 2:
+    fmt.Println("Dua juga dicetak walau nilai bukan 2!")
+}
+```
+Karena harus ditulis eksplisit, kode Go jauh lebih jarang punya bug "lupa break" yang sering terjadi di C/C++.
+:::
+
+## Switch Tanpa Ekspresi
+
+Ada bentuk lain yang sangat berguna: `switch` tanpa nilai yang dicocokkan, di mana setiap `case` berisi kondisi boolean sendiri — ini alternatif yang lebih ringkas dari deretan `if/else if` panjang.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    nilai := 85
+
+    switch {
+    case nilai >= 90:
+        fmt.Println("Grade: A")
+    case nilai >= 80:
+        fmt.Println("Grade: B")
+    case nilai >= 70:
+        fmt.Println("Grade: C")
+    default:
+        fmt.Println("Grade: D")
+    }
+}
+```
+
+Output:
+```
+Grade: B
+```
+
+**`switch {`** (tanpa nilai setelah `switch`) — setiap `case` diperlakukan seperti kondisi `if` sendiri-sendiri, dicek dari atas ke bawah, berhenti di yang pertama `true`. Hasilnya identik dengan pola `if-else if-else` yang kamu tulis di pelajaran sebelumnya, tapi lebih ringkas dibaca.
+
+:::tip
+Banyak programmer Go lebih suka `switch` tanpa ekspresi dibanding deretan panjang `if/else if` ketika ada lebih dari 3-4 kondisi — lebih mudah dipindai mata.
+:::
+
+## Kesalahan Umum
+
+1. **Mengira butuh `break` di akhir setiap case:**
+   ```go
+   switch nilai {
+   case 1:
+       fmt.Println("Satu")
+       break  // tidak salah, tapi mubazir — Go sudah otomatis berhenti
+   case 2:
+       fmt.Println("Dua")
+   }
+   ```
+   Tidak error, tapi `break` di sini tidak melakukan apa-apa yang tidak sudah terjadi otomatis. Kode Go idiomatik biasanya tidak menulis `break` di akhir case.
+
+2. **Lupa bahwa case dievaluasi urut dari atas, bukan semuanya:**
+   ```go
+   switch {
+   case nilai >= 70:
+       fmt.Println("Lulus")
+   case nilai >= 90:
+       fmt.Println("Istimewa")  // TIDAK PERNAH tercapai untuk nilai >= 90!
+   }
+   ```
+   Karena `case nilai >= 70` sudah mencakup semua nilai 90 ke atas juga, `case nilai >= 90` di bawahnya tidak akan pernah dicapai. Urutan case dari kondisi paling spesifik/ketat ke paling longgar itu penting.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u2l3-ex1"
+  title="Switch Tanpa Fallthrough"
+  description="Program ini mencetak status sesuai nilai. Lengkapi agar hasilnya <code>Cukup</code> untuk nilai 6."
+  type="code-output"
+  expectedOutput="Cukup"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    nilai := 6
+
+    switch {
+    case nilai >= 8:
+        fmt.Println("Bagus")
+    case nilai >= 5:
+        fmt.Println("Cukup")
+    default:
+        fmt.Println("Kurang")
+    }
+}`}
+  hints={["switch tanpa nilai setelah keyword switch berarti tiap case adalah kondisi sendiri.", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="nilai=6 gagal di case pertama (>= 8), lalu cocok di case kedua (>= 5), jadi mencetak 'Cukup'."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u2l3-ex2"
+  title="Perilaku Default Switch di Go"
+  description="Apa yang terjadi setelah satu case di switch Go selesai dijalankan, TANPA break eksplisit?"
+  type="multiple-choice"
+  options={["Lanjut ke case berikutnya (fallthrough) seperti C++", "Otomatis berhenti, tidak lanjut ke case lain", "Program error karena lupa break", "Mengulang case yang sama"]}
+  correctIndex={1}
+  hints={["Ini beda besar dari C++/Java yang wajib kamu ingat.", "Go dirancang supaya bug 'lupa break' tidak mungkin terjadi."]}
+  explanation="Berbeda dari C++/Java, setiap case di Go otomatis berhenti setelah selesai — tidak fallthrough ke case berikutnya kecuali ditulis eksplisit dengan keyword fallthrough."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u2l3-ex3"
+  title="Lengkapi Fallthrough Eksplisit"
+  description="Lengkapi keyword untuk membuat case 1 sengaja lanjut ke case 2."
+  type="fill-blank"
+  template={`case 1:
+    fmt.Println("Satu")
+    {{BLANK}}
+case 2:`}
+  blanks={["fallthrough"]}
+  hints={["Keyword ini persis menjelaskan perilakunya: jatuh ke case berikutnya."]}
+  explanation="Keyword fallthrough memaksa eksekusi lanjut ke case berikutnya, meski kondisinya tidak dicek ulang — kebalikan dari perilaku default Go."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Switch dengan nilai | `switch hari { case "Senin": ... }` |
+| Switch tanpa nilai | `switch { case x >= 90: ... }` |
+| Berhenti otomatis | Tidak perlu `break` |
+| Fallthrough eksplisit | Keyword `fallthrough` |
+
+Di pelajaran berikutnya, kita gabungkan semua yang sudah dipelajari di unit ini untuk membuat **project: Game Tebak Angka**!

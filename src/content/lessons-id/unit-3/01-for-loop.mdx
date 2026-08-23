@@ -1,0 +1,215 @@
+---
+title: "For Loop"
+unit: 3
+lesson: 1
+description: "Satu-satunya keyword perulangan di Go — dan tiga bentuk penggunaannya"
+objectives:
+  - "Memahami bahwa for adalah satu-satunya konstruk loop di Go"
+  - "Menulis for dengan tiga klausa (init, kondisi, post)"
+  - "Menulis for sebagai pengganti while dan infinite loop"
+estimatedTime: 35
+prerequisites: ["unit-2/04-project-tebak-angka"]
+difficulty: "beginner"
+tags: ["for", "loop", "perulangan"]
+---
+
+# For Loop
+
+Kalau kamu pernah lihat kode dari bahasa lain, kamu tahu ada `for`, `while`, dan `do-while`. Go menyederhanakan semuanya jadi **satu keyword saja: `for`**. Jangan salah — ini bukan Go "kurang fitur", justru ini keputusan desain yang sengaja membuat Go lebih sederhana dipelajari.
+
+## Bentuk 1: For dengan Tiga Klausa
+
+Ini bentuk paling mirip bahasa lain — kalau kamu pernah pakai `for (int i=0; i<n; i++)` di C++/Java, ini polanya:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for i := 0; i < 5; i++ {
+        fmt.Println("Perulangan ke-", i)
+    }
+}
+```
+
+Output:
+```
+Perulangan ke- 0
+Perulangan ke- 1
+Perulangan ke- 2
+Perulangan ke- 3
+Perulangan ke- 4
+```
+
+## Membedah Tiga Klausa
+
+**`i := 0`** — klausa **init**, dijalankan sekali di awal, sebelum loop dimulai.
+
+**`i < 5`** — klausa **kondisi**, dicek sebelum setiap iterasi. Loop terus berjalan selama ini `true`.
+
+**`i++`** — klausa **post**, dijalankan setelah setiap iterasi selesai.
+
+Sama seperti `if`, perhatikan **tidak ada tanda kurung** di sekitar ketiga klausa — hanya dipisah titik koma, dan kurung kurawal `{}` tetap wajib.
+
+## Bentuk 2: For sebagai While
+
+Kalau kamu cuma butuh kondisi tanpa init/post eksplisit, cukup tulis kondisinya saja:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    n := 1
+    for n <= 16 {
+        fmt.Println(n)
+        n *= 2
+    }
+}
+```
+
+Output:
+```
+1
+2
+4
+8
+16
+```
+
+Ini setara dengan `while (n <= 16)` di bahasa lain — Go tidak butuh keyword terpisah, cukup `for` dengan satu kondisi.
+
+## Bentuk 3: Infinite Loop
+
+Tanpa klausa apapun, `for` menjadi loop tak terhingga — berguna kalau kamu ingin mengontrol keluarnya lewat `break` di tengah blok:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    hitung := 0
+    for {
+        hitung++
+        fmt.Println("Iterasi:", hitung)
+        if hitung >= 3 {
+            break
+        }
+    }
+}
+```
+
+Output:
+```
+Iterasi: 1
+Iterasi: 2
+Iterasi: 3
+```
+
+**`for {`** — tanpa kondisi sama sekali berarti "selalu true", jadi loop akan berjalan selamanya kecuali ada `break` (atau `return`) di dalamnya.
+
+:::note
+Ini pola yang sering dipakai untuk server yang harus terus "mendengarkan" request, atau game yang terus berjalan sampai pemain keluar. Kamu akan sering melihat `for { ... }` di kode Go dunia nyata.
+:::
+
+:::tip
+Go tidak punya `do-while` (loop yang badan-nya dijalankan minimal sekali sebelum cek kondisi). Kalau kamu butuh perilaku itu, gunakan pola: jalankan badan loop sekali di luar, lalu bungkus sisanya dengan `for kondisi { ... }`, atau pakai infinite loop dengan pengecekan kondisi + `break` di akhir badan loop.
+:::
+
+## Kesalahan Umum
+
+1. **Menambahkan tanda kurung di sekitar klausa:**
+   ```go
+   for (i := 0; i < 5; i++) {  // ERROR: syntax error
+       fmt.Println(i)
+   }
+   ```
+   Sama seperti `if`, tanda kurung di sekitar klausa `for` **tidak valid** di Go.
+
+2. **Lupa `break` di infinite loop, program tidak pernah berhenti:**
+   ```go
+   for {
+       fmt.Println("Ini akan tercetak selamanya...")
+       // lupa break!
+   }
+   ```
+   Selalu pastikan ada jalan keluar (`break` atau `return`) di infinite loop, kalau tidak program akan macet (atau di playground: timeout).
+
+3. **Lupa update variabel di bentuk while-style, jadi infinite loop tidak sengaja:**
+   ```go
+   n := 1
+   for n <= 5 {
+       fmt.Println(n)
+       // lupa n++  → loop selamanya!
+   }
+   ```
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l1-ex1"
+  title="Hitung Mundur"
+  description="Lengkapi program agar mencetak hitung mundur dari 5 sampai 1."
+  type="code-output"
+  expectedOutput="5
+4
+3
+2
+1"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    for i := 5; i >= 1; i-- {
+        fmt.Println(i)
+    }
+}`}
+  hints={["Untuk hitung mundur, klausa post-nya adalah pengurangan, dan kondisinya >= (bukan <=).", "Kode ini sudah benar — coba jalankan!"]}
+  explanation="Loop dimulai dari i=5, terus berjalan selama i >= 1, dan i dikurangi 1 setiap iterasi — menghasilkan hitung mundur 5, 4, 3, 2, 1."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l1-ex2"
+  title="Satu-Satunya Loop di Go"
+  description="Keyword apa saja yang dipakai Go untuk semua jenis perulangan (for, while, do-while)?"
+  type="multiple-choice"
+  options={["for, while, dan do-while — sama seperti C++", "Cuma for, dipakai dalam berbagai bentuk", "Cuma while", "loop (keyword khusus Go)"]}
+  correctIndex={1}
+  hints={["Ingat pesan utama pelajaran ini!", "Go sengaja menyederhanakan jadi satu keyword saja."]}
+  explanation="Go hanya punya satu keyword loop: for. Bentuknya bisa fleksibel — dengan tiga klausa, kondisi saja (seperti while), atau tanpa klausa sama sekali (infinite loop)."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u3l1-ex3"
+  title="Lengkapi Infinite Loop dengan Break"
+  description="Lengkapi kondisi agar loop berhenti ketika hitung mencapai 3."
+  type="fill-blank"
+  template={`for {
+    hitung++
+    if hitung {{BLANK}} 3 {
+        break
+    }
+}`}
+  blanks={[">="]}
+  hints={["Kita ingin berhenti begitu hitung mencapai atau melewati 3."]}
+  explanation="if hitung >= 3 { break } menghentikan infinite loop begitu variabel hitung mencapai 3."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Bentuk | Contoh | Setara dengan |
+|---|---|---|
+| Tiga klausa | `for i := 0; i < n; i++ { ... }` | for klasik |
+| Kondisi saja | `for kondisi { ... }` | while |
+| Tanpa klausa | `for { ... }` | while(true), butuh break |
+
+Di pelajaran berikutnya, kita akan bahas **range** — cara ringkas mengiterasi slice, string, dan map tanpa perlu index manual!

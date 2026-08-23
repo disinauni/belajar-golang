@@ -1,0 +1,241 @@
+---
+title: "sync.WaitGroup & Mutex"
+unit: 7
+lesson: 4
+description: "Menunggu banyak goroutine selesai dengan WaitGroup, dan melindungi data bersama dengan Mutex"
+objectives:
+  - "Menunggu banyak goroutine selesai dengan sync.WaitGroup"
+  - "Memahami race condition saat banyak goroutine mengakses data yang sama"
+  - "Melindungi data bersama dari race condition dengan sync.Mutex"
+  - "Membiasakan pola defer mu.Unlock() untuk keamanan kode"
+estimatedTime: 35
+prerequisites: ["unit-7/03-select-buffered-channel"]
+difficulty: "intermediate"
+tags: ["sync", "waitgroup", "mutex", "race-condition", "concurrency", "unit-7"]
+---
+
+# sync.WaitGroup & Mutex
+
+Kita sudah belajar `time.Sleep` sebagai penyangga sementara untuk menunggu goroutine — tapi itu cuma tebakan kasar. Sekarang saatnya belajar alat yang benar: **`sync.WaitGroup`** untuk menunggu banyak goroutine selesai dengan pasti, dan **`sync.Mutex`** untuk melindungi data yang diakses banyak goroutine sekaligus.
+
+Bayangkan `WaitGroup` seperti guru yang menghitung berapa murid yang masih di luar kelas — begitu semua murid sudah masuk (`Done`), baru pelajaran dimulai (`Wait` selesai). Sementara `Mutex` seperti kunci kamar mandi umum — cuma satu orang yang boleh masuk (`Lock`) sampai dia keluar (`Unlock`), supaya tidak berebutan.
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    var wg sync.WaitGroup
+    var mu sync.Mutex
+    total := 0
+
+    for i := 1; i <= 5; i++ {
+        wg.Add(1)
+        go func(n int) {
+            defer wg.Done()
+            mu.Lock()
+            total += n
+            mu.Unlock()
+        }(i)
+    }
+
+    wg.Wait()
+    fmt.Println("Total:", total)
+}
+```
+
+Output:
+
+```
+Total: 15
+```
+
+## Membedah Konsep
+
+### `sync.WaitGroup`: Menunggu Banyak Goroutine
+
+```go
+var wg sync.WaitGroup
+
+wg.Add(1)   // "tambah satu goroutine yang harus ditunggu"
+go func() {
+    defer wg.Done() // "goroutine ini sudah selesai"
+}()
+
+wg.Wait()   // "tunggu sampai semua goroutine yang di-Add() sudah Done()"
+```
+
+Tiga method utama `WaitGroup`:
+- **`Add(n)`** — menambah **hitungan** goroutine yang harus ditunggu (biasanya dipanggil sebelum `go func()`, dengan `n = 1` per goroutine).
+- **`Done()`** — mengurangi hitungan sebanyak 1, menandakan "goroutine ini sudah selesai". Biasa dipanggil dengan `defer` di awal goroutine, supaya pasti terpanggil meski ada error di tengah jalan.
+- **`Wait()`** — blocking sampai hitungan kembali ke **0** (semua goroutine sudah `Done()`).
+
+:::tip
+Selalu panggil `wg.Add(1)` **sebelum** `go func() { ... }()`, bukan di dalam goroutine-nya. Kalau `Add` dipanggil di dalam goroutine, ada kemungkinan `wg.Wait()` di `main()` sudah lewat sebelum `Add` sempat dipanggil — race condition pada `WaitGroup` itu sendiri!
+:::
+
+### Race Condition: Masalah yang Diselesaikan Mutex
+
+Bayangkan **tanpa** `Mutex`, banyak goroutine mengerjakan `total += n` secara bersamaan. Operasi `total += n` sebenarnya terdiri dari 3 langkah: baca `total`, tambahkan `n`, simpan kembali ke `total`. Kalau dua goroutine melakukan ini **bersamaan**, salah satu penambahan bisa "tertimpa" dan hilang — inilah **race condition**, bug yang membuat hasil program jadi tidak konsisten (kadang benar, kadang salah, tergantung timing).
+
+### `sync.Mutex`: Kunci untuk Data Bersama
+
+```go
+var mu sync.Mutex
+
+mu.Lock()
+total += n // hanya satu goroutine yang boleh berada di sini pada satu waktu
+mu.Unlock()
+```
+
+- **`Lock()`** — "mengunci" akses. Kalau goroutine lain sudah memegang kunci, goroutine ini akan **blocking** menunggu sampai kunci dilepas.
+- **`Unlock()`** — melepas kunci, mempersilakan goroutine lain (yang sedang menunggu) untuk masuk.
+
+Kode di antara `Lock()` dan `Unlock()` disebut *critical section* — bagian yang cuma boleh dikerjakan **satu goroutine** dalam satu waktu.
+
+### Pola `defer mu.Unlock()`
+
+```go
+func tambahAman(mu *sync.Mutex, total *int, n int) {
+    mu.Lock()
+    defer mu.Unlock() // pasti terpanggil, bahkan kalau ada panic di tengah
+    *total += n
+}
+```
+
+Memanggil `Unlock()` lewat `defer` segera setelah `Lock()` adalah kebiasaan yang sangat dianjurkan — ini memastikan kunci **selalu** dilepas, bahkan kalau ada `return` lebih awal atau panic di tengah fungsi. Lupa `Unlock()` berarti goroutine lain akan **selamanya** menunggu kunci yang tidak pernah dilepas (deadlock).
+
+:::warning
+Kalau kamu lupa `Unlock()` sama sekali, semua goroutine lain yang memanggil `Lock()` pada mutex yang sama akan blocking **selamanya**. Selalu pastikan setiap `Lock()` punya `Unlock()` pasangannya — kebiasaan `defer mu.Unlock()` tepat setelah `Lock()` adalah cara paling aman.
+:::
+
+## Kesalahan Umum
+
+1. **Race condition: lupa pakai Mutex untuk data bersama:**
+   ```go
+   var wg sync.WaitGroup
+   total := 0
+   for i := 1; i <= 100; i++ {
+       wg.Add(1)
+       go func(n int) {
+           defer wg.Done()
+           total += n // BUG: race condition! Banyak goroutine menulis
+           // ke total secara bersamaan tanpa perlindungan Mutex.
+       }(i)
+   }
+   wg.Wait()
+   fmt.Println(total) // hasilnya TIDAK BISA diprediksi, sering < 5050
+   ```
+   Tanpa `Mutex` (atau channel sebagai gantinya), penambahan `total += n` yang dilakukan banyak goroutine sekaligus bisa saling menimpa dan kehilangan hasil.
+
+2. **Add() dipanggil di dalam goroutine, bukan sebelum go func():**
+   ```go
+   var wg sync.WaitGroup
+   for i := 0; i < 3; i++ {
+       go func() {
+           wg.Add(1) // BUG: race — wg.Wait() di bawah bisa saja sudah
+           // selesai sebelum Add() ini sempat dipanggil!
+           defer wg.Done()
+           // ...
+       }()
+   }
+   wg.Wait()
+   ```
+   `Add()` harus dipanggil di goroutine **pemanggil** (biasanya `main`), sebelum `go func()` dijalankan — supaya hitungan sudah benar sebelum `Wait()` mulai mengecek.
+
+3. **Lupa Unlock(), menyebabkan deadlock:**
+   ```go
+   mu.Lock()
+   if kondisiError {
+       return // BUG: Unlock() di bawah tidak pernah terpanggil kalau
+       // return di sini, mutex terkunci selamanya!
+   }
+   mu.Unlock()
+   ```
+   Solusinya: pakai `defer mu.Unlock()` tepat setelah `mu.Lock()`, supaya kunci pasti dilepas apapun jalur keluar fungsinya.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u7l4-ex1"
+  title="Total dengan WaitGroup dan Mutex"
+  description="Lengkapi program agar menjumlahkan angka 1 sampai 5 memakai goroutine, WaitGroup, dan Mutex, lalu mencetak totalnya."
+  type="code-output"
+  expectedOutput="Total: 15"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    var wg sync.WaitGroup
+    var mu sync.Mutex
+    total := 0
+
+    for i := 1; i <= 5; i++ {
+        wg.Add(1)
+        go func(n int) {
+            defer wg.Done()
+            mu.Lock()
+            total += n
+            mu.Unlock()
+        }(i)
+    }
+
+    wg.Wait()
+    fmt.Println("Total:", total)
+}`}
+  hints={["Program ini sudah lengkap dan benar — coba jalankan dulu.", "wg.Add(1) dipanggil sebelum go func(), wg.Done() dipanggil di awal goroutine lewat defer.", "mu.Lock()/mu.Unlock() melindungi total += n dari race condition."]}
+  explanation="Setiap goroutine menambahkan wg.Add(1) sebelum dijalankan, lalu memanggil wg.Done() lewat defer saat selesai. mu.Lock()/mu.Unlock() memastikan hanya satu goroutine yang mengubah total pada satu waktu, mencegah race condition. wg.Wait() di main() menunggu sampai kelima goroutine selesai sebelum mencetak total, sehingga hasilnya selalu 15 (1+2+3+4+5) — deterministik."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l4-ex2"
+  title="Kenapa Butuh Mutex?"
+  description="Kenapa banyak goroutine yang melakukan <code>total += n</code> pada variabel <code>total</code> yang sama, tanpa Mutex, bisa menghasilkan total yang salah?"
+  type="multiple-choice"
+  options={["Karena total += n bukan operasi atomik — terdiri dari baca-tambah-simpan yang bisa saling menimpa antar goroutine", "Karena variabel int di Go tidak bisa diubah oleh goroutine sama sekali", "Karena WaitGroup otomatis mengacak nilai variabel yang dipakai goroutine", "Karena total += n hanya bisa dijalankan oleh goroutine pertama yang membuatnya"]}
+  correctIndex={0}
+  hints={["total += n sebenarnya 3 langkah: baca nilai lama, tambahkan n, simpan nilai baru.", "Kalau dua goroutine membaca nilai lama yang sama sebelum salah satunya sempat menyimpan, salah satu penambahan akan hilang."]}
+  explanation="total += n bukan satu langkah atomik di level rendah — ia melibatkan membaca nilai total saat ini, menambahkannya dengan n, lalu menyimpan hasilnya kembali. Kalau dua goroutine melakukan ketiga langkah ini bersamaan tanpa Mutex, salah satu goroutine bisa menyimpan berdasarkan nilai total yang sudah usang, membuat salah satu penambahan hilang — inilah race condition."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u7l4-ex3"
+  title="Lengkapi Pola WaitGroup"
+  description="Lengkapi pola standar penggunaan WaitGroup agar goroutine menandai dirinya selesai segera setelah mulai bekerja."
+  type="fill-blank"
+  template={`wg.Add(1)
+go func() {
+    defer wg.{{BLANK}}()
+    // pekerjaan goroutine di sini
+}()`}
+  blanks={["Done"]}
+  hints={["Method ini mengurangi hitungan WaitGroup sebanyak 1.", "Dipanggil lewat defer supaya pasti terpanggil meski goroutine berhenti lebih awal."]}
+  explanation="defer wg.Done() memastikan hitungan WaitGroup berkurang 1 begitu goroutine selesai (atau berhenti karena panic), memberi sinyal ke wg.Wait() di goroutine lain bahwa satu pekerjaan lagi sudah rampung."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi WaitGroup | `var wg sync.WaitGroup` |
+| Tambah hitungan sebelum goroutine | `wg.Add(1)` |
+| Tandai goroutine selesai | `defer wg.Done()` |
+| Tunggu semua goroutine selesai | `wg.Wait()` |
+| Deklarasi Mutex | `var mu sync.Mutex` |
+| Lindungi data bersama | `mu.Lock()` ... `defer mu.Unlock()` |
+| Masalah tanpa Mutex | Race condition — hasil tidak konsisten |
+
+Kamu sekarang punya semua bahan penting: goroutine, channel, select, WaitGroup, dan Mutex. Saatnya menggabungkan semuanya dalam satu project nyata di pelajaran terakhir unit ini: **Worker Pool**.

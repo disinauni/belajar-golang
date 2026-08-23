@@ -1,0 +1,210 @@
+---
+title: "Panic, Recover & Defer"
+unit: 6
+lesson: 6
+description: "Menangani error fatal tak terduga dengan panic dan recover, jauh lebih jarang dipakai daripada error biasa"
+objectives:
+  - "Memahami kapan Go memicu panic secara otomatis"
+  - "Menangkap panic dengan recover di dalam fungsi defer"
+  - "Memahami kenapa panic/recover bukan pengganti pola error biasa"
+estimatedTime: 30
+prerequisites: ["unit-6/05-error-handling"]
+difficulty: "intermediate"
+tags: ["panic", "recover", "defer", "runtime-error"]
+---
+
+# Panic, Recover & Defer
+
+Kamu sudah belajar `defer` di Unit 4 dan pola error biasa di pelajaran sebelumnya. Sekarang saatnya membahas sisi lain dari penanganan kegagalan di Go: **panic** — untuk error fatal yang benar-benar tak terduga — dan **recover**, cara menangkapnya sebelum program berhenti total.
+
+## Kapan Panic Terjadi
+
+Panic bisa dipicu otomatis oleh Go runtime saat terjadi kondisi yang benar-benar tidak wajar untuk dilanjutkan, misalnya pembagian integer dengan nol:
+
+```go
+package main
+
+import "fmt"
+
+func bagi(a, b int) int {
+    return a / b
+}
+
+func main() {
+    fmt.Println("Mulai program")
+    hasil := bagi(10, 0)
+    fmt.Println("Hasil:", hasil)
+}
+```
+
+Output:
+```
+Mulai program
+panic: runtime error: integer divide by zero
+```
+
+...lalu program **langsung berhenti**, mencetak *stack trace*, dan proses keluar dengan status gagal.
+
+## Membedah Panic
+
+Perhatikan: ini beda dari pembagian `float64` dengan nol yang kamu lihat di project Unit 1 — pembagian `float64` dengan nol menghasilkan `+Inf` (bukan error). Tapi pembagian **integer** dengan nol adalah kondisi yang Go anggap benar-benar tidak masuk akal untuk dilanjutkan, jadi runtime langsung memicu `panic`.
+
+Situasi lain yang otomatis memicu panic: mengakses index slice/array di luar batas, dereference pointer `nil`, atau memanggil `panic("pesan")` secara manual di kodemu sendiri.
+
+Bayangkan panic seperti alarm kebakaran: begitu berbunyi, semua orang langsung keluar gedung tanpa menyelesaikan pekerjaan masing-masing dulu — beda dengan error biasa yang seperti memo tertulis, bisa dibaca dan ditanggapi dengan tenang.
+
+## Menangkap Panic dengan Recover
+
+`recover()` memungkinkan program **menangkap** panic sebelum benar-benar berhenti, tapi hanya berfungsi kalau dipanggil **langsung di dalam fungsi yang di-defer**:
+
+```go
+package main
+
+import "fmt"
+
+func amanBagi(a, b int) (hasil int) {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Ditangkap panic:", r)
+            hasil = 0
+        }
+    }()
+    hasil = a / b
+    return hasil
+}
+
+func main() {
+    fmt.Println(amanBagi(10, 2))
+    fmt.Println(amanBagi(10, 0))
+    fmt.Println("Program tetap jalan!")
+}
+```
+
+Output:
+```
+5
+Ditangkap panic: runtime error: integer divide by zero
+0
+Program tetap jalan!
+```
+
+**`defer func() { ... }()`** — fungsi anonim yang di-defer, dijalankan tepat sebelum `amanBagi` benar-benar selesai — baik lewat `return` normal maupun karena panic.
+
+**`recover()`** — kalau dipanggil saat sedang terjadi panic, mengembalikan nilai yang di-*panic*-kan (di sini pesan runtime error) dan **menghentikan** panic itu supaya tidak menjalar ke pemanggil. Kalau tidak sedang ada panic, `recover()` cuma mengembalikan `nil` tanpa efek apa pun.
+
+**`hasil int` (named return)** — karena `hasil` adalah *named return value*, fungsi deferred bisa mengubahnya sebelum `amanBagi` benar-benar mengembalikan nilai — di sinilah `hasil = 0` "menyelamatkan" nilai balik setelah panic ditangkap.
+
+:::warning
+Panic dan recover **bukan** pengganti `try`/`except` seperti di Python, atau `try`/`catch` di Java. Di Go, error biasa (pola `if err != nil`) tetap jadi cara **utama** dan **jauh lebih sering dipakai** untuk menangani kegagalan. Panic dipakai **jauh lebih jarang** — hanya untuk kondisi benar-benar fatal dan tak terduga yang program tidak bisa lanjutkan secara wajar.
+:::
+
+:::note
+`recover()` hanya berguna kalau dipanggil **langsung** di dalam fungsi yang di-defer. Memanggilnya di tempat lain (misalnya langsung di body fungsi biasa) selalu mengembalikan `nil` dan tidak melakukan apa-apa.
+:::
+
+:::tip
+Aturan praktis dari komunitas Go: *"don't panic, return an error"* — kalau ragu, lebih baik kembalikan `error` seperti pelajaran sebelumnya daripada memanggil `panic()` sendiri.
+:::
+
+## Kesalahan Umum
+
+1. **Memanggil `recover()` di luar fungsi deferred:**
+   ```go
+   func main() {
+       r := recover() // tidak ada panic yang sedang terjadi & tidak di dalam defer
+       fmt.Println(r) // selalu <nil>, recover ini tidak berguna
+   }
+   ```
+
+2. **Memakai panic untuk error biasa yang seharusnya ditangani dengan return error:**
+   ```go
+   func cariUser(id int) User {
+       user, ada := database[id]
+       if !ada {
+           panic("user tidak ditemukan") // anti-pattern -- harusnya return error
+       }
+       return user
+   }
+   ```
+   "User tidak ditemukan" adalah kondisi yang **wajar terjadi** dan seharusnya ditangani pemanggil lewat return `error`, bukan menghentikan seluruh program lewat panic.
+
+3. **`defer recover()` tanpa menangkap nilainya:**
+   ```go
+   func aman() {
+       defer recover() // panic tetap "diredam", tapi pesannya hilang begitu saja
+       panic("sesuatu error")
+   }
+   ```
+   Ini memang menghentikan penjalaran panic, tapi kamu kehilangan informasi apa yang sebenarnya terjadi. Pola yang benar tetap seperti contoh `amanBagi` di atas: bungkus `recover()` di dalam `if r := recover(); r != nil { ... }` supaya nilainya bisa diperiksa dan dicatat.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l6-ex1"
+  title="Menangkap Panic dengan Recover"
+  description="Lengkapi program agar mencetak `Ditangkap: index di luar batas` ketika terjadi panic akibat akses index slice yang tidak valid."
+  type="code-output"
+  expectedOutput="Ditangkap: index di luar batas"
+  starterCode={`package main
+
+import "fmt"
+
+func aksesAman(data []int, idx int) {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Ditangkap: index di luar batas")
+        }
+    }()
+    fmt.Println(data[idx])
+}
+
+func main() {
+    angka := []int{1, 2, 3}
+    aksesAman(angka, 10)
+}`}
+  hints={["Kode ini sebenarnya sudah benar — coba jalankan.", "data[10] memicu panic karena slice angka cuma punya 3 elemen (index 0-2)."]}
+  explanation="Mengakses data[10] pada slice berisi 3 elemen memicu panic index out of range. Fungsi deferred menangkapnya lewat recover() dan mencetak pesan kustom, sehingga program tidak berhenti total."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l6-ex2"
+  title="Kapan Memakai Panic"
+  description="Kapan sebaiknya kamu memakai panic() secara manual di kode Go?"
+  type="multiple-choice"
+  options={["Untuk semua kegagalan, sebagai pengganti pola if err != nil", "Hanya untuk kondisi benar-benar fatal dan tak terduga, di mana program tidak bisa lanjut secara wajar", "Setiap kali fungsi mengembalikan error", "Untuk validasi input dari pengguna yang wajar terjadi"]}
+  correctIndex={1}
+  hints={["Ingat: panic/recover BUKAN pengganti pola error biasa.", "Kegagalan yang 'wajar terjadi' seharusnya ditangani lewat return error, bukan panic."]}
+  explanation="Panic dipakai jauh lebih jarang daripada error biasa — khusus untuk kondisi fatal dan tak terduga yang membuat program tidak bisa melanjutkan dengan wajar. Kegagalan biasa (input salah, data tidak ditemukan) sebaiknya tetap ditangani lewat pola return error."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u6l6-ex3"
+  title="Lengkapi Pemanggilan Recover"
+  description="Lengkapi kode agar recover() dipanggil dengan benar di dalam fungsi yang di-defer."
+  type="fill-blank"
+  template={`defer func() {
+    if r := {{BLANK}}(); r != nil {
+        fmt.Println("panic tertangkap:", r)
+    }
+}()`}
+  blanks={["recover"]}
+  hints={["Fungsi bawaan ini dipakai untuk menangkap panic di dalam fungsi deferred."]}
+  explanation="recover() dipanggil langsung di dalam fungsi anonim yang di-defer. Kalau sedang terjadi panic, recover() mengembalikan nilai panic-nya dan menghentikan penjalarannya; kalau tidak ada panic, ia cuma mengembalikan nil."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Panic otomatis | Pembagian integer dengan nol, index di luar batas, dll |
+| Panic manual | `panic("pesan error fatal")` |
+| Tangkap panic | `defer func() { recover() }()` |
+| Cek hasil recover | `if r := recover(); r != nil { ... }` |
+| Named return + recover | `func f() (hasil int) { defer func() { ...; hasil = 0 }() }` |
+
+Semua konsep inti Unit 6 sudah lengkap: struct, method, embedding, interface, error handling, dan panic/recover. Saatnya menggabungkan semuanya di **project unit ini: Bank Account Sederhana**!

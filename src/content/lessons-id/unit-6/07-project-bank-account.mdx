@@ -1,0 +1,392 @@
+---
+title: "Project: Bank Account Sederhana"
+unit: 6
+lesson: 7
+description: "Menggabungkan struct, pointer receiver, dan error handling untuk membuat sistem rekening bank sederhana"
+objectives:
+  - "Merancang struct dengan field tersembunyi (unexported) dan method pointer receiver"
+  - "Menangani kegagalan bisnis (saldo tidak cukup, jumlah negatif) lewat error, bukan panic"
+  - "Membangun program bertahap: dari kerangka sampai penanganan error yang lengkap"
+estimatedTime: 90
+prerequisites: ["unit-6/06-panic-recover-defer"]
+difficulty: "intermediate"
+tags: ["project", "struct", "method", "error-handling", "bank-account"]
+---
+
+# Project: Bank Account Sederhana
+
+Saatnya menggabungkan semua konsep Unit 6 — struct, method, pointer receiver, dan error handling — dalam satu project nyata: **sistem rekening bank sederhana**. Kita akan membangun tipe `BankAccount` yang bisa menerima setoran dan penarikan, sambil menolak transaksi yang tidak masuk akal lewat mekanisme `error`, bukan `panic`.
+
+## Spesifikasi Program
+
+`BankAccount` harus bisa:
+
+1. Menyimpan **nama pemilik** dan **saldo** (saldo tidak boleh diubah langsung dari luar)
+2. **Setor (Deposit)** — menambah saldo, menolak jumlah nol atau negatif
+3. **Tarik (Withdraw)** — mengurangi saldo, menolak jumlah nol/negatif dan menolak kalau saldo tidak cukup
+4. Menampilkan saldo lewat method, bukan akses field langsung
+
+Contoh output yang diharapkan:
+```
+=== BANK ACCOUNT SEDERHANA ===
+Pemilik : Ulfar
+Saldo awal: 0.00
+
+>> Setor 500000
+Saldo sekarang: 500000.00
+
+>> Setor -100000
+Error: gagal setor: jumlah harus lebih dari nol
+
+>> Tarik 200000
+Saldo sekarang: 300000.00
+
+>> Tarik 1000000
+Error: gagal tarik (saldo saat ini: 300000.00): saldo tidak cukup
+
+Saldo akhir: 300000.00
+```
+
+## Tahap 1: Planning
+
+**Data apa yang perlu disimpan?**
+- `Pemilik` — nama pemilik rekening (`string`, boleh diakses langsung dari luar)
+- `saldo` — saldo rekening (`float64`, huruf kecil di depan supaya **tidak bisa diubah langsung** dari luar package — hanya lewat method)
+
+**Method apa yang dibutuhkan?**
+- `Deposit(jumlah float64) error` — menambah saldo
+- `Withdraw(jumlah float64) error` — mengurangi saldo
+- `Saldo() float64` — membaca saldo saat ini (karena field `saldo` tersembunyi)
+
+**Kenapa pointer receiver?** `Deposit` dan `Withdraw` **mengubah** field `saldo` milik akun aslinya, bukan salinannya — seperti yang sudah kamu pelajari, ini wajib pakai pointer receiver. Untuk konsistensi, `Saldo()` juga memakai pointer receiver walau ia cuma membaca.
+
+**Edge case yang perlu dipikirkan:**
+- Setor dengan jumlah nol atau negatif
+- Tarik dengan jumlah nol atau negatif
+- Tarik melebihi saldo yang tersedia
+
+## Tahap 2: Pseudocode
+
+```
+STRUCT BankAccount:
+    Pemilik string
+    saldo   float64 (tersembunyi)
+
+METHOD Deposit(jumlah):
+    JIKA jumlah <= 0:
+        KEMBALIKAN error "jumlah harus lebih dari nol"
+    saldo = saldo + jumlah
+    KEMBALIKAN nil
+
+METHOD Withdraw(jumlah):
+    JIKA jumlah <= 0:
+        KEMBALIKAN error "jumlah harus lebih dari nol"
+    JIKA jumlah > saldo:
+        KEMBALIKAN error "saldo tidak cukup"
+    saldo = saldo - jumlah
+    KEMBALIKAN nil
+
+METHOD Saldo():
+    KEMBALIKAN saldo
+```
+
+## Tahap 3: Implementasi
+
+### Versi 1: Kerangka Dasar
+
+Mulai dari struct dan method kosong (belum ada validasi):
+
+```go
+package main
+
+import "fmt"
+
+type BankAccount struct {
+    Pemilik string
+    saldo   float64
+}
+
+func (b *BankAccount) Deposit(jumlah float64) error {
+    // TODO: validasi jumlah, lalu tambahkan ke saldo
+    return nil
+}
+
+func (b *BankAccount) Withdraw(jumlah float64) error {
+    // TODO: validasi jumlah dan saldo, lalu kurangi saldo
+    return nil
+}
+
+func (b *BankAccount) Saldo() float64 {
+    return b.saldo
+}
+
+func main() {
+    akun := &BankAccount{Pemilik: "Ulfar"}
+    fmt.Println("Pemilik:", akun.Pemilik)
+    fmt.Println("Saldo:", akun.Saldo())
+}
+```
+
+Coba jalankan — outputnya baru `Pemilik: Ulfar` dan `Saldo: 0`, karena `Deposit`/`Withdraw` belum melakukan apa-apa.
+
+### Versi 2: Tambahkan Logika
+
+Sekarang lengkapi validasi dan penanganan error, memakai `errors.New` dan `fmt.Errorf` dengan `%w` seperti yang sudah kamu pelajari:
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var (
+    ErrJumlahTidakValid = errors.New("jumlah harus lebih dari nol")
+    ErrSaldoTidakCukup  = errors.New("saldo tidak cukup")
+)
+
+type BankAccount struct {
+    Pemilik string
+    saldo   float64
+}
+
+func (b *BankAccount) Deposit(jumlah float64) error {
+    if jumlah <= 0 {
+        return fmt.Errorf("gagal setor: %w", ErrJumlahTidakValid)
+    }
+    b.saldo += jumlah
+    return nil
+}
+
+func (b *BankAccount) Withdraw(jumlah float64) error {
+    if jumlah <= 0 {
+        return fmt.Errorf("gagal tarik: %w", ErrJumlahTidakValid)
+    }
+    if jumlah > b.saldo {
+        return fmt.Errorf("gagal tarik (saldo saat ini: %.2f): %w", b.saldo, ErrSaldoTidakCukup)
+    }
+    b.saldo -= jumlah
+    return nil
+}
+
+func (b *BankAccount) Saldo() float64 {
+    return b.saldo
+}
+
+func main() {
+    akun := &BankAccount{Pemilik: "Ulfar"}
+
+    if err := akun.Deposit(500000); err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Printf("Saldo sekarang: %.2f\n", akun.Saldo())
+    }
+}
+```
+
+## Memahami Kode
+
+### Field Tersembunyi (`saldo`)
+
+```go
+type BankAccount struct {
+    Pemilik string // exported, bisa diakses langsung
+    saldo   float64 // unexported, cuma bisa diubah lewat method
+}
+```
+
+`saldo` sengaja diawali huruf kecil. Ini bukan sekadar gaya penulisan — ini **desain**: siapa pun yang punya `*BankAccount` tidak bisa menulis `akun.saldo = 999999999` begitu saja dari luar package. Satu-satunya jalan mengubah saldo adalah lewat `Deposit`/`Withdraw`, yang **selalu** memvalidasi jumlahnya lebih dulu.
+
+### Sentinel Error dan Wrapping
+
+```go
+var (
+    ErrJumlahTidakValid = errors.New("jumlah harus lebih dari nol")
+    ErrSaldoTidakCukup  = errors.New("saldo tidak cukup")
+)
+```
+
+Dua *sentinel error* ini didefinisikan sekali di level package, lalu dibungkus dengan konteks tambahan lewat `%w` setiap kali dipakai:
+
+```go
+return fmt.Errorf("gagal tarik (saldo saat ini: %.2f): %w", b.saldo, ErrSaldoTidakCukup)
+```
+
+Pemanggil bisa membaca pesan lengkapnya (`gagal tarik (saldo saat ini: 300000.00): saldo tidak cukup`), **atau** memeriksa jenis error-nya secara presisi dengan `errors.Is(err, ErrSaldoTidakCukup)` — tanpa perlu membandingkan teks pesan secara manual.
+
+### Kenapa Bukan Panic?
+
+Saldo tidak cukup dan jumlah negatif adalah kegagalan yang **wajar terjadi** dalam operasi bank sehari-hari — bukan kondisi fatal yang tak terduga. Sesuai yang kamu pelajari di pelajaran sebelumnya, ini adalah kasus yang tepat untuk `error`, bukan `panic`.
+
+## Tahap 4: Testing
+
+**Test 1: Setor jumlah valid**
+```
+akun.Deposit(500000)
+Expected: err == nil, Saldo() == 500000.00
+```
+
+**Test 2: Setor jumlah negatif**
+```
+akun.Deposit(-100000)
+Expected: err membungkus ErrJumlahTidakValid, saldo tidak berubah
+```
+
+**Test 3: Tarik dalam batas saldo**
+```
+akun.Withdraw(200000) // saldo sebelumnya 500000
+Expected: err == nil, Saldo() == 300000.00
+```
+
+**Test 4: Tarik melebihi saldo**
+```
+akun.Withdraw(1000000) // saldo saat ini 300000
+Expected: err membungkus ErrSaldoTidakCukup, saldo tidak berubah
+```
+
+**Test 5: Tarik jumlah nol**
+```
+akun.Withdraw(0)
+Expected: err membungkus ErrJumlahTidakValid
+```
+
+:::tip
+Perhatikan setiap test memeriksa **dua hal**: apakah error-nya sesuai ekspektasi, **dan** apakah saldo benar-benar berubah (atau tidak berubah) sesuai skenario. Ini kebiasaan penting saat menguji method yang mengubah state lewat pointer receiver.
+:::
+
+## Kode Solusi Lengkap (Final Version)
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var (
+    ErrJumlahTidakValid = errors.New("jumlah harus lebih dari nol")
+    ErrSaldoTidakCukup  = errors.New("saldo tidak cukup")
+)
+
+type BankAccount struct {
+    Pemilik string
+    saldo   float64
+}
+
+func (b *BankAccount) Deposit(jumlah float64) error {
+    if jumlah <= 0 {
+        return fmt.Errorf("gagal setor: %w", ErrJumlahTidakValid)
+    }
+    b.saldo += jumlah
+    return nil
+}
+
+func (b *BankAccount) Withdraw(jumlah float64) error {
+    if jumlah <= 0 {
+        return fmt.Errorf("gagal tarik: %w", ErrJumlahTidakValid)
+    }
+    if jumlah > b.saldo {
+        return fmt.Errorf("gagal tarik (saldo saat ini: %.2f): %w", b.saldo, ErrSaldoTidakCukup)
+    }
+    b.saldo -= jumlah
+    return nil
+}
+
+func (b *BankAccount) Saldo() float64 {
+    return b.saldo
+}
+
+func coba(label string, err error, akun *BankAccount) {
+    fmt.Println(">> " + label)
+    if err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Printf("Saldo sekarang: %.2f\n", akun.Saldo())
+    }
+    fmt.Println()
+}
+
+func main() {
+    akun := &BankAccount{Pemilik: "Ulfar"}
+
+    fmt.Println("=== BANK ACCOUNT SEDERHANA ===")
+    fmt.Printf("Pemilik : %s\n", akun.Pemilik)
+    fmt.Printf("Saldo awal: %.2f\n\n", akun.Saldo())
+
+    coba("Setor 500000", akun.Deposit(500000), akun)
+    coba("Setor -100000", akun.Deposit(-100000), akun)
+    coba("Tarik 200000", akun.Withdraw(200000), akun)
+    coba("Tarik 1000000", akun.Withdraw(1000000), akun)
+
+    fmt.Printf("Saldo akhir: %.2f\n", akun.Saldo())
+}
+```
+
+## Challenge Bonus
+
+Sudah selesai? Coba tantangan tambahan ini:
+
+**Challenge 1: Transfer Antar Rekening**
+
+Tambahkan method `TransferKe(tujuan *BankAccount, jumlah float64) error` yang menarik dari akun pemanggil lalu menyetor ke `tujuan`. Kalau penarikan gagal, jangan lanjutkan penyetoran:
+
+```go
+func (b *BankAccount) TransferKe(tujuan *BankAccount, jumlah float64) error {
+    if err := b.Withdraw(jumlah); err != nil {
+        return fmt.Errorf("transfer gagal: %w", err)
+    }
+    return tujuan.Deposit(jumlah)
+}
+```
+
+**Challenge 2: Riwayat Transaksi**
+
+Tambahkan field `Riwayat []string` ke `BankAccount`, lalu catat setiap transaksi berhasil (misalnya `"Setor: 500000.00"`) dengan `append` setiap kali `Deposit`/`Withdraw` sukses.
+
+**Challenge 3: Custom Error Type dengan errors.As**
+
+Ganti `ErrSaldoTidakCukup` dengan custom error type yang menyimpan detail lebih lengkap:
+
+```go
+type SaldoTidakCukupError struct {
+    Saldo   float64
+    Diminta float64
+}
+
+func (e *SaldoTidakCukupError) Error() string {
+    return fmt.Sprintf("saldo %.2f tidak cukup untuk menarik %.2f", e.Saldo, e.Diminta)
+}
+```
+
+Lalu di `main()`, gunakan `errors.As` untuk mengekstrak `Saldo` dan `Diminta` dari error yang dikembalikan, seperti pola `ValidasiError` di pelajaran Error Handling.
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+Dalam project ini, kamu menggunakan **hampir semua konsep** dari Unit 6:
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| `type ... struct` | Mendefinisikan `BankAccount` |
+| Field unexported (`saldo`) | Melindungi data dari perubahan langsung dari luar |
+| Pointer receiver | `Deposit`/`Withdraw`/`Saldo` mengubah & membaca data asli |
+| Sentinel error (`errors.New`) | `ErrJumlahTidakValid`, `ErrSaldoTidakCukup` |
+| Error wrapping (`%w`) | Menambahkan konteks tanpa kehilangan identitas error asli |
+| Pola `if err != nil` | Menangani setiap kemungkinan kegagalan transaksi |
+
+## Penutup Unit 6
+
+Selamat! Kamu sudah menyelesaikan **Unit 6: Struct & Interface**! Mari recap apa yang sudah kamu kuasai:
+
+- Mengelompokkan data terkait dengan **struct**, dan membuat instance lewat struct literal
+- Menempelkan perilaku ke struct lewat **method**, serta paham beda krusial value receiver vs pointer receiver
+- Menyusun ulang struct dengan **embedding** — komposisi ala Go, pengganti inheritance
+- Mendesain **interface** dan memahami *implicit interface satisfaction* — ciri khas Go yang membedakannya dari bahasa OOP klasik
+- Menangani kegagalan sebagai **value** lewat `error`, `errors.New`, `fmt.Errorf` dengan `%w`, `errors.Is`, dan `errors.As`
+- Memahami **panic** dan **recover** untuk kondisi fatal tak terduga — dan kenapa itu jauh lebih jarang dipakai daripada error biasa
+- Membangun program bertahap dari planning sampai kode solusi lengkap
+
+Struct dan interface adalah fondasi untuk cara Go memodelkan data dan perilaku — kamu akan memakainya terus-menerus mulai sekarang.
+
+Di **Unit 7: Concurrency**, kamu akan belajar fitur andalan Go yang membuatnya terkenal: **goroutine** dan **channel** — cara menjalankan banyak proses sekaligus dengan mudah dan aman. Sampai jumpa di sana!

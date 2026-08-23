@@ -1,0 +1,161 @@
+---
+title: "Apa itu Fungsi?"
+unit: 4
+lesson: 1
+description: "Mengenal fungsi di Go — blok kode reusable yang bikin programmu terorganisir dan tidak berulang-ulang"
+objectives:
+  - "Memahami apa itu fungsi dan kenapa fungsi penting untuk reusability"
+  - "Mendeklarasikan dan memanggil fungsi sederhana tanpa parameter"
+  - "Mengetahui bahwa fungsi di Go harus dideklarasikan di level package, bukan bersarang"
+estimatedTime: 25
+prerequisites: ["unit-3/05-project-pola-bintang"]
+difficulty: "beginner"
+tags: ["fungsi", "function", "func", "reusability"]
+---
+
+# Apa itu Fungsi?
+
+Selamat datang di Unit 4! Sejauh ini, semua kode yang kamu tulis hidup di dalam satu fungsi: `main()`. Itu berjalan baik untuk program kecil, tapi bayangkan kalau kamu harus mencetak "salam pembuka" yang sama di lima tempat berbeda dalam programmu — copy-paste lima kali? Kalau nanti ada typo, kamu harus memperbaikinya di lima tempat sekaligus. Di sinilah **fungsi** menyelamatkanmu.
+
+## Fungsi Sederhana
+
+```go
+package main
+
+import "fmt"
+
+func sapa() {
+    fmt.Println("Halo! Selamat datang di program Go.")
+}
+
+func main() {
+    sapa()
+    sapa()
+    sapa()
+}
+```
+
+Output:
+```
+Halo! Selamat datang di program Go.
+Halo! Selamat datang di program Go.
+Halo! Selamat datang di program Go.
+```
+
+## Membedah Deklarasi Fungsi
+
+**`func sapa() { ... }`** — ini deklarasi fungsi baru bernama `sapa`. Mari pecah bagian-bagiannya:
+- `func` — keyword wajib untuk mendeklarasikan fungsi apa pun di Go
+- `sapa` — nama fungsi. Konvensi Go memakai `camelCase` untuk nama fungsi biasa (huruf pertama kecil)
+- `()` — tanda kurung untuk parameter. Kosong berarti fungsi ini tidak menerima input apa pun (kita bahas parameter di pelajaran berikutnya)
+- `{ ... }` — *body* fungsi, berisi kode yang dijalankan setiap kali fungsi dipanggil
+
+**`sapa()`** di dalam `main()` — ini cara **memanggil** fungsi. Perhatikan: mendeklarasikan fungsi saja **tidak** menjalankan apa pun. Kode di dalam `sapa()` baru benar-benar jalan ketika kamu memanggilnya dengan `sapa()`.
+
+Bayangkan fungsi seperti resep masakan yang ditulis di kertas. Menulis resep tidak membuat makanan matang — kamu harus benar-benar **memasaknya** (memanggil fungsi) supaya hasilnya jadi. Dan resep yang sama bisa kamu pakai berkali-kali tanpa menulis ulang.
+
+:::note
+Fungsi di Go **wajib** dideklarasikan di level package (sejajar dengan `func main()`), **tidak boleh** bersarang di dalam fungsi lain seperti di beberapa bahasa lain (mis. JavaScript). Kalau kamu butuh fungsi "lokal" yang cuma dipakai di satu tempat, Go punya solusi lain bernama *fungsi anonim* — topik untuk pelajaran Closures nanti di unit ini.
+:::
+
+:::tip
+Fungsi adalah alat utama untuk mengorganisir kode. Aturan praktis yang bagus: kalau kamu menulis blok kode yang sama (atau mirip) lebih dari sekali, itu tandanya waktunya membuat fungsi. Ini prinsip yang dikenal sebagai **DRY** — *Don't Repeat Yourself*.
+:::
+
+## Kenapa Fungsi Penting?
+
+Tanpa fungsi, program besar akan menjadi satu tumpukan kode raksasa di dalam `main()` yang susah dibaca, susah diuji, dan susah diperbaiki. Dengan fungsi, kamu bisa:
+
+- **Reusability** — tulis logika sekali, pakai berkali-kali
+- **Organisasi** — pecah masalah besar jadi bagian-bagian kecil yang masing-masing punya tanggung jawab jelas
+- **Kemudahan testing** — fungsi kecil lebih mudah diuji satu per satu dibanding satu blok kode raksasa
+- **Kemudahan baca** — nama fungsi yang jelas (`hitungTotal`, `validasiInput`) menjelaskan maksud kode tanpa perlu membaca detail implementasinya
+
+## Kesalahan Umum
+
+1. **Mendeklarasikan fungsi di dalam fungsi lain (tidak diizinkan di Go):**
+   ```go
+   func main() {
+       func sapa() { // ERROR: nested function declaration tidak valid
+           fmt.Println("Halo")
+       }
+       sapa()
+   }
+   ```
+   Semua deklarasi `func namaFungsi(...)` harus berada di level package, sejajar dengan `main()` — bukan di dalamnya.
+
+2. **Lupa memanggil fungsi:**
+   ```go
+   func sapa() {
+       fmt.Println("Halo!")
+   }
+
+   func main() {
+       // lupa memanggil sapa() di sini
+   }
+   ```
+   Ini **bukan** compile error — programnya tetap jalan, tapi tidak mencetak apa pun. Berbeda dari variabel atau import yang tidak dipakai (yang bikin Go menolak compile), fungsi yang tidak dipanggil sama sekali tetap valid secara sintaks, hanya saja tidak berguna kalau tidak pernah dipanggil.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l1-ex1"
+  title="Buat dan Panggil Fungsi"
+  description="Lengkapi fungsi <code>ucapkanSelamat</code> agar mencetak <code>Selamat belajar Go!</code>, lalu panggil fungsi tersebut sebanyak 2 kali dari <code>main</code>."
+  type="code-output"
+  expectedOutput="Selamat belajar Go!
+Selamat belajar Go!"
+  starterCode={`package main
+
+import "fmt"
+
+func ucapkanSelamat() {
+    fmt.Println("Selamat belajar Go!")
+}
+
+func main() {
+    ucapkanSelamat()
+    ucapkanSelamat()
+}`}
+  hints={["Fungsi ucapkanSelamat sudah lengkap — coba jalankan dulu untuk melihat hasilnya.", "Memanggil fungsi dua kali berarti menulis ucapkanSelamat() dua kali di main()."]}
+  explanation="Setiap pemanggilan ucapkanSelamat() menjalankan ulang isi fungsi tersebut, sehingga baris fmt.Println di dalamnya tercetak setiap kali dipanggil."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l1-ex2"
+  title="Fungsi yang Tidak Dipanggil"
+  description="Apa yang terjadi kalau kamu mendeklarasikan sebuah fungsi tapi tidak pernah memanggilnya di Go?"
+  type="multiple-choice"
+  options={["Program tetap compile dan jalan normal, hanya saja isi fungsi itu tidak pernah dieksekusi", "Go menolak compile dengan error 'function declared and not used'", "Fungsi tersebut otomatis terpanggil saat program dimulai", "Program crash saat runtime"]}
+  correctIndex={0}
+  hints={["Bandingkan dengan aturan variabel/import yang tidak dipakai — apakah aturannya sama untuk fungsi?", "Go cukup 'longgar' soal fungsi yang tidak dipanggil, beda dari variabel lokal yang tidak dipakai."]}
+  explanation="Berbeda dari variabel lokal atau import yang tidak dipakai (yang bikin compile gagal), fungsi yang dideklarasikan tapi tidak pernah dipanggil tetap valid secara sintaks — programnya tetap jalan, cuma kode di dalam fungsi itu tidak pernah dieksekusi."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u4l1-ex3"
+  title="Lengkapi Deklarasi Fungsi"
+  description="Lengkapi keyword yang dipakai untuk mendeklarasikan fungsi baru di Go."
+  type="fill-blank"
+  template="{{BLANK}} sapa() {"
+  blanks={["func"]}
+  hints={["Keyword ini sama untuk semua deklarasi fungsi, termasuk func main()."]}
+  explanation="Setiap deklarasi fungsi di Go dimulai dengan keyword 'func', diikuti nama fungsi dan tanda kurung parameter."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi fungsi | `func sapa() { ... }` |
+| Memanggil fungsi | `sapa()` |
+| Level deklarasi | Wajib di level package, tidak boleh bersarang |
+| Konvensi penamaan | `camelCase`, huruf awal kecil (kecuali di-*export*) |
+| Manfaat utama | Reusability, organisasi, kemudahan baca & testing |
+
+Fungsi kita saat ini masih "kosong" — tidak menerima data apa pun dari luar. Di pelajaran berikutnya, kita akan belajar **parameter dan return value** — cara mengirim data ke dalam fungsi dan mengambil hasilnya kembali.
