@@ -2,18 +2,196 @@
 title: "Parameters & Return"
 unit: 4
 lesson: 2
-description: "English translation of lesson 02-parameter-return.mdx"
+description: "Sending data into a function through parameters, and getting results back out through return values"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare functions with explicitly typed parameters"
+  - "Return a single value from a function with return"
+  - "Use shorthand notation for consecutive parameters that share a type"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-4/01-apa-itu-fungsi"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-4"]
+tags: ["parameter", "return", "function"]
 ---
 
 # Parameters & Return
 
+The `greet()` function from the previous lesson always printed the exact same message — not very flexible. Functions become far more useful when they can **receive data** (parameters) and **return a result** (return value). Let's build a function that actually "works" with the data you give it.
+
+## A Function with Parameters and Return
+
+```go
+package main
+
+import "fmt"
+
+func add(a int, b int) int {
+    result := a + b
+    return result
+}
+
+func main() {
+    total := add(3, 4)
+    fmt.Println(total)
+    fmt.Println(add(10, 20))
+}
+```
+
+Output:
+```
+7
+30
+```
+
+## Breaking Down Parameters and Return
+
+**`func add(a int, b int) int`** — let's break it down:
+- `a int, b int` — the **parameter** list: variables that receive values from the caller, each with an explicit type. Unlike Python or JavaScript, in Go **every parameter must have a type** — there's no such thing as an "untyped" parameter
+- `int` (after the parentheses) — the **return type**: the type of data this function will return
+
+**`return result`** — returns the value `result` to the caller, and **immediately stops** execution of the function at that point. Any code after `return` in the same function will never run.
+
+**`add(3, 4)`** — calls the function with the **arguments** `3` and `4`. These arguments are copied into the parameters `a` and `b` inside the function. The returned value (`7`) can be used right away — stored in a variable (`total := add(3, 4)`) or used directly (`fmt.Println(add(10, 20))`).
+
+Think of a function like a vending machine: you insert money (the argument), the machine processes it (the function body), and you receive an item (the return value) at the end.
+
+### Shorthand for Same-Typed Parameters
+
+When several consecutive parameters share the same type, you can write the type just once at the end:
+
+```go
+func add(a, b int) int {
+    return a + b
+}
+```
+
+This is exactly equivalent to `func add(a int, b int) int` — just more concise. The rule: the type only needs to be written after the **last** parameter in a group that shares that type.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+**Parameters are passed by value (copied)** — when you call `add(3, 4)`, the values `3` and `4` are **copied** into the parameters `a` and `b`. Changing `a` inside the function does **not** affect the original variable in the caller. This differs from some other languages that pass objects by reference by default.
 :::
+
+:::tip
+If a group of parameters has mixed types, you can combine the shorthand and explicit styles: `func buildProfile(name string, age, height int)` — `age` and `height` are both `int` so they only need to be written once, but `name` has a different type so it still needs an explicit type.
+:::
+
+## Example: Mixed Parameters
+
+```go
+package main
+
+import "fmt"
+
+func introduce(name string, age int) string {
+    return name + " is " + fmt.Sprint(age) + " years old"
+}
+
+func main() {
+    fmt.Println(introduce("Rani", 20))
+}
+```
+
+Output:
+```
+Rani is 20 years old
+```
+
+Notice `fmt.Sprint(age)` — used to convert the `int` into a `string` so it can be joined with `+`. Go doesn't allow you to join a `string` and an `int` directly with `+` (different types must be converted first — the same type-conversion principle you learned back in Unit 1).
+
+## Common Mistakes
+
+1. **Forgetting to write the return type, but still having a `return` statement:**
+   ```go
+   func add(a, b int) { // ERROR: no return type declared
+       return a + b     // ERROR: too many return values
+   }
+   ```
+   If a function returns a value, the return type **must** be declared after the parameter list.
+
+2. **A function with a return type that forgets `return` on some paths:**
+   ```go
+   func absolute(n int) int {
+       if n < 0 {
+           return -n
+       }
+       // ERROR: missing return at end of function
+   }
+   ```
+   Go **forces** every possible execution path to end with a `return` if the function has a return type — the compiler will reject any path that "escapes" without returning.
+
+3. **Assuming changes to a parameter inside a function affect the original variable:**
+   ```go
+   func double(n int) {
+       n = n * 2
+   }
+
+   func main() {
+       number := 5
+       double(number)
+       fmt.Println(number) // still 5, not 10 — because n is just a copy
+   }
+   ```
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l2-ex1"
+  title="Rectangle Area Function"
+  description="Complete the <code>area</code> function so it returns the product of length and width, then print the result for length=8, width=5."
+  type="code-output"
+  expectedOutput="40"
+  starterCode={`package main
+
+import "fmt"
+
+func area(length, width int) int {
+    return length * width
+}
+
+func main() {
+    fmt.Println(area(8, 5))
+}`}
+  hints={["The area function is already complete — try running it first to confirm the result is 40.", "length * width for length=8 and width=5 is 40."]}
+  explanation="area(8, 5) returns 8 * 5 = 40, because both parameters length and width are typed int (written in shorthand: 'length, width int')."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l2-ex2"
+  title="Parameters Are Copies"
+  description="The function <code>change(n int)</code> sets <code>n = 99</code> inside its body. If it's called with <code>change(number)</code>, where <code>number</code> starts at 10, what is the value of <code>number</code> after that call?"
+  type="multiple-choice"
+  options={["10, because parameters are passed by value (copied)", "99, because parameters are passed by reference", "A compile error", "0, because number was never initialized"]}
+  correctIndex={0}
+  hints={["Remember: parameters in Go are copies of the value, not references to the original variable.", "Changing n inside change() never touches the number variable in main()."]}
+  explanation="Parameters in Go are passed by value — n is only a copy of number. Setting n to 99 inside change() does not affect the original number variable, so its value stays 10."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l2-ex3"
+  title="Complete the Return Type"
+  description="Fill in the type used to declare a function that returns an int value."
+  type="fill-blank"
+  template={`func multiply(a, b int) {{BLANK}} {
+    return a * b
+}`}
+  blanks={["int"]}
+  hints={["The return type is written after the parameter parentheses, before the opening curly brace."]}
+  explanation="Since this function returns the product of two ints, its return type must be 'int', written after the parameter list: func multiply(a, b int) int."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Explicit parameters | `func f(a int, b int)` |
+| Shorthand parameters (same type) | `func f(a, b int)` |
+| Return type | `func f(a, b int) int` |
+| Returning a value | `return result` |
+| Parameters = copies (by value) | Changing a parameter doesn't affect the original variable |
+
+So far our functions can only return a **single** value. In the next lesson we'll learn one of Go's most distinctive features: **multiple return values** — returning more than one value at once from a single function.

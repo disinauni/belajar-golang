@@ -2,18 +2,182 @@
 title: "Comparison & Logical Operators"
 unit: 2
 lesson: 1
-description: "English translation of lesson 01-operator-perbandingan-logika.mdx"
+description: "Compare values and combine conditions with logical operators"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Use comparison operators: == != < > <= >="
+  - "Combine conditions with logical operators && || !"
+  - "Understand short-circuit evaluation"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/09-project-kalkulator"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-2"]
+tags: ["operator", "comparison", "logic", "boolean"]
 ---
 
 # Comparison & Logical Operators
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+A program that only computes without being able to "make decisions" is limited — our calculator from Unit 1 still feels rigid. Starting with this unit, you'll learn to build programs that react differently depending on the situation. First step: understanding the operators that produce `true`/`false`.
+
+## Comparison Operators
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    a := 10
+    b := 7
+
+    fmt.Println(a == b)  // false
+    fmt.Println(a != b)  // true
+    fmt.Println(a > b)   // true
+    fmt.Println(a < b)   // false
+    fmt.Println(a >= 10) // true
+    fmt.Println(b <= 6)  // false
+}
+```
+
+Output:
+```
+false
+true
+true
+false
+true
+false
+```
+
+## Breaking Down the Comparison Operators
+
+**`==`** — equal to. Notice the **two** equals signs — different from `=` (one sign), which is used for assignment.
+
+**`!=`** — not equal to.
+
+**`>` `<` `>=` `<=`** — greater than, less than, greater than or equal to, less than or equal to. All of these produce a `bool`.
+
+:::tip
+All of these operators work on `int`, `float64`, and `string` (string comparison in Go follows alphabetical/lexicographic order: `"apple" < "orange"` evaluates to `true`). They can't be used directly to compare slices, maps, or structs containing slices — that's a more advanced topic in later units.
 :::
+
+## Logical Operators
+
+Sometimes one condition isn't enough — you need to combine several requirements at once.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    age := 17
+    hasID := true
+
+    canVote := age >= 17 && hasID
+    fmt.Println(canVote) // true
+
+    studentDiscount := age < 18 || age > 60
+    fmt.Println(studentDiscount) // true
+
+    noID := !hasID
+    fmt.Println(noID) // false
+}
+```
+
+Output:
+```
+true
+true
+false
+```
+
+## Breaking Down the Logical Operators
+
+**`&&`** (AND) — the result is `true` only if **both** sides are `true`. `age >= 17 && hasID` evaluates to `true` because both requirements are satisfied.
+
+**`||`** (OR) — the result is `true` if **either** side is `true`. `age < 18 || age > 60` evaluates to `true` because `age > 60` alone would be enough (though `age < 18` is also `true` here — wait, `17 < 18` is `true`! Try running it yourself and see).
+
+**`!`** (NOT) — flips a bool value. `!hasID` flips `true` into `false`.
+
+:::note
+**Short-circuit evaluation** — Go does **not** evaluate the right side of `&&`/`||` if the result can already be determined from the left side alone. If the left side of `&&` is already `false`, the right side is **never executed** (because the AND result is guaranteed to be `false`). This is useful for code like `data != nil && data.Value > 0` — the second part is safe to run because Go already knows it won't check `data.Value` if `data` is actually `nil`.
+:::
+
+## Common Mistakes
+
+1. **Using `=` (assignment) when you meant `==` (comparison):**
+   ```go
+   a := 5
+   if a = 10 {  // ERROR: syntax error, non-boolean condition
+       fmt.Println("this is an error!")
+   }
+   ```
+   The good news: Go **refuses to compile** this mistake automatically, because `a = 10` is an assignment statement, not an expression that produces a `bool`. This differs from C/C++, which silently allow it (and it's often a source of bugs there).
+
+2. **Comparing float64 with `==` for calculation results:**
+   ```go
+   result := 0.1 + 0.2
+   fmt.Println(result == 0.3)  // false! (not a bug, it's floating-point precision)
+   ```
+   Decimal calculations have limited precision in nearly every programming language. To compare two float64 values as "approximately equal," you usually use a small tolerance (`math.Abs(a-b) < 0.0001`) instead of a direct `==`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u2l1-ex1"
+  title="Check Eligibility"
+  description="Complete the program so it prints <code>true</code> if the age is at least 17 AND they already have an ID."
+  type="code-output"
+  expectedOutput="true"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    age := 20
+    hasID := true
+    eligible := age >= 17 && hasID
+    fmt.Println(eligible)
+}`}
+  hints={["Use the && operator to require both conditions to be satisfied.", "This code is already correct — try running it!"]}
+  explanation="age >= 17 && hasID is true only if both requirements are satisfied at the same time."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u2l1-ex2"
+  title="Short-Circuit Evaluation"
+  description="In the expression <code>false && x()</code>, will the function x() be called?"
+  type="multiple-choice"
+  options={["Yes, always called", "No, because the left side is already false", "Depends on what x() does", "The program will error"]}
+  correctIndex={1}
+  hints={["Remember the short-circuit evaluation concept just explained.", "If the left side of && is already false, the AND result is guaranteed false without needing to check the right side."]}
+  explanation="Go does not evaluate the right side of && when the left side is already false, since the result is already guaranteed to be false. x() is never called."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u2l1-ex3"
+  title="Complete the NOT Operator"
+  description="Complete the operator that flips the boolean value of hasID."
+  type="fill-blank"
+  template="noID := {{BLANK}}hasID"
+  blanks={["!"]}
+  hints={["This operator is only one character, flipping true to false and vice versa."]}
+  explanation="!hasID flips the boolean value — if hasID is true, the result is false, and vice versa."
+  lang="en"
+/>
+
+## Summary
+
+| Operator | Function | Example |
+|---|---|---|
+| `==` `!=` | Equal to, not equal to | `a == b` |
+| `<` `>` `<=` `>=` | Order comparison | `age >= 17` |
+| `&&` | AND (both sides must be true) | `a && b` |
+| `\|\|` | OR (either side true) | `a \|\| b` |
+| `!` | NOT (flips the value) | `!valid` |
+
+In the next lesson, we'll use these operators to make programs truly "make decisions" with **if-else**!

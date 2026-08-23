@@ -2,18 +2,193 @@
 title: "Basic Strings"
 unit: 1
 lesson: 7
-description: "English translation of lesson 07-string-dasar.mdx"
+description: "Concatenate, compare, and manipulate text with string and the strings package"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Concatenate strings with the + operator"
+  - "Use functions from the strings package"
+  - "Understand that strings in Go are immutable"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/06-operasi-aritmatika"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["string", "strings-package", "immutable"]
 ---
 
 # Basic Strings
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Almost every program interacts with text — usernames, error messages, article titles. Go provides simple operators for basic operations, plus the `strings` package containing dozens of ready-to-use functions for more complex needs.
+
+## Concatenating Strings
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    first := "Alex"
+    last := "Johnson"
+
+    fullName := first + " " + last
+    fmt.Println(fullName)
+    fmt.Println("Name length:", len(fullName))
+}
+```
+
+Output:
+```
+Alex Johnson
+Name length: 12
+```
+
+## Breaking Down String Operations
+
+**`first + " " + last`** — the `+` operator concatenates strings. Notice the `" "` in the middle — a space is a string too, just one containing a single character.
+
+**`len(fullName)`** — Go's built-in function for computing length. For a plain ASCII string like this one, the result matches the number of characters. But `len()` actually counts the number of **bytes**, not the number of characters — for text with non-ASCII characters (like emoji or accented letters), the byte count can be larger than the number of characters you see. We'll cover this in full in Unit 5.
+
+## Functions from the `strings` Package
+
+```go
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    sentence := "Learning Go is Fun"
+
+    fmt.Println(strings.ToUpper(sentence))
+    fmt.Println(strings.ToLower(sentence))
+    fmt.Println(strings.Contains(sentence, "Go"))
+    fmt.Println(strings.Replace(sentence, "Fun", "Awesome", 1))
+    fmt.Println(strings.Split(sentence, " "))
+}
+```
+
+Output:
+```
+LEARNING GO IS FUN
+learning go is fun
+true
+Learning Go is Awesome
+[Learning Go is Fun]
+```
+
+## Breaking Down the strings Functions
+
+**`strings.ToUpper` / `strings.ToLower`** — converts all letters to uppercase/lowercase.
+
+**`strings.Contains(sentence, "Go")`** — returns a `bool`, `true` if `"Go"` is found inside `sentence`.
+
+**`strings.Replace(sentence, "Fun", "Awesome", 1)`** — replaces the first occurrence (the `1` at the end) of `"Fun"` with `"Awesome"`. Use `-1` to replace **all** occurrences.
+
+**`strings.Split(sentence, " ")`** — splits a string into a `[]string` slice, divided on spaces. We'll cover slices in depth in Unit 5 — for now, just know this produces a collection of text pieces.
+
+:::tip
+The `strings` package has dozens of other functions: `strings.TrimSpace` (removes spaces at the start/end), `strings.HasPrefix`/`HasSuffix` (checks a prefix/suffix), `strings.Join` (the reverse of Split). You don't need to memorize all of them — just know this package exists for when you need it.
 :::
+
+## Strings Are Immutable
+
+Strings in Go **can't be changed** after they're created — trying to change one character via an index fails to compile:
+
+```go
+word := "Hi"
+word[0] = 'h'  // ERROR: cannot assign to word[0] (neither addressable nor a map index expression)
+```
+
+If you need to "change" a string, what you're really doing is **creating a new string**:
+
+```go
+word := "Hello"
+newWord := "h" + word[1:]
+fmt.Println(newWord)  // hello — not "hHello"! word[1:] starts from index 1, dropping the original "H"
+```
+
+:::note
+The example above uses string slicing with `[1:]` — a topic we'll cover in full when we get to slices in Unit 5. For now, just remember: strings are **immutable**, period.
+:::
+
+## Common Mistakes
+
+1. **Trying to change a character via index:**
+   ```go
+   name := "alex"
+   name[0] = 'A'  // ERROR: cannot assign to name[0]
+   ```
+   Fix: build a new string, don't try to change the existing one.
+
+2. **Concatenating a string with another type without converting:**
+   ```go
+   age := 17
+   message := "Age: " + age  // ERROR: mismatched types string and int
+   ```
+   Fix: convert first with `strconv.Itoa(age)`, or use `fmt.Sprintf("Age: %d", age)`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l7-ex1"
+  title="Concatenate and Uppercase"
+  description="Complete the program so it prints 'ALEX JOHNSON' (all uppercase) from two variables holding a first and last name."
+  type="code-output"
+  expectedOutput="ALEX JOHNSON"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    first := "Alex"
+    last := "Johnson"
+    full := first + " " + last
+    fmt.Println(strings.ToUpper(full))
+}`}
+  hints={["Concatenate first with +, then convert the whole thing to uppercase.", "strings.ToUpper() converts an entire string to uppercase letters."]}
+  explanation="first + a space + last concatenates the name, then strings.ToUpper() converts the result to ALEX JOHNSON."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l7-ex2"
+  title="The Nature of Strings in Go"
+  description="Why does `name[0] = 'A'` produce a compile error in Go?"
+  type="multiple-choice"
+  options={["Because name must be declared with const", "Because strings in Go are immutable (cannot be changed)", "Because the index must start from 1, not 0", "Because uppercase letters aren't allowed in strings"]}
+  correctIndex={1}
+  hints={["Remember the special property of strings covered in this lesson.", "You can create a new string, but you can't change an existing one."]}
+  explanation="Strings in Go are immutable — once created, their contents can never be changed. To 'change' text, what you're really doing is creating a new string."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l7-ex3"
+  title="Complete the Substring Check"
+  description="Complete the function from the strings package to check whether a sentence contains a certain word."
+  type="fill-blank"
+  template='strings.{{BLANK}}(sentence, "Go")'
+  blanks={["Contains"]}
+  hints={["This function returns a bool: true if found."]}
+  explanation='strings.Contains(sentence, "Go") returns true if "Go" is found inside sentence.'
+  lang="en"
+/>
+
+## Summary
+
+| Function | Purpose |
+|---|---|
+| `a + b` | Concatenate strings |
+| `len(s)` | String length in bytes |
+| `strings.ToUpper(s)` / `ToLower(s)` | Convert to uppercase/lowercase |
+| `strings.Contains(s, sub)` | Check whether it contains a substring |
+| `strings.Replace(s, old, new, n)` | Replace occurrences of text |
+| `strings.Split(s, sep)` | Split a string into a slice |
+
+In the next lesson, we'll cover **type conversion** in full — how to correctly convert between int, float64, and string!

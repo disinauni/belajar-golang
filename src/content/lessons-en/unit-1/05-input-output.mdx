@@ -2,18 +2,184 @@
 title: "Input & Output"
 unit: 1
 lesson: 5
-description: "English translation of lesson 05-input-output.mdx"
+description: "Read input from the user with bufio.Scanner and display formatted output"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Read text input from the keyboard with bufio.Scanner"
+  - "Convert text input into a number with strconv.Atoi"
+  - "Format output with fmt.Printf"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/04-konstanta-iota"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["input", "output", "bufio", "scanner", "strconv"]
 ---
 
 # Input & Output
 
+A program that only prints fixed text is boring — a real program interacts with its user. In Go, reading input from the keyboard is a bit more verbose than in a language like Python, but once you understand the pattern, you'll use it again and again.
+
+## Reading Input with bufio.Scanner
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Print("What's your name? ")
+    scanner.Scan()
+    name := scanner.Text()
+
+    fmt.Println("Hello, " + name + "!")
+}
+```
+
+If you run this on the **Playground** page (open the "Input/stdin" field and fill in a name before clicking Run) and type `Alex`, the output is:
+
+```
+What's your name? Hello, Alex!
+```
+
+## Breaking Down Each Line
+
+**`import ( "bufio" "fmt" "os" )`** — this time we import three packages at once, written inside parentheses. This is the recommended style for imports when more than one package is used.
+
+**`bufio.NewScanner(os.Stdin)`** — creates a new scanner that reads from `os.Stdin`, i.e. "standard input" — usually the keyboard. `bufio` (buffered I/O) provides an efficient way to read input line by line.
+
+**`scanner.Scan()`** — reads one line of input, waiting until the user presses Enter. This function returns a `bool`: `true` if it successfully read something.
+
+**`scanner.Text()`** — retrieves the text that `Scan()` just read, as a `string`.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+The **Exercise** boxes in this lesson don't provide a stdin field, so code that needs interactive input is best tried out first on the **Playground** page (which has an "Input/stdin" field), not in the Exercise boxes below.
 :::
+
+## Reading a Number from Input
+
+`scanner.Text()` always returns a `string` — even when the user types a number. To turn it into a number, we need the `strconv` package (string conversion):
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Print("How old are you? ")
+    scanner.Scan()
+    ageText := scanner.Text()
+
+    age, err := strconv.Atoi(ageText)
+    if err != nil {
+        fmt.Println("That's not a valid number!")
+        return
+    }
+
+    fmt.Printf("Next year you'll be %d.\n", age+1)
+}
+```
+
+## Breaking Down the Number Conversion
+
+**`strconv.Atoi(ageText)`** — "Atoi" stands for "ASCII to Integer". This function tries to convert a string into an `int`, and returns **two values**: the converted result (`int`) and an `error` (nil if it succeeded, containing a message if it failed).
+
+**`if err != nil { ... }`** — the idiomatic Go pattern for checking errors. If `err` isn't `nil`, the conversion failed (e.g. the user typed "abc" instead of a number). We'll cover error handling in full in Unit 6 — for now, just remember that this pattern shows up often.
+
+**`fmt.Printf("Next year you'll be %d.\n", age+1)`** — `Printf` uses *format verbs* like `%d` (integer) to insert values into text. Also notice the `\n` at the end — unlike `Println`, `Printf` does **not** automatically add a newline, so you have to write it yourself.
+
+:::tip
+Commonly used format verbs: `%d` for integers, `%s` for strings, `%f` for decimals (`%.2f` for 2 digits after the decimal point), `%t` for bools, `%v` for any value (default format).
+:::
+
+## Common Mistakes
+
+1. **Forgetting to import `bufio` or `os`:**
+   ```go
+   scanner := bufio.NewScanner(os.Stdin)  // ERROR: undefined: bufio (if you forgot the import)
+   ```
+
+2. **Forgetting to handle the error from strconv.Atoi:**
+   ```go
+   age, _ := strconv.Atoi(ageText)  // error ignored with _
+   fmt.Println(age + 1)  // if the input isn't a number, age is 0 — not an obvious error!
+   ```
+   Ignoring an error with `_` is sometimes fine for a short example, but a serious program should always check `err`.
+
+3. **Forgetting `\n` in `Printf`:**
+   ```go
+   fmt.Printf("Hello, %s!", name)  // no newline at the end
+   fmt.Println("Next line")
+   // Output: Hello, Alex!Next line  ← stuck together!
+   ```
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l5-ex1"
+  title="Format Output with Printf"
+  description="Complete the program so it prints 'Score: 95, Average: 88.50' using fmt.Printf with the correct format verbs."
+  type="code-output"
+  expectedOutput="Score: 95, Average: 88.50"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    score := 95
+    average := 88.5
+    fmt.Printf("Score: %d, Average: %.2f\\n", score, average)
+}`}
+  hints={["%d for an integer, %.2f for a decimal with two digits after the point.", "This code is actually already correct — try running it!"]}
+  explanation="%d inserts the integer, %.2f inserts the decimal with exactly 2 digits after the point — 88.5 becomes 88.50."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l5-ex2"
+  title="The strconv.Atoi Function"
+  description="What does <code>strconv.Atoi(&quot;25&quot;)</code> return?"
+  type="multiple-choice"
+  options={["Just the number 25", "The number 25 and an error (nil if successful)", "The string \"25\"", "A boolean"]}
+  correctIndex={1}
+  hints={["Remember the multiple return values pattern you've already seen in a few examples.", "There are always two values: the conversion result, and an error."]}
+  explanation="strconv.Atoi returns two values: the converted int, and an error (nil if successful, containing a message if the string wasn't a valid number)."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l5-ex3"
+  title="Complete Reading a Line"
+  description="Complete the code to read one line of input and retrieve its text as a string."
+  type="fill-blank"
+  template="scanner.Scan()\ntext := scanner.{{BLANK}}()"
+  blanks={["Text"]}
+  hints={["This method retrieves the most recent read as a string."]}
+  explanation="scanner.Text() returns the last line successfully read by scanner.Scan(), as a string."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Create a scanner | `bufio.NewScanner(os.Stdin)` |
+| Read one line | `scanner.Scan()` |
+| Retrieve its text | `scanner.Text()` |
+| String to int | `strconv.Atoi(text)` (returns: int, error) |
+| Format output | `fmt.Printf("%d %s %.2f\n", ...)` |
+
+In the next lesson, we'll cover **arithmetic operations** — how Go computes addition, subtraction, multiplication, division, and remainder!

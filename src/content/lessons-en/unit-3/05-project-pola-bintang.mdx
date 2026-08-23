@@ -2,18 +2,361 @@
 title: "Project: Star Patterns"
 unit: 3
 lesson: 5
-description: "English translation of lesson 05-project-pola-bintang.mdx"
+description: "Build a star pattern generator that combines every looping concept from Unit 3"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Combine nested loops to build several different patterns"
+  - "Read user input to determine the pattern size"
+  - "Test the program with various input sizes"
 estimatedTime: 60
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-3/04-nested-loops"]
 difficulty: "beginner"
-tags: ["unit-3"]
+tags: ["project", "pattern", "nested-loop", "practice"]
+translationStatus: "complete"
 ---
 
 # Project: Star Patterns
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+You've mastered every form of looping in Go: `for` in its three variations, `range`, `break`/`continue`/labels, and nested loops. Time to combine it all into one real program — a **star pattern generator** that can print several kinds of patterns at once.
+
+## Program Specification
+
+Our program needs to:
+
+1. Ask the user for a **pattern size** (number of rows)
+2. Ask the user to choose a **pattern type**: right triangle, inverted triangle, or pyramid
+3. Print the chosen pattern at the given size
+
+Expected interaction example (size 4, triangle choice):
+```
+=== STAR PATTERN GENERATOR ===
+
+Enter pattern size: 4
+Choose pattern (1=Triangle, 2=Inverted Triangle, 3=Pyramid): 1
+
+*
+**
+***
+****
+```
+
+## Stage 1: Planning
+
+**What data do we need to store?**
+- Pattern size (number of rows — `int`)
+- Pattern type choice (`int` or `string`)
+
+**Program flow:**
+1. Display the title
+2. Prompt for the size
+3. Prompt for the pattern choice
+4. Print the chosen pattern with a nested loop
+5. If the choice is invalid, display an error message
+
+**Edge cases to think about:**
+- What if the entered size is 0 or negative?
+- What if the pattern choice isn't 1, 2, or 3?
+
+## Stage 2: Pseudocode
+
+```
+PROGRAM StarPattern:
+    DISPLAY title "STAR PATTERN GENERATOR"
+
+    ASK for size (int)
+    IF size <= 0:
+        DISPLAY "Size must be greater than 0!"
+        STOP
+
+    ASK for choice (int)
+
+    IF choice is 1 (Triangle):
+        FOR row FROM 1 TO size:
+            PRINT "row" number of stars
+    IF choice is 2 (Inverted Triangle):
+        FOR row FROM size DOWN TO 1:
+            PRINT "row" number of stars
+    IF choice is 3 (Pyramid):
+        FOR row FROM 1 TO size:
+            PRINT spaces then stars, centered
+    OTHERWISE:
+        DISPLAY "Invalid choice!"
+```
+
+## Stage 3: Implementation
+
+### Version 1: Basic Skeleton
+
+Start with a skeleton that reads input, without printing any pattern yet:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== STAR PATTERN GENERATOR ===")
+    fmt.Println()
+
+    fmt.Print("Enter pattern size: ")
+    scanner.Scan()
+    size, _ := strconv.Atoi(scanner.Text())
+
+    if size <= 0 {
+        fmt.Println("Size must be greater than 0!")
+        return
+    }
+
+    fmt.Print("Choose pattern (1=Triangle, 2=Inverted Triangle, 3=Pyramid): ")
+    scanner.Scan()
+    choice, _ := strconv.Atoi(scanner.Text())
+
+    fmt.Println()
+    fmt.Println("Size:", size, "Choice:", choice)
+    // TODO: print the chosen pattern
+}
+```
+
+Try running it — the program can already accept input and validate the size, even though it doesn't print any pattern yet.
+
+### Version 2: Add the Pattern Logic
+
+Now let's add the printing logic for all three pattern types, using `switch`:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== STAR PATTERN GENERATOR ===")
+    fmt.Println()
+
+    fmt.Print("Enter pattern size: ")
+    scanner.Scan()
+    size, _ := strconv.Atoi(scanner.Text())
+
+    if size <= 0 {
+        fmt.Println("Size must be greater than 0!")
+        return
+    }
+
+    fmt.Print("Choose pattern (1=Triangle, 2=Inverted Triangle, 3=Pyramid): ")
+    scanner.Scan()
+    choice, _ := strconv.Atoi(scanner.Text())
+
+    fmt.Println()
+
+    switch choice {
+    case 1:
+        for row := 1; row <= size; row++ {
+            fmt.Println(strings.Repeat("*", row))
+        }
+    case 2:
+        for row := size; row >= 1; row-- {
+            fmt.Println(strings.Repeat("*", row))
+        }
+    case 3:
+        for row := 1; row <= size; row++ {
+            spaces := strings.Repeat(" ", size-row)
+            stars := strings.Repeat("*", 2*row-1)
+            fmt.Println(spaces + stars)
+        }
+    default:
+        fmt.Println("Invalid choice! Use 1, 2, or 3.")
+    }
+}
+```
+
+This is the complete version of our pattern generator! Let's understand the important parts.
+
+## Understanding the Code
+
+### strings.Repeat Replaces a Manual Nested Loop
+
+```go
+fmt.Println(strings.Repeat("*", row))
+```
+
+Instead of writing a manual nested loop to print `row` stars one at a time, we use `strings.Repeat("*", row)`, which returns a string containing `"*"` repeated `row` times. It's still conceptually "nested" (an outer loop for the rows, with the "inner loop" replaced by `strings.Repeat`), but the code is more concise and easier to read.
+
+### Pyramid: Combining Spaces + Stars
+
+```go
+spaces := strings.Repeat(" ", size-row)
+stars := strings.Repeat("*", 2*row-1)
+fmt.Println(spaces + stars)
+```
+
+A pyramid needs two parts per row: spaces on the left (to center the stars) and stars in the middle. For `row` 1 of `size=4`: spaces `4-1=3`, stars `2*1-1=1`. For `row` 4: spaces `4-4=0`, stars `2*4-1=7`. Try calculating it by hand on paper if you're not sure about the pattern yet!
+
+### Inverted Triangle: A Backward Loop
+
+```go
+for row := size; row >= 1; row-- {
+```
+
+Notice this `for` starts at `size` and **decreases** (`row--`) down to `1`. This is the reverse of a regular ascending loop — Go doesn't care which direction you go, `for` is flexible enough for both.
+
+## Stage 4: Testing
+
+Try running it with the following inputs:
+
+**Test 1: Triangle, size 3**
+```
+Size: 3, Choice: 1
+Expected:
+*
+**
+***
+```
+
+**Test 2: Inverted Triangle, size 3**
+```
+Size: 3, Choice: 2
+Expected:
+***
+**
+*
+```
+
+**Test 3: Pyramid, size 3**
+```
+Size: 3, Choice: 3
+Expected:
+  *
+ ***
+*****
+```
+
+**Test 4: Size 0 (edge case)**
+```
+Size: 0
+Expected: "Size must be greater than 0!" (the program stops before asking for the pattern choice)
+```
+
+**Test 5: Invalid choice**
+```
+Size: 3, Choice: 9
+Expected: "Invalid choice! Use 1, 2, or 3."
+```
+
+:::tip
+For the pyramid pattern, the easiest way to verify your code is correct is to manually count the spaces and stars on paper for the first 2-3 rows, then compare that to the program's output.
 :::
+
+## Complete Solution Code (Final Version)
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    // === Header ===
+    fmt.Println("=============================")
+    fmt.Println("  GO STAR PATTERN GENERATOR  ")
+    fmt.Println("=============================")
+    fmt.Println()
+
+    // === Input ===
+    fmt.Print("Enter pattern size: ")
+    scanner.Scan()
+    size, err := strconv.Atoi(scanner.Text())
+    if err != nil || size <= 0 {
+        fmt.Println("\n[ERROR] Size must be a number greater than 0!")
+        return
+    }
+
+    fmt.Print("Choose pattern (1=Triangle, 2=Inverted Triangle, 3=Pyramid): ")
+    scanner.Scan()
+    choice, _ := strconv.Atoi(scanner.Text())
+
+    fmt.Println()
+
+    // === Print Pattern ===
+    switch choice {
+    case 1:
+        for row := 1; row <= size; row++ {
+            fmt.Println(strings.Repeat("*", row))
+        }
+    case 2:
+        for row := size; row >= 1; row-- {
+            fmt.Println(strings.Repeat("*", row))
+        }
+    case 3:
+        for row := 1; row <= size; row++ {
+            spaces := strings.Repeat(" ", size-row)
+            stars := strings.Repeat("*", 2*row-1)
+            fmt.Println(spaces + stars)
+        }
+    default:
+        fmt.Println("[ERROR] Invalid choice! Use 1, 2, or 3.")
+        return
+    }
+
+    fmt.Println("\nThanks for using the pattern generator!")
+}
+```
+
+## Bonus Challenge
+
+Already done? Try these extra challenges:
+
+**Challenge 1: Diamond Pattern**
+
+Combine a normal pyramid with an inverted pyramid to form a full diamond. Hint: print the pyramid first from row `1` to `size`, then an inverted pyramid from `size-1` down to `1`.
+
+**Challenge 2: Number Pattern**
+
+Replace the `"*"` character with its row number. Row 3 should print `"333"`, not `"***"`. Hint: you'll need `strconv.Itoa(row)` to convert the row number to a string before `Repeat`-ing it.
+
+**Challenge 3: Repeat the Loop**
+
+Wrap the entire program with `for { ... }` so the user can print several patterns in a row without restarting the program, exiting by typing "exit" or the number `0`.
+
+## Reflection: What You've Learned
+
+In this project, you used **every looping concept** from Unit 3:
+
+| Concept | Used For |
+|--------|---------------|
+| `for` with three clauses | Iterating rows and going backward for the inverted triangle |
+| `switch` | Choosing the pattern type based on user input |
+| `strings.Repeat` | Printing repeated characters without a manual nested loop |
+| `bufio.Scanner` + `strconv.Atoi` | Reading the size & choice input from the user |
+| Input validation | Handling invalid sizes with `if`/`err != nil` |
+
+## Wrapping Up Unit 3
+
+Congratulations! You've completed **Unit 3: Loops**. Let's recap:
+
+- Understanding `for` as Go's only loop construct, in three forms (full clause, condition only, infinite)
+- Iterating with `range` over slices, strings, and maps
+- Controlling loop flow with `break`, `continue`, and labels for nested loops
+- Writing and understanding nested loops, including how to calculate their total iterations
+- Building a star pattern program that ties it all together
+
+In **Unit 4**, you'll dive deep into **functions** — including one of Go's defining features you haven't touched at all yet: **multiple return values**. See you there!

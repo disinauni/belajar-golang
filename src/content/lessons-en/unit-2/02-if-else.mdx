@@ -2,18 +2,191 @@
 title: "If-Else"
 unit: 2
 lesson: 2
-description: "English translation of lesson 02-if-else.mdx"
+description: "Make programs take decisions with if, else if, and else"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Write branches with if, else if, and else"
+  - "Use if with an init-statement — a distinctive Go feature"
+  - "Understand why curly braces are mandatory in Go"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-2/01-operator-perbandingan-logika"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-2"]
+tags: ["if", "else", "branching", "init-statement"]
 ---
 
 # If-Else
 
+Here it is — the construct that lets a program truly "think." Our calculator actually already used `switch` (a similar concept) in the Unit 1 project. Now it's time to formally master `if-else`.
+
+## Basic Syntax
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    score := 85
+
+    if score >= 90 {
+        fmt.Println("Grade: A")
+    } else if score >= 80 {
+        fmt.Println("Grade: B")
+    } else if score >= 70 {
+        fmt.Println("Grade: C")
+    } else {
+        fmt.Println("Grade: D")
+    }
+}
+```
+
+Output:
+```
+Grade: B
+```
+
+## Breaking Down the If-Else Syntax
+
+**`if score >= 90 {`** — notice there are **no parentheses** around the condition (unlike C++/Java, which write `if (score >= 90)`). But curly braces `{` are **mandatory**, even for a one-line body — Go doesn't allow `if condition print();` without `{}` at all.
+
+**`else if score >= 80 {`** — checked only if the previous `if` condition was `false`. You can chain as many of these as you like.
+
+**`else {`** — runs when all the conditions above it are `false`.
+
+Go checks conditions **from top to bottom**, and stops at the first one that's `true` — the rest are skipped (exactly like `switch`, which you've already seen).
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Why are curly braces mandatory? This is a deliberate Go design decision to avoid the classic "dangling else" bug from C — where forgetting to write `{}` can make a second line unintentionally fall outside the if block. By requiring `{}`, this kind of ambiguity simply cannot happen in Go.
 :::
+
+## If with an Init-Statement
+
+This is a feature most other languages don't have: you can declare a variable **right before** the condition, on the same line.
+
+```go
+package main
+
+import "fmt"
+
+func divide(a, b int) (int, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("cannot divide by zero")
+    }
+    return a / b, nil
+}
+
+func main() {
+    if result, err := divide(10, 2); err == nil {
+        fmt.Println("Result:", result)
+    } else {
+        fmt.Println("Error:", err)
+    }
+}
+```
+
+Output:
+```
+Result: 5
+```
+
+## Breaking Down the Init-Statement
+
+**`if result, err := divide(10, 2); err == nil {`** — there are two parts separated by a semicolon: `result, err := divide(10, 2)` (the init-statement, run once before the check) and `err == nil` (the actual condition).
+
+The big advantage of this pattern: the variables `result` and `err` **only live inside this if/else block** — once you leave the block, neither can be accessed anymore. This keeps scope tidy, without "leaking" temporary variables into the rest of the code.
+
+:::tip
+The pattern `if result, err := function(); err == nil { ... }` is very common in idiomatic Go code, especially for checking errors without cluttering the scope outside the if block. You'll see this pattern a lot once you learn error handling in Unit 6.
+:::
+
+## Common Mistakes
+
+1. **Forgetting the curly braces:**
+   ```go
+   if score >= 90
+       fmt.Println("A")  // ERROR: missing condition in if statement
+   ```
+   `{}` is mandatory, no exceptions, even for a single line.
+
+2. **Trying to access an init-statement variable outside the block:**
+   ```go
+   if result, err := divide(10, 2); err == nil {
+       fmt.Println(result)
+   }
+   fmt.Println(result)  // ERROR: undefined: result
+   ```
+   `result` and `err` only live for the duration of the related `if`/`else if`/`else` block — exactly like variable scope inside a function.
+
+3. **Adding parentheses around the condition (not an error, but not idiomatic):**
+   ```go
+   if (score >= 90) {  // works, but gofmt/reviewers will ask you to remove it
+       fmt.Println("A")
+   }
+   ```
+   Technically this still compiles, but Go convention (enforced by the `gofmt` tool) is to omit the parentheses.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u2l2-ex1"
+  title="Determine Age Category"
+  description="Complete the program so it prints <code>Teen</code> for ages 13-17, and make sure the result is correct for age 15."
+  type="code-output"
+  expectedOutput="Teen"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    age := 15
+
+    if age < 13 {
+        fmt.Println("Child")
+    } else if age <= 17 {
+        fmt.Println("Teen")
+    } else {
+        fmt.Println("Adult")
+    }
+}`}
+  hints={["Checks run top to bottom — age 15 is not < 13, so it moves on to the else if.", "This code is already correct — try running it!"]}
+  explanation="age=15 fails the first condition (< 13), then matches the else if (<= 17), so it prints 'Teen'."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u2l2-ex2"
+  title="Curly Braces in Go"
+  description="Why are curly braces <code>{ }</code> mandatory for every if block in Go, even when the body is just one line?"
+  type="multiple-choice"
+  options={["Just to make the code look neater", "To avoid dangling-else ambiguity like in C", "Because Go doesn't support one-line code", "No particular reason, just convention"]}
+  correctIndex={1}
+  hints={["Remember the explanation about Go's design decision in this lesson.", "It's about code safety, not just aesthetics."]}
+  explanation="Requiring {} avoids the classic dangling-else bug that often happens in C/C++ when a programmer forgets to write curly braces."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u2l2-ex3"
+  title="Complete the Init-Statement"
+  description="Complete the if pattern with an init-statement to check the error from a function call."
+  type="fill-blank"
+  template="if result, err := divide(10, 2){{BLANK}} err == nil {"
+  blanks={[";"]}
+  hints={["The init-statement and the condition are separated by a single punctuation character."]}
+  explanation="The semicolon separates the init-statement (result, err := divide(10, 2)) from the actual condition (err == nil)."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Basic if | `if x > 0 { ... }` |
+| Else if | `else if x < 0 { ... }` |
+| Else | `else { ... }` |
+| Init-statement | `if v, err := f(); err == nil { ... }` |
+| Curly braces | **mandatory**, no parentheses around the condition |
+
+In the next lesson, we'll cover **switch** formally — a more concise alternative to a long chain of `else if`!

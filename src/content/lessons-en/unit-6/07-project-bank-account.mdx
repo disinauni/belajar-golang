@@ -1,19 +1,393 @@
 ---
-title: "Project: Bank Account"
+title: "Project: Simple Bank Account"
 unit: 6
 lesson: 7
-description: "English translation of lesson 07-project-bank-account"
+description: "Combine structs, pointer receivers, and error handling to build a simple bank account system"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Design a struct with a hidden (unexported) field and pointer receiver methods"
+  - "Handle business failures (insufficient balance, negative amounts) through errors, not panic"
+  - "Build a program step by step: from a skeleton to complete error handling"
 estimatedTime: 90
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-6/06-panic-recover-defer"]
+difficulty: "intermediate"
+tags: ["project", "struct", "method", "error-handling", "bank-account"]
+translationStatus: "complete"
 ---
 
-# Project: Bank Account
+# Project: Simple Bank Account
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Time to combine every Unit 6 concept — structs, methods, pointer receivers, and error handling — into one real project: a **simple bank account system**. We'll build a `BankAccount` type that can accept deposits and withdrawals, while rejecting nonsensical transactions through the `error` mechanism, not `panic`.
+
+## Program Specification
+
+`BankAccount` needs to:
+
+1. Store the **owner's name** and **balance** (the balance shouldn't be directly changeable from outside)
+2. **Deposit** — increase the balance, reject a zero or negative amount
+3. **Withdraw** — decrease the balance, reject a zero/negative amount and reject if the balance is insufficient
+4. Expose the balance through a method, not direct field access
+
+Expected output example:
+```
+=== SIMPLE BANK ACCOUNT ===
+Owner  : Ulfar
+Initial balance: 0.00
+
+>> Deposit 500000
+Current balance: 500000.00
+
+>> Deposit -100000
+Error: deposit failed: amount must be greater than zero
+
+>> Withdraw 200000
+Current balance: 300000.00
+
+>> Withdraw 1000000
+Error: withdrawal failed (current balance: 300000.00): insufficient balance
+
+Final balance: 300000.00
+```
+
+## Stage 1: Planning
+
+**What data do we need to store?**
+- `Owner` — the account owner's name (`string`, fine to access directly from outside)
+- `balance` — the account balance (`float64`, lowercase so it **can't be changed directly** from outside the package — only through methods)
+
+**What methods do we need?**
+- `Deposit(amount float64) error` — increases the balance
+- `Withdraw(amount float64) error` — decreases the balance
+- `Balance() float64` — reads the current balance (since the `balance` field is hidden)
+
+**Why a pointer receiver?** `Deposit` and `Withdraw` **modify** the original account's `balance` field, not a copy of it — as you already learned, this requires a pointer receiver. For consistency, `Balance()` also uses a pointer receiver even though it only reads.
+
+**Edge cases to think about:**
+- Depositing a zero or negative amount
+- Withdrawing a zero or negative amount
+- Withdrawing more than the available balance
+
+## Stage 2: Pseudocode
+
+```
+STRUCT BankAccount:
+    Owner   string
+    balance float64 (hidden)
+
+METHOD Deposit(amount):
+    IF amount <= 0:
+        RETURN error "amount must be greater than zero"
+    balance = balance + amount
+    RETURN nil
+
+METHOD Withdraw(amount):
+    IF amount <= 0:
+        RETURN error "amount must be greater than zero"
+    IF amount > balance:
+        RETURN error "insufficient balance"
+    balance = balance - amount
+    RETURN nil
+
+METHOD Balance():
+    RETURN balance
+```
+
+## Stage 3: Implementation
+
+### Version 1: Basic Skeleton
+
+Start with the struct and empty methods (no validation yet):
+
+```go
+package main
+
+import "fmt"
+
+type BankAccount struct {
+    Owner   string
+    balance float64
+}
+
+func (b *BankAccount) Deposit(amount float64) error {
+    // TODO: validate the amount, then add it to the balance
+    return nil
+}
+
+func (b *BankAccount) Withdraw(amount float64) error {
+    // TODO: validate the amount and balance, then subtract from the balance
+    return nil
+}
+
+func (b *BankAccount) Balance() float64 {
+    return b.balance
+}
+
+func main() {
+    account := &BankAccount{Owner: "Ulfar"}
+    fmt.Println("Owner:", account.Owner)
+    fmt.Println("Balance:", account.Balance())
+}
+```
+
+Try running it — the output is just `Owner: Ulfar` and `Balance: 0`, since `Deposit`/`Withdraw` don't do anything yet.
+
+### Version 2: Add the Logic
+
+Now let's fill in validation and error handling, using `errors.New` and `fmt.Errorf` with `%w` as you already learned:
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var (
+    ErrInvalidAmount      = errors.New("amount must be greater than zero")
+    ErrInsufficientBalance = errors.New("insufficient balance")
+)
+
+type BankAccount struct {
+    Owner   string
+    balance float64
+}
+
+func (b *BankAccount) Deposit(amount float64) error {
+    if amount <= 0 {
+        return fmt.Errorf("deposit failed: %w", ErrInvalidAmount)
+    }
+    b.balance += amount
+    return nil
+}
+
+func (b *BankAccount) Withdraw(amount float64) error {
+    if amount <= 0 {
+        return fmt.Errorf("withdrawal failed: %w", ErrInvalidAmount)
+    }
+    if amount > b.balance {
+        return fmt.Errorf("withdrawal failed (current balance: %.2f): %w", b.balance, ErrInsufficientBalance)
+    }
+    b.balance -= amount
+    return nil
+}
+
+func (b *BankAccount) Balance() float64 {
+    return b.balance
+}
+
+func main() {
+    account := &BankAccount{Owner: "Ulfar"}
+
+    if err := account.Deposit(500000); err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Printf("Current balance: %.2f\n", account.Balance())
+    }
+}
+```
+
+## Understanding the Code
+
+### The Hidden Field (`balance`)
+
+```go
+type BankAccount struct {
+    Owner   string  // exported, directly accessible
+    balance float64 // unexported, only changeable through methods
+}
+```
+
+`balance` deliberately starts with a lowercase letter. This isn't just a style choice — it's a **design decision**: whoever holds a `*BankAccount` can't just write `account.balance = 999999999` from outside the package. The only way to change the balance is through `Deposit`/`Withdraw`, which **always** validate the amount first.
+
+### Sentinel Errors and Wrapping
+
+```go
+var (
+    ErrInvalidAmount       = errors.New("amount must be greater than zero")
+    ErrInsufficientBalance = errors.New("insufficient balance")
+)
+```
+
+These two *sentinel errors* are defined once at the package level, then wrapped with extra context via `%w` every time they're used:
+
+```go
+return fmt.Errorf("withdrawal failed (current balance: %.2f): %w", b.balance, ErrInsufficientBalance)
+```
+
+The caller can read the full message (`withdrawal failed (current balance: 300000.00): insufficient balance`), **or** check the error's exact type precisely with `errors.Is(err, ErrInsufficientBalance)` — without needing to manually compare message text.
+
+### Why Not Panic?
+
+An insufficient balance and a negative amount are failures that **happen normally** in everyday banking operations — not unexpected fatal conditions. As you learned in the previous lesson, this is exactly the right case for `error`, not `panic`.
+
+## Stage 4: Testing
+
+**Test 1: Deposit a valid amount**
+```
+account.Deposit(500000)
+Expected: err == nil, Balance() == 500000.00
+```
+
+**Test 2: Deposit a negative amount**
+```
+account.Deposit(-100000)
+Expected: err wraps ErrInvalidAmount, balance unchanged
+```
+
+**Test 3: Withdraw within the balance**
+```
+account.Withdraw(200000) // previous balance 500000
+Expected: err == nil, Balance() == 300000.00
+```
+
+**Test 4: Withdraw more than the balance**
+```
+account.Withdraw(1000000) // current balance 300000
+Expected: err wraps ErrInsufficientBalance, balance unchanged
+```
+
+**Test 5: Withdraw a zero amount**
+```
+account.Withdraw(0)
+Expected: err wraps ErrInvalidAmount
+```
+
+:::tip
+Notice each test checks **two things**: whether the error matches expectations, **and** whether the balance actually changed (or didn't) as the scenario expects. This is an important habit when testing methods that mutate state through a pointer receiver.
 :::
+
+## Complete Solution Code (Final Version)
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var (
+    ErrInvalidAmount       = errors.New("amount must be greater than zero")
+    ErrInsufficientBalance = errors.New("insufficient balance")
+)
+
+type BankAccount struct {
+    Owner   string
+    balance float64
+}
+
+func (b *BankAccount) Deposit(amount float64) error {
+    if amount <= 0 {
+        return fmt.Errorf("deposit failed: %w", ErrInvalidAmount)
+    }
+    b.balance += amount
+    return nil
+}
+
+func (b *BankAccount) Withdraw(amount float64) error {
+    if amount <= 0 {
+        return fmt.Errorf("withdrawal failed: %w", ErrInvalidAmount)
+    }
+    if amount > b.balance {
+        return fmt.Errorf("withdrawal failed (current balance: %.2f): %w", b.balance, ErrInsufficientBalance)
+    }
+    b.balance -= amount
+    return nil
+}
+
+func (b *BankAccount) Balance() float64 {
+    return b.balance
+}
+
+func try(label string, err error, account *BankAccount) {
+    fmt.Println(">> " + label)
+    if err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Printf("Current balance: %.2f\n", account.Balance())
+    }
+    fmt.Println()
+}
+
+func main() {
+    account := &BankAccount{Owner: "Ulfar"}
+
+    fmt.Println("=== SIMPLE BANK ACCOUNT ===")
+    fmt.Printf("Owner  : %s\n", account.Owner)
+    fmt.Printf("Initial balance: %.2f\n\n", account.Balance())
+
+    try("Deposit 500000", account.Deposit(500000), account)
+    try("Deposit -100000", account.Deposit(-100000), account)
+    try("Withdraw 200000", account.Withdraw(200000), account)
+    try("Withdraw 1000000", account.Withdraw(1000000), account)
+
+    fmt.Printf("Final balance: %.2f\n", account.Balance())
+}
+```
+
+## Bonus Challenge
+
+Already done? Try these extra challenges:
+
+**Challenge 1: Transfer Between Accounts**
+
+Add a `TransferTo(target *BankAccount, amount float64) error` method that withdraws from the calling account and deposits into `target`. If the withdrawal fails, don't proceed with the deposit:
+
+```go
+func (b *BankAccount) TransferTo(target *BankAccount, amount float64) error {
+    if err := b.Withdraw(amount); err != nil {
+        return fmt.Errorf("transfer failed: %w", err)
+    }
+    return target.Deposit(amount)
+}
+```
+
+**Challenge 2: Transaction History**
+
+Add a `History []string` field to `BankAccount`, then record every successful transaction (e.g. `"Deposit: 500000.00"`) by appending to it every time `Deposit`/`Withdraw` succeeds.
+
+**Challenge 3: Custom Error Type with errors.As**
+
+Replace `ErrInsufficientBalance` with a custom error type that stores fuller details:
+
+```go
+type InsufficientBalanceError struct {
+    Balance   float64
+    Requested float64
+}
+
+func (e *InsufficientBalanceError) Error() string {
+    return fmt.Sprintf("balance %.2f is insufficient to withdraw %.2f", e.Balance, e.Requested)
+}
+```
+
+Then in `main()`, use `errors.As` to extract `Balance` and `Requested` from the returned error, following the `ValidationError` pattern from the Error Handling lesson.
+
+## Reflection: What You've Learned
+
+In this project, you used **almost every concept** from Unit 6:
+
+| Concept | Used For |
+|--------|---------------|
+| `type ... struct` | Defining `BankAccount` |
+| Unexported field (`balance`) | Protecting data from being changed directly from outside |
+| Pointer receiver | `Deposit`/`Withdraw`/`Balance` modifying & reading the original data |
+| Sentinel error (`errors.New`) | `ErrInvalidAmount`, `ErrInsufficientBalance` |
+| Error wrapping (`%w`) | Adding context without losing the original error's identity |
+| The `if err != nil` pattern | Handling every possible transaction failure |
+
+## Wrapping Up Unit 6
+
+Congratulations! You've completed **Unit 6: Structs & Interfaces**! Let's recap what you've mastered:
+
+- Grouping related data with **structs**, and creating instances via struct literals
+- Attaching behavior to a struct via **methods**, and understanding the crucial difference between value and pointer receivers
+- Recomposing structs with **embedding** — Go-style composition, a replacement for inheritance
+- Designing **interfaces** and understanding *implicit interface satisfaction* — a defining feature that sets Go apart from classic OOP languages
+- Handling failure as a **value** through `error`, `errors.New`, `fmt.Errorf` with `%w`, `errors.Is`, and `errors.As`
+- Understanding **panic** and **recover** for unexpected fatal conditions — and why they're used far less often than regular errors
+- Building a program step by step, from planning to a complete solution
+
+Structs and interfaces are the foundation of how Go models data and behavior — you'll keep using them constantly from here on.
+
+In **Unit 7: Concurrency**, you'll learn the headline feature that makes Go famous: **goroutines** and **channels** — a way to run many processes at once, easily and safely. See you there!

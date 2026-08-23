@@ -2,18 +2,220 @@
 title: "Select & Buffered Channels"
 unit: 7
 lesson: 3
-description: "English translation of lesson 03-select-buffered-channel.mdx"
+description: "Waiting on multiple channels at once with select, and channels with capacity using buffered channels"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Create and use a buffered channel with make(chan T, capacity)"
+  - "Understand when a buffered channel blocks and when it doesn't"
+  - "Use select to wait on multiple channels at once"
+  - "Close a channel with close() and detect a closed channel"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-7/02-channels"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-7"]
+tags: ["select", "buffered-channel", "close", "concurrency", "unit-7"]
 ---
 
 # Select & Buffered Channels
 
+In the previous lesson we learned about unbuffered channels, which always block until a partner is ready. Now we'll learn two more tools: **buffered channels** (channels with a "storage box" so they aren't always blocking) and **select** (waiting on multiple channels at once, like a `switch` but for channels).
+
+Picture a buffered channel like a **mailbox** with a limited number of slots: you can drop letters in without waiting for the mail carrier to show up, as long as there's still room. `select`, meanwhile, is like a receptionist watching several phones at once — the moment one rings, they pick it up.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan string, 2) // buffered channel, capacity 2
+
+    ch <- "message 1" // doesn't block, buffer still has room
+    ch <- "message 2" // doesn't block, last slot filled
+
+    close(ch) // close the channel, no more sends allowed
+
+    for msg := range ch {
+        fmt.Println("Received:", msg)
+    }
+}
+```
+
+Output:
+
+```
+Received: message 1
+Received: message 2
+```
+
+## Breaking Down the Concept
+
+### Buffered Channels: `make(chan T, capacity)`
+
+```go
+ch := make(chan string, 2)
+```
+
+The second argument to `make` sets the channel's **buffer capacity**. This buffered channel can hold up to 2 values **without blocking**, even before any other goroutine is ready to receive.
+
+- As long as the buffer **isn't full**, `ch <- v` **doesn't block** — it moves straight on to the next line.
+- Once the buffer **is full**, `ch <- v` will **block** until a slot frees up (for example, because another goroutine receives from it).
+- Receiving from an **empty** buffered channel still blocks, just like an unbuffered channel.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+The unbuffered channel we learned about in the previous lesson is actually the same thing as a buffered channel with capacity 0 — `make(chan int)` is equivalent to `make(chan int, 0)`.
 :::
+
+### Closing a Channel: `close(ch)`
+
+```go
+close(ch)
+```
+
+`close` marks a channel as having **no more sends coming**. After closing:
+- You can still **receive** every value that was already sitting in the buffer.
+- Sending to an already-`close`d channel will **panic**.
+- Receiving from a `close`d channel that is now empty immediately returns the **zero value**, rather than blocking.
+
+### Detecting a Closed Channel: `v, ok := <-ch`
+
+```go
+v, ok := <-ch
+if !ok {
+    fmt.Println("Channel is closed and empty")
+}
+```
+
+This two-value receive form tells you whether `v` was actually sent (`ok == true`) or whether the channel is closed and empty, meaning `v` is just a zero value (`ok == false`). This matters so you don't mistake a zero value for real data that was actually sent.
+
+### `range` on a Channel
+
+```go
+for msg := range ch {
+    fmt.Println("Received:", msg)
+}
+```
+
+A `range` loop on a channel automatically receives values one by one until the channel is **closed and empty**, then the loop stops on its own. This is the most common way to read every value from a channel without manually checking `ok`.
+
+### `select`: Waiting on Multiple Channels
+
+```go
+select {
+case v1 := <-ch1:
+    fmt.Println("From ch1:", v1)
+case v2 := <-ch2:
+    fmt.Println("From ch2:", v2)
+default:
+    fmt.Println("No channel is ready")
+}
+```
+
+`select` waits on **multiple channels at once**, then runs the `case` for whichever channel is **ready first**. If several channels are ready at the same time, Go picks one **at random** (not in the order they're written). The `default` block (optional) runs immediately if **no** channel is ready at all — making `select` non-blocking.
+
+:::tip
+`select` without `default` blocks until one of its `case`s is ready — like waiting for whichever phone rings first. With `default`, `select` immediately "gives up" if all the channels are still quiet, which is great for non-blocking polling.
+:::
+
+## Common Mistakes
+
+1. **A full buffer, but expecting no blocking:**
+   ```go
+   ch := make(chan int, 2)
+   ch <- 1
+   ch <- 2
+   ch <- 3 // BUG: blocks! The capacity-2 buffer is already full,
+   // and there's no other goroutine receiving.
+   ```
+   A buffered channel only delays blocking until the buffer fills up — it doesn't remove blocking behavior entirely.
+
+2. **Sending to a channel that's already been closed:**
+   ```go
+   ch := make(chan int, 1)
+   close(ch)
+   ch <- 5 // RUNTIME ERROR: panic: send on closed channel
+   ```
+   After `close(ch)`, the channel can no longer accept sends — Go will panic if you force one.
+
+3. **Forgetting that closing a channel twice panics:**
+   ```go
+   ch := make(chan int)
+   close(ch)
+   close(ch) // RUNTIME ERROR: panic: close of closed channel
+   ```
+   Only `close` a channel once, usually done by the **sending** goroutine (not the receiver), after all sends are finished.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u7l3-ex1"
+  title="Buffered Channel Without Blocking"
+  description="Complete the program so it sends three numbers into a buffered channel with capacity 3 without blocking, then closes it and prints all of them with range."
+  type="code-output"
+  expectedOutput="Number: 10
+Number: 20
+Number: 30"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int, 3)
+
+    ch <- 10
+    ch <- 20
+    ch <- 30
+
+    close(ch)
+
+    for n := range ch {
+        fmt.Println("Number:", n)
+    }
+}`}
+  hints={["This program is already complete — try running it first to see the result.", "Since the buffer capacity is 3 and only 3 values are sent, none of the sends block.", "range ch automatically stops once the channel is closed and empty."]}
+  explanation="The buffer capacity (3) matches the number of values sent (3), so none of the three ch <- v sends block. After close(ch), the for range ch loop reads every remaining value in the buffer in order, then stops automatically."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u7l3-ex2"
+  title="Detecting a Closed Channel"
+  description="What is the value of <code>ok</code> when receiving from a channel that's already <code>close()</code>d and empty, using the form <code>v, ok := &lt;-ch</code>?"
+  type="multiple-choice"
+  options={["ok is false, and v holds the zero value of that channel's type", "ok is always true as long as the channel was ever created", "The program panics because the channel is already closed", "ok is true but v is always nil regardless of type"]}
+  correctIndex={0}
+  hints={["ok tells you whether a value was actually sent by a sender, not just a zero value.", "Receiving from a closed, empty channel does NOT panic — that's different from SENDING to a closed channel."]}
+  explanation="Once a channel is close()d and its entire buffer has been received, every subsequent receive immediately returns the zero value of the channel's type with ok set to false — this signals there's no more real data being sent, purely a signal that the channel is done."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u7l3-ex3"
+  title="Complete the Non-Blocking Select"
+  description="Complete the select so it immediately runs the default block when channel ch has nothing in it yet (a non-blocking check)."
+  type="fill-blank"
+  template={`select {
+case v := <-ch:
+    fmt.Println("Got:", v)
+{{BLANK}}:
+    fmt.Println("No data yet")
+}`}
+  blanks={["default"]}
+  hints={["This keyword makes select completely non-blocking.", "It has the same name as the fallback case in a switch."]}
+  explanation="Adding a default case makes select execute immediately without waiting — if no channel is ready at the moment select is evaluated, the default block runs right away instead of blocking."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Buffered channel | `make(chan int, 3)` |
+| Send without blocking (while there's room) | `ch <- v` |
+| Close a channel | `close(ch)` |
+| Read all values until closed | `for v := range ch { ... }` |
+| Detect a closed channel | `v, ok := <-ch` |
+| Wait on multiple channels | `select { case ... case ... default: ... }` |
+
+Now you can coordinate multiple channels at once. But how do you make sure **all** goroutines are truly finished before moving on, and how do you protect data accessed by many goroutines at once? That's the topic of the next lesson: **sync.WaitGroup and Mutex**.

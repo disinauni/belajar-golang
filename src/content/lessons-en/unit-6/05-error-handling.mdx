@@ -2,18 +2,240 @@
 title: "Error Handling"
 unit: 6
 lesson: 5
-description: "English translation of lesson 05-error-handling"
+description: "Handling failure as an ordinary value with the if err != nil pattern, error wrapping, and errors.Is/As"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Create errors with errors.New and fmt.Errorf"
+  - "Wrap errors with %w and check them with errors.Is"
+  - "Extract a custom error type with errors.As"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-6/04-interface"]
+difficulty: "intermediate"
+tags: ["error", "errors", "error-handling"]
+translationStatus: "complete"
 ---
 
 # Error Handling
 
+You've already seen the `result, err := ...` pattern a few times since Unit 1 (remember `strconv.Atoi`?). Now it's time to understand it fully. In Go, an error is **not** an exception that gets "thrown" and "caught" like `try/catch` in other languages — an error is an **ordinary value**, just like an `int` or `string`, returned via a return value and checked explicitly.
+
+## Creating and Checking Errors
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+func divide(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, errors.New("cannot divide by zero")
+    }
+    return a / b, nil
+}
+
+func main() {
+    result, err := divide(10, 0)
+    if err != nil {
+        fmt.Println("Error:", err)
+        return
+    }
+    fmt.Println("Result:", result)
+}
+```
+
+Output:
+```
+Error: cannot divide by zero
+```
+
+## Breaking Down the Error Pattern
+
+**`error`** — Go's built-in interface type, roughly defined as `type error interface { Error() string }`. Any value with an `Error() string` method automatically satisfies this interface — the same interface principle you just learned.
+
+**`errors.New("message")`** — the simplest way to create a new error containing a text message. Great for one-off errors that don't need to be distinguished from other errors.
+
+**`return 0, errors.New(...)`** — the *multiple return values* pattern you've known since Unit 4: the result value, then the error in the last position. On success, the error is `nil`.
+
+**`if err != nil { ... }`** — the most common pattern you'll see in any Go code. Always check the error **immediately after** calling a function that returns one, before using its result value.
+
+## Wrapping Errors with %w
+
+Sometimes you want to add context to an error without losing information about the original error. That's where `fmt.Errorf` with the `%w` verb comes in:
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var ErrInsufficientBalance = errors.New("insufficient balance")
+
+func withdraw(balance, amount float64) (float64, error) {
+    if amount > balance {
+        return balance, fmt.Errorf("withdrawal failed: %w", ErrInsufficientBalance)
+    }
+    return balance - amount, nil
+}
+
+func main() {
+    _, err := withdraw(50000, 100000)
+    if err != nil {
+        fmt.Println(err)
+        fmt.Println(errors.Is(err, ErrInsufficientBalance))
+    }
+}
+```
+
+Output:
+```
+withdrawal failed: insufficient balance
+true
+```
+
+**`var ErrInsufficientBalance = errors.New(...)`** — declared as a package-level variable, called a *sentinel error*: a fixed error value that can be compared elsewhere.
+
+**`fmt.Errorf("withdrawal failed: %w", ErrInsufficientBalance)`** — `%w` wraps `ErrInsufficientBalance` inside a new error, while still keeping a "trail" back to the original error (called an *error chain*). The combined message displays in full, but the original error's identity isn't lost.
+
+**`errors.Is(err, ErrInsufficientBalance)`** — checks whether `err`, or one of the errors it wraps, is `ErrInsufficientBalance`. Returns `true` even though `err` is actually a new error produced by `fmt.Errorf`, because `errors.Is` walks the entire *chain*.
+
+## Extracting Details with errors.As
+
+`errors.Is` is great for matching a sentinel error. When you need to **pull data out** of a custom error type, use `errors.As` instead:
+
+```go
+type ValidationError struct {
+    Field string
+}
+
+func (e *ValidationError) Error() string {
+    return fmt.Sprintf("field %s is invalid", e.Field)
+}
+
+func validate(age int) error {
+    if age < 0 {
+        return &ValidationError{Field: "age"}
+    }
+    return nil
+}
+
+func main() {
+    err := validate(-5)
+    var ve *ValidationError
+    if errors.As(err, &ve) {
+        fmt.Println("Problem field:", ve.Field)
+    }
+}
+```
+
+Output:
+```
+Problem field: age
+```
+
+`errors.As(err, &ve)` walks the error *chain* looking for one of type `*ValidationError`, then copies it into `ve` — so you can access the `ve.Field` field directly, not just its text message.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Errors in Go are ordinary *values* — there's no `try`/`catch`/`throw`. The flow is always explicit: a function returns an error, the caller checks it, then decides what to do next.
 :::
+
+:::tip
+The most common pattern you'll write hundreds of times in Go: `if err != nil { return err }` — if your function doesn't know how to handle that error, just pass it along to its own caller.
+:::
+
+## Common Mistakes
+
+1. **Using `%v` when you needed `%w` for wrapping:**
+   ```go
+   err := fmt.Errorf("failed: %v", ErrInsufficientBalance) // wrong, doesn't wrap
+   fmt.Println(errors.Is(err, ErrInsufficientBalance)) // false, even though the message looks the same
+   ```
+   `%v` just inserts the error's message text, but it breaks the *chain* — `errors.Is` can no longer trace it back to the original error.
+
+2. **Ignoring the error, then using the result anyway:**
+   ```go
+   result, err := divide(10, 0)
+   fmt.Println(result) // 0, even though the error should've been handled first
+   ```
+   If `err` isn't checked, you risk unknowingly using an invalid result value.
+
+3. **Calling `errors.As` with a non-pointer target:**
+   ```go
+   var ve ValidationError
+   errors.As(err, ve) // runtime ERROR: errors: target must be a non-nil pointer
+   ```
+   The `errors.As` target **must** be a pointer (e.g. `&ve`), because `errors.As` needs to write its result into that variable.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l5-ex1"
+  title="Creating and Checking an Error"
+  description="Complete the program so it prints `Error: age cannot be negative` when age is less than zero."
+  type="code-output"
+  expectedOutput="Error: age cannot be negative"
+  starterCode={`package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+func checkAge(age int) error {
+    if age < 0 {
+        return errors.New("age cannot be negative")
+    }
+    return nil
+}
+
+func main() {
+    err := checkAge(-5)
+    if err != nil {
+        fmt.Println("Error:", err)
+    }
+}`}
+  hints={["This code is actually already correct — try running it.", "errors.New creates a new error containing the text message you give it."]}
+  explanation="checkAge(-5) returns an error from errors.New because -5 is less than zero, then main() prints it formatted as 'Error: <message>'."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l5-ex2"
+  title="The errors.Is Function"
+  description="What's the main purpose of <code>errors.Is(err, target)</code>?"
+  type="multiple-choice"
+  options={["Converting err into a string", "Checking whether err, or one of the errors it wraps, equals target", "Creating a new error from target", "Permanently removing the wrapping on err"]}
+  correctIndex={1}
+  hints={["errors.Is walks the entire error chain, not just a direct comparison.", "It's most commonly used to match a sentinel error like ErrInsufficientBalance."]}
+  explanation="errors.Is(err, target) walks the entire error chain (including errors wrapped via %w) looking for one that equals target — useful for checking a sentinel error no matter how many layers of wrapping it's under."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l5-ex3"
+  title="Complete the Error Wrapping"
+  description="Complete the format verb so the original error gets wrapped too (and can be traced with errors.Is)."
+  type="fill-blank"
+  template='fmt.Errorf("processing failed: {{BLANK}}", originalErr)'
+  blanks={["%w"]}
+  hints={["This verb was introduced specifically in Go 1.13 for wrapping errors, unlike the plain %v."]}
+  explanation="%w wraps originalErr inside a new error while preserving its trail in the error chain, so errors.Is and errors.As can still find it."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Create a simple error | `errors.New("message")` |
+| Sentinel error | `var ErrX = errors.New("...")` |
+| Wrap an error | `fmt.Errorf("context: %w", originalErr)` |
+| Check a sentinel error | `errors.Is(err, ErrX)` |
+| Extract a custom error | `errors.As(err, &target)` |
+
+In the next lesson, we'll cover **panic, recover, and defer** — Go's mechanism for truly unexpected, fatal errors, and why it's used far less often than the regular error pattern.

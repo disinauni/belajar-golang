@@ -2,18 +2,463 @@
 title: "Project: Worker Pool"
 unit: 7
 lesson: 5
-description: "English translation of lesson 05-project-worker-pool.mdx"
+description: "Building the classic worker pool pattern, combining goroutines, channels, WaitGroup, and Mutex"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Design the worker pool pattern from planning to implementation"
+  - "Combine goroutines, job/result channels, WaitGroup, and Mutex in a single program"
+  - "Test a concurrent program with various worker and job count scenarios"
 estimatedTime: 90
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-7/04-sync-waitgroup-mutex"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-7"]
+tags: ["project", "worker-pool", "concurrency", "goroutine", "channel", "practice", "integration"]
 ---
 
 # Project: Worker Pool
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Congratulations! You've learned every core concurrency concept in Unit 7: goroutines, channels, select, buffered channels, WaitGroup, and Mutex. Now it's time to combine all of it into a pattern that's **extremely common** in the real world — the **Worker Pool**.
+
+Worker pools show up everywhere: web servers processing many requests, image processors resizing thousands of photos, scripts sending thousands of emails. Instead of processing things one at a time (slow) or spawning unlimited goroutines (wasteful), a worker pool caps the number of "workers" running at once, while still processing lots of work concurrently.
+
+## Program Specification
+
+Our worker pool needs to be able to:
+
+1. Accept a set of **jobs** (numbers that need processing)
+2. Distribute jobs to a number of **worker** goroutines running concurrently
+3. Have each worker process a job (compute its square) and send back a **result**
+4. Collect all the results once every worker is done
+5. Display the final results **in order, deterministically**
+
+Example expected output (3 workers processing 6 jobs):
+```
+=== WORKER POOL ===
+Workers: 3
+Jobs   : 6
+
+Job 1 -> Result 1
+Job 2 -> Result 4
+Job 3 -> Result 9
+Job 4 -> Result 16
+Job 5 -> Result 25
+Job 6 -> Result 36
+
+All jobs processed!
+```
+
+## Stage 1: Planning
+
+Before writing any code, let's think about what components we'll need:
+
+**What data do we need to store?**
+- A **jobs** channel: where work waiting to be processed is sent (`chan int`)
+- A **results** channel: where workers send their output (`chan Result`, a struct holding the original job and its result)
+- A `sync.WaitGroup`: to wait until every worker is finished
+- The number of workers and the number of jobs (plain numbers)
+
+**Program flow:**
+1. Create the jobs channel and the results channel
+2. Launch several worker goroutines that read from the jobs channel
+3. Send all the jobs into the jobs channel, then close it
+4. Each worker processes a job and sends it into the results channel, then calls `wg.Done()`
+5. A separate goroutine waits for every worker to finish (`wg.Wait()`), then closes the results channel
+6. The main program collects every result from the results channel
+7. Sort and display the results
+
+**Edge cases worth thinking about:**
+- What if there are more workers than jobs?
+- How do we make sure the results channel is closed **after** every worker is done — not too early, and not never?
+- How do we make sure the output is always in order, even though workers finish in random order?
+
+## Stage 2: Pseudocode
+
+```
+PROGRAM WorkerPool:
+    CREATE jobs channel (buffered, capacity = number of jobs)
+    CREATE results channel (buffered, capacity = number of jobs)
+    CREATE WaitGroup wg
+
+    FOR each worker (1 to numWorkers):
+        wg.Add(1)
+        LAUNCH goroutine worker(id, jobs, results, wg):
+            FOR each job received from jobs:
+                result = job * job
+                SEND Result{job, result} to results
+            wg.Done()
+
+    FOR each job (1 to numJobs):
+        SEND job to jobs channel
+    CLOSE jobs channel
+
+    LAUNCH separate goroutine:
+        wg.Wait()
+        CLOSE results channel
+
+    COLLECT every result from results channel into a slice
+    SORT the slice by job number
+    DISPLAY each result
+```
+
+Notice the important pattern: **closing the results channel must wait until every worker is done** — that's why we use a separate goroutine that calls `wg.Wait()` and only then `close(results)`, so `main()` can keep reading from `results` at the same time without the two waiting on each other (deadlock).
+
+## Stage 3: Implementation
+
+### Version 1: Basic Skeleton (2 Workers, Simple Job)
+
+Start from the simplest possible skeleton: 2 workers that process jobs and print results directly (not yet sorted):
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func worker(id int, jobs <-chan int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for j := range jobs {
+        fmt.Println("Worker", id, "processing job", j, "-> result", j*j)
+    }
+}
+
+func main() {
+    jobs := make(chan int, 5)
+    var wg sync.WaitGroup
+
+    for w := 1; w <= 2; w++ {
+        wg.Add(1)
+        go worker(w, jobs, &wg)
+    }
+
+    for j := 1; j <= 5; j++ {
+        jobs <- j
+    }
+    close(jobs)
+
+    wg.Wait()
+}
+```
+
+Try running it — you'll see jobs processed by 2 different workers, but the print order will be **random** each time you run it (depending on which worker grabs a job faster). This is normal for concurrency, but it's not suitable yet for an exercise that needs deterministic output — that's why the next version collects results into a results channel first and sorts them before printing.
+
+### Version 2: Add a Results Channel and Sorting
+
+Now let's add a `results` channel, a struct to carry the job+result pair, and sorting so the output is always consistent:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+    "sync"
+)
+
+type Result struct {
+    Job    int
+    Result int
+}
+
+func worker(id int, jobs <-chan int, results chan<- Result, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for j := range jobs {
+        results <- Result{Job: j, Result: j * j}
+    }
+}
+
+func main() {
+    numWorkers := 3
+    numJobs := 6
+
+    jobs := make(chan int, numJobs)
+    results := make(chan Result, numJobs)
+    var wg sync.WaitGroup
+
+    fmt.Println("=== WORKER POOL ===")
+    fmt.Println("Workers:", numWorkers)
+    fmt.Println("Jobs   :", numJobs)
+    fmt.Println()
+
+    for w := 1; w <= numWorkers; w++ {
+        wg.Add(1)
+        go worker(w, jobs, results, &wg)
+    }
+
+    for j := 1; j <= numJobs; j++ {
+        jobs <- j
+    }
+    close(jobs)
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    var allResults []Result
+    for r := range results {
+        allResults = append(allResults, r)
+    }
+
+    sort.Slice(allResults, func(i, j int) bool {
+        return allResults[i].Job < allResults[j].Job
+    })
+
+    for _, r := range allResults {
+        fmt.Printf("Job %d -> Result %d\n", r.Job, r.Result)
+    }
+
+    fmt.Println()
+    fmt.Println("All jobs processed!")
+}
+```
+
+This is a complete worker pool! Let's understand the important parts.
+
+## Understanding the Code
+
+### Directional Channel Types: `<-chan int` and `chan<- Result`
+
+```go
+func worker(id int, jobs <-chan int, results chan<- Result, wg *sync.WaitGroup) {
+```
+
+- `jobs <-chan int` — this parameter can only **receive** from the channel (*receive-only*), not send.
+- `results chan<- Result` — this parameter can only **send** to the channel (*send-only*), not receive.
+
+These aren't new channel types, just a **restriction** on an ordinary `chan int` or `chan Result`. The Go compiler will refuse to compile if you try to send to `jobs` or receive from `results` inside the `worker` function — this helps catch bugs automatically, since `worker` is only meant to receive jobs and send results, never the other way around.
+
+### The "Close After Wait" Pattern in a Separate Goroutine
+
+```go
+go func() {
+    wg.Wait()
+    close(results)
+}()
+
+var allResults []Result
+for r := range results {
+    allResults = append(allResults, r)
+}
+```
+
+This is the **single most important** pattern in a worker pool. If we called `wg.Wait()` directly in `main()` (instead of in a separate goroutine) before reading `results`, the program would **deadlock**: `main()` waits for every worker to finish, but the workers themselves are **stuck** because the `results` channel is full and nobody is reading it (because `main()` is busy waiting, not reading).
+
+The fix: run `wg.Wait()` in a separate goroutine. This goroutine waits for every worker to call `Done()`, and only then closes `results`. Meanwhile, `main()` is free to read from `results` with `range` — once every worker is finished and `results` is closed, the `range results` loop stops automatically.
+
+### The `Result` Struct for Carrying a Data Pair
+
+```go
+type Result struct {
+    Job    int
+    Result int
+}
+```
+
+Since workers run concurrently, we can't rely on send order to figure out which job produced which result. That's why every result is wrapped in a `Result` struct carrying **both** pieces of information (the original job number and its result) together — this is what lets us re-sort everything at the end.
+
+### Sorting Results with `sort.Slice`
+
+```go
+sort.Slice(allResults, func(i, j int) bool {
+    return allResults[i].Job < allResults[j].Job
+})
+```
+
+`sort.Slice` sorts the `allResults` slice according to a rule we define ourselves through a *comparison function* — here we sort by `Job`, ascending. This step is **mandatory** before printing, because workers finish jobs in an order that's **unpredictable**.
+
+## Stage 4: Testing
+
+A program involving concurrency needs to be tested multiple times (since the internal processing order can differ each run), to make sure the **final result** stays consistent.
+
+**Test 1: Run repeatedly, check the final result is always the same**
+```
+Run the program 5 times in a row.
+Expected: the order "Job 1 -> Result 1" through "Job 6 -> Result 36" is
+always exactly the same on every run, even though the internal order in
+which workers process jobs can vary.
+```
+
+**Test 2: More workers than jobs**
+```
+numWorkers = 10, numJobs = 3
+Expected: still only 3 results printed (Job 1, 2, 3) — workers that
+never get a job simply stop once the jobs channel is closed and empty.
+```
+
+**Test 3: Only 1 worker (effectively sequential)**
+```
+numWorkers = 1, numJobs = 5
+Expected: 1 worker processes every job one at a time, results are still
+correct even though there's no real concurrency happening.
+```
+
+**Test 4: More jobs than buffer capacity**
+```
+If the jobs channel is created with a capacity smaller than numJobs,
+the program should still run correctly — sending jobs will block for a
+moment waiting for workers to drain the buffer, but the final result
+stays the same.
+```
+
+:::tip
+For concurrent programs, "worked once" isn't enough — run it many times to make sure there's no hidden race condition. Go even has a special flag for this: `go run -race main.go`, which detects race conditions automatically while the program runs.
 :::
+
+## Complete Solution Code (Final Version)
+
+Here's the complete, well-commented final code:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+    "sync"
+)
+
+// Result carries an original job and its result together, so the order
+// can still be tracked even though workers run concurrently.
+type Result struct {
+    Job    int
+    Result int
+}
+
+// worker pulls jobs from the jobs channel, processes them, and
+// sends each result into the results channel. defer wg.Done() ensures
+// the WaitGroup is always notified even if something unexpected happens.
+func worker(id int, jobs <-chan int, results chan<- Result, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for j := range jobs {
+        results <- Result{Job: j, Result: j * j}
+    }
+}
+
+func main() {
+    numWorkers := 3
+    numJobs := 6
+
+    jobs := make(chan int, numJobs)
+    results := make(chan Result, numJobs)
+    var wg sync.WaitGroup
+
+    // === Header ===
+    fmt.Println("=== WORKER POOL ===")
+    fmt.Println("Workers:", numWorkers)
+    fmt.Println("Jobs   :", numJobs)
+    fmt.Println()
+
+    // === Launch workers ===
+    for w := 1; w <= numWorkers; w++ {
+        wg.Add(1)
+        go worker(w, jobs, results, &wg)
+    }
+
+    // === Send all jobs ===
+    for j := 1; j <= numJobs; j++ {
+        jobs <- j
+    }
+    close(jobs)
+
+    // === Close results once every worker is done ===
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    // === Collect every result ===
+    var allResults []Result
+    for r := range results {
+        allResults = append(allResults, r)
+    }
+
+    // === Sort so the output is deterministic ===
+    sort.Slice(allResults, func(i, j int) bool {
+        return allResults[i].Job < allResults[j].Job
+    })
+
+    // === Display the results ===
+    for _, r := range allResults {
+        fmt.Printf("Job %d -> Result %d\n", r.Job, r.Result)
+    }
+
+    fmt.Println()
+    fmt.Println("All jobs processed!")
+}
+```
+
+Output:
+```
+=== WORKER POOL ===
+Workers: 3
+Jobs   : 6
+
+Job 1 -> Result 1
+Job 2 -> Result 4
+Job 3 -> Result 9
+Job 4 -> Result 16
+Job 5 -> Result 25
+Job 6 -> Result 36
+
+All jobs processed!
+```
+
+## Bonus Challenges
+
+Already finished? Try these extra challenges to sharpen your skills further:
+
+**Challenge 1: Count Jobs per Worker**
+
+Add a counter (protected by a `Mutex`) that tracks how many jobs each worker processed, then display a summary at the end:
+```go
+var mu sync.Mutex
+jobsPerWorker := make(map[int]int)
+
+// inside the worker, before sending to results:
+mu.Lock()
+jobsPerWorker[id]++
+mu.Unlock()
+```
+
+**Challenge 2: Jobs That Can Fail**
+
+Modify `Result` to have an `Error error` field. Make jobs with a negative number count as failed (`Result: 0, Error: fmt.Errorf("job %d is invalid", j)`), then display successful and failed results separately.
+
+**Challenge 3: Add a Timeout with Select**
+
+Use `select` with `time.After(...)` to limit how long we wait when reading from `results` — if no result arrives within a certain time, the program prints a timeout message and stops waiting (hint: `case <-time.After(2 * time.Second):` as one of the `case`s inside the `select`).
+
+## Reflection: What You've Learned
+
+In this project, you used **almost every concept** from Unit 7:
+
+| Concept | Used For |
+|--------|---------------|
+| `go worker(...)` | Running many workers as goroutines |
+| `jobs` channel (buffered) | Distributing work to workers |
+| `results` channel (buffered) | Collecting results from workers |
+| Directional channels `<-chan`/`chan<-` | Restricting how a channel can be used in a function parameter |
+| `close(jobs)` | Telling workers there's no more work coming |
+| `for range jobs` | Workers pull jobs until the channel is closed |
+| `sync.WaitGroup` (`Add`/`Done`/`Wait`) | Waiting for every worker to finish before closing results |
+| Separate goroutine for `wg.Wait()` + `close()` | Avoiding a deadlock when closing the results channel |
+| `sort.Slice` | Making output deterministic despite concurrent processing |
+
+## Closing Out Unit 7
+
+Congratulations! You've completed **Unit 7: Concurrency** — one of Go's most distinctive and powerful features! Let's recap what you've mastered:
+
+- Running functions concurrently with `go` and understanding that goroutines aren't automatically waited for by `main()`
+- Avoiding the classic loop variable capture bug in goroutines
+- Communicating safely between goroutines through channels (`make`, `<-`, blocking behavior)
+- Using buffered channels and `select` for more flexible scenarios, including detecting a closed channel
+- Waiting for many goroutines to finish with `sync.WaitGroup`
+- Protecting shared data from race conditions with `sync.Mutex`
+- Building a worker pool pattern that combines all of the above into a real program
+
+Concurrency is one of the main reasons Go is chosen for building servers, infrastructure tools, and large-scale systems — and you now have a solid foundation for it.
+
+In **Unit 8: Practical Go**, you'll learn the essentials for real Go projects: organizing code with packages and modules, writing tests with `go test`, and exchanging data through JSON. Every concept from Unit 1 through Unit 7 will come together as you build the **Final Project**.
+
+Keep up the great work — you've now mastered one of the hardest, and most exciting, parts of Go!

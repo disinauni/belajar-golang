@@ -2,18 +2,199 @@
 title: "Variadic Functions"
 unit: 4
 lesson: 4
-description: "English translation of lesson 04-variadic-functions.mdx"
+description: "Functions that accept any number of arguments, using the ...type syntax"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare a variadic function with the ...type syntax"
+  - "Understand that a variadic parameter is treated as a slice inside the function"
+  - "Call a variadic function with a slice using the spread operator ..."
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-4/03-multiple-return-values"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-4"]
+tags: ["variadic", "spread", "function", "slice"]
 ---
 
 # Variadic Functions
 
+What if you wanted a function that could sum 2 numbers, or 5 numbers, or even 0 numbers — without writing a different version for each argument count? Go has an answer: **variadic functions**, functions that can accept any number of arguments for a single parameter.
+
+## A Simple Variadic Function
+
+```go
+package main
+
+import "fmt"
+
+func sum(numbers ...int) int {
+    total := 0
+    for _, n := range numbers {
+        total += n
+    }
+    return total
+}
+
+func main() {
+    fmt.Println(sum(1, 2, 3))
+    fmt.Println(sum(10, 20, 30, 40))
+    fmt.Println(sum())
+}
+```
+
+Output:
+```
+6
+100
+0
+```
+
+## Breaking Down Variadic Syntax
+
+**`numbers ...int`** — the three dots (`...`) before the type mark this parameter as **variadic**: it can accept zero, one, or any number of `int` arguments. Inside the function, `numbers` is treated as `[]int` (a slice of int) — you can use `range` on it just like any other slice. (We'll cover slices in detail in Unit 5 — for now, just think of `[]int` as "a sequential collection of int numbers.")
+
+**`for _, n := range numbers`** — iterates over every element in `numbers`, accumulating it into `total`.
+
+**`sum()`** with no arguments at all — still valid! `numbers` inside the function becomes an empty slice, the `range` loop never runs, and the function returns `0` (the initial value of `total`).
+
+Think of a variadic parameter like an elastic shopping basket — you can put as many items into it as you like, even leave it completely empty, and it's still "one basket" that you can process all at once.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+A variadic parameter **must** be the **last** parameter in the parameter list, and a function can only have **one** variadic parameter. `func f(a int, b ...string)` is valid, but `func f(a ...int, b string)` or `func f(a ...int, b ...string)` is not allowed by Go.
 :::
+
+## Calling with a Slice: the Spread Operator
+
+If the data you want to send is already a slice, you can "unpack" it into individual arguments with the spread operator `...` after the variable name:
+
+```go
+package main
+
+import "fmt"
+
+func sum(numbers ...int) int {
+    total := 0
+    for _, n := range numbers {
+        total += n
+    }
+    return total
+}
+
+func main() {
+    numberList := []int{5, 10, 15}
+    fmt.Println(sum(numberList...))
+}
+```
+
+Output:
+```
+30
+```
+
+**`numberList...`** — three dots **after** the slice variable's name means "spread the contents of this slice out as separate arguments," not "send this slice as a single argument." Without `...` here, Go would refuse to compile because the types don't match (`[]int` is not `int`).
+
+:::tip
+Three dots (`...`) play two different roles depending on where they appear: in a **parameter declaration** (`func f(x ...int)`), it means "collect the arguments into a slice." In a **function call** (`f(slice...)`), it means "spread the slice out into individual arguments." Opposite directions, same symbol!
+:::
+
+## A Real Example: fmt.Println Is Variadic Too!
+
+You've actually been using a variadic function since Unit 1 without realizing it:
+
+```go
+fmt.Println("a", "b", "c") // accepts 3 arguments
+fmt.Println(1, 2)          // accepts 2 arguments
+fmt.Println()              // accepts 0 arguments
+```
+
+Its actual signature is roughly `func Println(a ...interface{}) (n int, err error)` — that's why `fmt.Println` can accept any number of arguments of any type.
+
+## Common Mistakes
+
+1. **Sending a slice without the spread operator:**
+   ```go
+   numberList := []int{1, 2, 3}
+   sum(numberList) // ERROR: cannot use numberList (type []int) as type int
+   ```
+   Without `...`, Go thinks you want to send `numberList` as a single `int` argument — but its type is `[]int`. The fix: `sum(numberList...)`.
+
+2. **Placing the variadic parameter somewhere other than last:**
+   ```go
+   func print(label string, numbers ...int, note string) { // ERROR
+       // ...
+   }
+   ```
+   The variadic parameter must always be the very last parameter.
+
+3. **Assuming a function can have more than one variadic parameter:**
+   ```go
+   func combine(a ...int, b ...string) { // ERROR: only one variadic allowed
+       // ...
+   }
+   ```
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l4-ex1"
+  title="Find the Largest Value"
+  description="Complete the variadic <code>largest</code> function that returns the largest value among any number of int numbers."
+  type="code-output"
+  expectedOutput="42"
+  starterCode={`package main
+
+import "fmt"
+
+func largest(numbers ...int) int {
+    max := numbers[0]
+    for _, n := range numbers {
+        if n > max {
+            max = n
+        }
+    }
+    return max
+}
+
+func main() {
+    fmt.Println(largest(7, 42, 15, 3))
+}`}
+  hints={["The largest function is already complete — try running it first to see the result.", "max starts at the first element, then gets updated every time a bigger number is found."]}
+  explanation="largest(7, 42, 15, 3) walks through every number and updates max each time it finds a bigger value, resulting in 42 as the largest value."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l4-ex2"
+  title="Understanding the Spread Operator"
+  description="You have a slice variable <code>list</code> holding three int numbers, and you want to send its contents to the variadic function <code>sum(numbers ...int)</code>. Which call is correct?"
+  type="multiple-choice"
+  options={["sum(list...)", "sum(list)", "sum(*list)", "sum(...list)"]}
+  correctIndex={0}
+  hints={["The three dots go AFTER the slice variable's name when calling the function, not before.", "sum(list) would fail to compile because the types don't match (slice vs int)."]}
+  explanation="The spread operator is written after the variable name: sum(list...). This spreads each element of the slice out as an individual argument to the variadic parameter."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l4-ex3"
+  title="Complete the Variadic Parameter"
+  description="Fill in the parameter declaration so the function can accept any number of string arguments."
+  type="fill-blank"
+  template="func join(words {{BLANK}}string) string {"
+  blanks={["..."]}
+  hints={["The three-dot symbol goes right before the type name in a parameter declaration."]}
+  explanation="Three dots before the type (...string) marks a variadic parameter — the function can accept zero, one, or many string arguments at once."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Variadic declaration | `func f(x ...int)` |
+| Parameter inside the function | Treated as `[]int` |
+| Calling with individual arguments | `f(1, 2, 3)` |
+| Calling with a slice (spread) | `f(slice...)` |
+| Positional rule | Must be the last parameter, only one allowed |
+
+Now let's learn a unique piece of execution control: **`defer`** — a way to postpone an action until a function is truly about to finish, extremely useful for "cleanup" tasks like closing files or connections.

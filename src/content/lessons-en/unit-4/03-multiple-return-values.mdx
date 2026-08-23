@@ -2,18 +2,220 @@
 title: "Multiple Return Values"
 unit: 4
 lesson: 3
-description: "English translation of lesson 03-multiple-return-values.mdx"
+description: "A distinctive Go feature — returning more than one value at once from a single function"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare functions that return more than one value"
+  - "Understand the (result, error) pattern that's an idiomatic Go signature"
+  - "Use named return values for functions with multiple return values"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-4/02-parameter-return"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-4"]
+tags: ["multiple-return", "error-handling", "named-return", "function"]
 ---
 
 # Multiple Return Values
 
+In many programming languages, a function can only return a **single** value — if you need more, you have to wrap them in an object or an array. Go is different: Go functions can return **several values at once**, right in the syntax itself. This isn't just a bonus feature — it's one of the traits most closely identified with Go's programming style.
+
+## Returning Two Values
+
+```go
+package main
+
+import "fmt"
+
+func divide(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("cannot divide by zero")
+    }
+    return a / b, nil
+}
+
+func main() {
+    result, err := divide(10, 2)
+    if err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Println("Result:", result)
+    }
+}
+```
+
+Output:
+```
+Result: 5
+```
+
+## Breaking Down Multiple Return Values
+
+**`func divide(a, b float64) (float64, error)`** — the return type is now wrapped in parentheses `(float64, error)` because there are **two** values being returned: the division result (`float64`) and an error status (`error`).
+
+**`return 0, fmt.Errorf(...)`** — returns two values at once, separated by a comma: `0` as the result (an "empty" value since the operation failed) and an error explaining why it failed.
+
+**`return a / b, nil`** — if the operation succeeds, return the result along with `nil` for the error (meaning "no error").
+
+**`result, err := divide(10, 2)`** — captures **both** return values at once into two separate variables, separated by a comma on the left-hand side.
+
+Think of this pattern like getting change at a cash register: you don't just get money back, you also get a receipt explaining what happened (success or a problem). The `(result, error)` pattern is Go's way of saying "here's the result, and here's a note on whether everything went smoothly."
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+**The `(result, error)` pattern is the most common idiom in Go.** Instead of using exceptions like `try/catch` in other languages, Go encourages explicit error handling: any function that can fail typically returns an error as its last return value, and the caller is **required** to check `if err != nil { ... }` before using the result. You'll see this pattern in nearly all Go code, including the entire standard library.
 :::
+
+## Named Return Values
+
+Go also lets you give **names** to return values right in the function declaration:
+
+```go
+package main
+
+import "fmt"
+
+func divideV2(a, b float64) (result float64, err error) {
+    if b == 0 {
+        err = fmt.Errorf("cannot divide by zero")
+        return
+    }
+    result = a / b
+    return
+}
+
+func main() {
+    result, err := divideV2(9, 3)
+    fmt.Println(result, err)
+}
+```
+
+Output:
+```
+3 <nil>
+```
+
+**`(result float64, err error)`** — `result` and `err` are already declared as variables inside the function, complete with their own zero values (`0` for `float64`, `nil` for `error`) from the moment the function starts running.
+
+**A bare `return` (naked return)** — because `result` and `err` already have names, you can simply write `return`, and Go automatically returns whatever values `result` and `err` currently hold.
+
+:::tip
+Named return values are useful for documenting the **intent** of each return value right in the function signature — someone reading `func divideV2(a, b float64) (result float64, err error)` immediately knows the order and meaning of each value without reading the function body. But be careful using a *naked return* in a long function — it can be confusing since the returned values aren't visible right there on the `return` line itself. Many Go programmers still write `return result, err` explicitly even when the names are already declared.
+:::
+
+## Another Example: Swapping Two Values
+
+```go
+package main
+
+import "fmt"
+
+func swap(a, b int) (int, int) {
+    return b, a
+}
+
+func main() {
+    x, y := swap(1, 2)
+    fmt.Println(x, y)
+}
+```
+
+Output:
+```
+2 1
+```
+
+Without multiple return values, swapping two values through a function would be much more awkward — you'd have to use pointers or a wrapper struct. In Go, `return b, a` is all it takes.
+
+## Common Mistakes
+
+1. **Capturing only one variable when the function returns two values:**
+   ```go
+   result := divide(10, 2) // ERROR: assignment mismatch: 1 variable but divide returns 2 values
+   ```
+   You **must** capture every returned value, even if one of them goes unused (use `_` to discard it, e.g. `result, _ := divide(10, 2)`).
+
+2. **Ignoring the returned error:**
+   ```go
+   result, _ := divide(10, 0) // error discarded with _
+   fmt.Println(result)         // prints 0, with no explanation why
+   ```
+   This is syntactically valid, but it's a bad habit — you lose important information about what went wrong. Always check `err != nil` unless you're truly certain that error can never occur.
+
+3. **Forgetting to set a named return value before a naked return:**
+   ```go
+   func findValue(n int) (result int) {
+       if n > 0 {
+           result = n * 2
+           return
+       }
+       return // result is still its zero value (0) on this path!
+   }
+   ```
+   If you accidentally forget to set a named variable before `return`, you'll get its zero value (`0`, `""`, `nil`, etc.) — not a compile error, but potentially a sneaky logic bug.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l3-ex1"
+  title="Min and Max Function"
+  description="Complete the <code>minMax</code> function so it returns the smaller and larger of two numbers at once."
+  type="code-output"
+  expectedOutput="3 9"
+  starterCode={`package main
+
+import "fmt"
+
+func minMax(a, b int) (int, int) {
+    if a < b {
+        return a, b
+    }
+    return b, a
+}
+
+func main() {
+    smaller, larger := minMax(9, 3)
+    fmt.Println(smaller, larger)
+}`}
+  hints={["The minMax function is already complete — try running it first to see the result.", "minMax(9, 3): since 9 is not < 3, the function returns (3, 9)."]}
+  explanation="minMax(9, 3) evaluates 'a < b', that is '9 < 3', which is false, so the function executes 'return b, a', that is 'return 3, 9' — producing smaller=3 and larger=9."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l3-ex2"
+  title="Go's Idiomatic Pattern"
+  description="What return-value pattern do Go functions most commonly use to signal whether an operation succeeded or failed?"
+  type="multiple-choice"
+  options={["Return (result, error) — the error is nil when the operation succeeds", "Throw an exception with try/catch like Java", "Return -1 for every kind of failure", "Immediately stop the program with panic whenever something goes wrong"]}
+  correctIndex={0}
+  hints={["Go doesn't have try/catch as its primary error-handling mechanism.", "This pattern involves two return values: the operation's result, and a value of type error."]}
+  explanation="Go idiomatically uses the (result, error) pattern: a function returns its result along with an error value that is nil when nothing went wrong, and the caller must check 'if err != nil' before using the result."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l3-ex3"
+  title="Complete the Dual Return Type"
+  description="Fill in the return type for a function that returns two int values at once."
+  type="fill-blank"
+  template={`func swap(a, b int) {{BLANK}} {
+    return b, a
+}`}
+  blanks={["(int, int)"]}
+  hints={["When there's more than one return value, the types must be wrapped in parentheses and separated by a comma."]}
+  explanation="To return two int values, the return type is written as '(int, int)' — wrapped in parentheses because there's more than one value."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Multiple return | `func f() (int, error)` |
+| Capturing every value | `result, err := f()` |
+| Discarding one value | `result, _ := f()` |
+| Go's idiomatic pattern | `if err != nil { ... }` |
+| Named return values | `func f() (result int, err error)` |
+| Naked return | `return` (returns the currently-named values) |
+
+Your functions can now flexibly accept however many parameters they need — but what if you **don't know** how many arguments will be passed in? The next lesson covers **variadic functions**, functions that can accept any number of arguments.

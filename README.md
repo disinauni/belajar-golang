@@ -58,7 +58,7 @@ Kurikulumnya tidak sekadar menyalin urutan bahasa lain: dua unit terakhir (**Con
 | 7 | Concurrency (Goroutine & Channel) | 5 | ✅ Tersedia |
 | 8 | Practical Go (Module, Testing, JSON) | 4 | ✅ Tersedia |
 
-**49 lesson tersedia** (Bahasa Indonesia) · 1 proyek mini per unit. Terjemahan Inggris masih berupa stub ("translation in progress") — lihat [Berkontribusi](#berkontribusi).
+**49 lesson tersedia**, lengkap dalam Bahasa Indonesia dan Inggris (kode & string di setiap contoh juga dilokalisasi penuh untuk versi Inggris) · 1 proyek mini per unit.
 
 Unit 7 (Concurrency) dan Unit 8 (Practical Go) tidak ada di kurikulum keluarga situs C++/Python/SQL — ditambahkan khusus karena goroutine, channel, dan *error-as-value* adalah identitas inti Go.
 
@@ -148,7 +148,7 @@ belajar-golang/
 │   │   └── common/          # ThemeToggle, LanguageToggle, TableOfContents
 │   ├── content/
 │   │   ├── lessons-id/      # Lesson Bahasa Indonesia (MDX, 49 lesson, unit-0 s.d. unit-8)
-│   │   └── lessons-en/      # Lesson English (MDX, stub — terjemahan menyusul)
+│   │   └── lessons-en/      # Lesson English (MDX, 49 lesson, terjemahan lengkap termasuk kode)
 │   ├── data/
 │   │   └── glossary.ts      # Istilah Go bilingual untuk halaman Glosarium
 │   ├── layouts/             # BaseLayout, PageLayout, LessonLayout
@@ -171,8 +171,7 @@ belajar-golang/
 Kontribusi sangat welcome! Beberapa cara untuk berkontribusi:
 
 - 🐛 **Laporkan bug** — [Buka issue](https://github.com/zedfar/belajar-golang/issues)
-- 🌐 **Terjemahan** — Bantu terjemahkan 49 lesson dari `src/content/lessons-id/` ke English di `src/content/lessons-en/` (saat ini semuanya masih stub `translationStatus: "draft"`)
-- ✍️ **Perbaiki/perdalam lesson** — Semua unit sudah ada isinya, tapi selalu ada ruang untuk contoh yang lebih jelas, exercise tambahan, atau koreksi teknis
+- ✍️ **Perbaiki/perdalam lesson** — Semua unit (ID & EN) sudah ada isinya, tapi selalu ada ruang untuk contoh yang lebih jelas, exercise tambahan, atau koreksi teknis
 - 💡 **Saran fitur** — Diskusikan di [Issues](https://github.com/zedfar/belajar-golang/issues)
 
 ### Menulis Lesson Baru

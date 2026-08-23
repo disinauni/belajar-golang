@@ -2,18 +2,171 @@
 title: "Data Types"
 unit: 1
 lesson: 3
-description: "English translation of lesson 03-tipe-data.mdx"
+description: "Get to know Go's basic data types: int, float64, string, bool, rune, and byte"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Get to know Go's basic data types and when to use them"
+  - "Understand that Go is a statically typed language"
+  - "Learn that Go does not do implicit type conversion"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/02-komentar-variabel"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["data-types", "int", "float64", "string", "bool", "rune", "byte"]
 ---
 
 # Data Types
 
+In the previous lesson you already used `int` and `string` without much explanation. Now it's time for a proper introduction to Go's basic data types — and one important rule that sets Go apart from Python: **Go never does automatic type conversion**.
+
+## The Basic Types
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var age int = 17
+    var height float64 = 165.5
+    var name string = "Alex"
+    var passed bool = true
+    var initial rune = 'A'
+
+    fmt.Println(age, height, name, passed, initial)
+}
+```
+
+Output:
+```
+17 165.5 Alex true 65
+```
+
+Notice `initial` prints as `65`, not `A` — we'll explain why below!
+
+## Breaking Down Each Type
+
+**`int`** — a whole number (no decimals). Its size (32-bit or 64-bit) follows the platform your computer runs on, but for most programs you don't need to worry about this. There are also fixed-size variants like `int8`, `int32`, `int64` for special cases.
+
+**`float64`** — a decimal number with 64-bit precision. This is the **default** decimal type in Go — use `float64` unless you have a specific reason to use `float32`.
+
+**`string`** — text, wrapped in double quotes. Strings in Go are **immutable** (can't be changed after creation) and are internally a sequence of bytes encoding UTF-8.
+
+**`bool`** — a true/false value: `true` or `false`. Unlike Python, Go does **not** treat `0` or an empty string as "falsy" — only an actual `bool` is valid for an `if` condition.
+
+**`rune`** — a single Unicode character, actually an alias for `int32`. This is why `initial` prints `65` above — a `rune` is really just a number (the Unicode code point for the character `'A'` is 65). To display it as a character, use `fmt.Printf("%c", initial)`.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+**Single vs double quotes** — in Go, **single** quotes (`'A'`) are for one character (`rune`), and **double** quotes (`"Alex"`) are for a string. This is different from Python, which treats both as equivalent!
 :::
+
+## Why Does It Print `65`?
+
+```go
+var initial rune = 'A'
+fmt.Println(initial)          // 65 (Unicode code point)
+fmt.Printf("%c\n", initial)   // A  (the actual character)
+```
+
+A `rune` is really just a number under the hood — Go chooses to display its raw number with `Println`, and you need a special format (`%c` in `Printf`) to display it as a character. This will make more sense once we cover `byte` and string encoding in Unit 5.
+
+:::tip
+Go being statically typed means **every variable has a fixed type that's checked at compile time**, not while the program is running. This catches a lot of bugs early — before your program even gets a chance to run.
+:::
+
+## No Implicit Conversion
+
+This is a big difference from Python: in Go, you **cannot** directly combine two different types in an operation, even `int` and `float64`.
+
+```go
+var age int = 17
+var factor float64 = 1.5
+
+// result := age * factor  // ERROR: mismatched types int and float64
+result := float64(age) * factor  // must be converted explicitly
+fmt.Println(result)
+```
+
+Output:
+```
+25.5
+```
+
+We'll cover type conversion in full detail in the **Type Conversion** lesson later in this unit.
+
+## Common Mistakes
+
+1. **Combining int and float64 directly:**
+   ```go
+   var a int = 5
+   var b float64 = 2.5
+   result := a + b  // ERROR: mismatched types int and float64
+   ```
+   Fix: convert one of them first, e.g. `float64(a) + b`.
+
+2. **Using double quotes for a rune:**
+   ```go
+   var letter rune = "A"  // ERROR: cannot use "A" (untyped string constant) as rune value
+   ```
+   A rune needs **single** quotes: `var letter rune = 'A'`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l3-ex1"
+  title="Fix the Type Conversion"
+  description="This code errors because it mixes int and float64 directly. Fix it with an explicit conversion so the program prints the result."
+  type="code-output"
+  expectedOutput="17.5"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    var age int = 17
+    var extra float64 = 0.5
+    result := age + extra
+    fmt.Println(result)
+}`}
+  hints={["Go can't directly add an int and a float64.", "Wrap 'age' with float64(...) before adding."]}
+  explanation="result := float64(age) + extra converts age (int) to float64 first, so it can then be added to extra, which is a float64."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l3-ex2"
+  title="Default Decimal Data Type"
+  description="What type does Go use by default for decimal numbers?"
+  type="multiple-choice"
+  options={["float32", "float64", "double", "decimal"]}
+  correctIndex={1}
+  hints={["Go has no type called 'double' like C++/Java.", "It has 64-bit precision."]}
+  explanation="float64 is the default decimal type in Go, used unless there's a specific reason to use float32 (e.g. to save memory)."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l3-ex3"
+  title="Quotes for a Rune"
+  description="Complete the correct rune declaration for the character 'A'."
+  type="fill-blank"
+  template="var letter rune = {{BLANK}}A{{BLANK}}"
+  blanks={["'", "'"]}
+  hints={["A rune needs single quotes, not double quotes."]}
+  explanation="var letter rune = 'A' uses single quotes because a rune represents one character, not a string."
+  lang="en"
+/>
+
+## Summary
+
+| Type | Example Value | Zero Value |
+|---|---|---|
+| `int` | `17` | `0` |
+| `float64` | `165.5` | `0` |
+| `string` | `"Alex"` | `""` |
+| `bool` | `true` | `false` |
+| `rune` | `'A'` (stored as a number) | `0` |
+| `byte` | one raw byte (alias for `uint8`) | `0` |
+
+In the next lesson, we'll cover **constants and iota** — how to create values that can't be changed, plus Go's signature auto-numbering trick!

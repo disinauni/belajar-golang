@@ -1,19 +1,378 @@
 ---
-title: "Project: Grade Book"
+title: "Project: Student Grade Book"
 unit: 5
 lesson: 5
-description: "English translation of lesson 05-project-buku-nilai"
+description: "Combining map, slice, and sorting to build a clean and consistent student grade report"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Combine map[string][]int to model per-student grade data"
+  - "Compute the average, highest grade, and lowest grade"
+  - "Produce a report with consistent ordering even though the source data is a map"
 estimatedTime: 90
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-5/04-string-rune-byte"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-5"]
+tags: ["project", "map", "slice", "sort", "practice", "integration"]
 ---
 
-# Project: Grade Book
+# Project: Student Grade Book
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+You've now mastered all of Unit 5's core data structures: array, slice, map, and the ins and outs of strings. Now it's time to combine everything into one real project — **Student Grade Book**, a program that stores exam grades for several students, then produces a report of averages, highest grades, and lowest grades.
+
+Like the calculator project in Unit 1, we'll walk through every stage slowly: planning, pseudocode, incremental implementation, then testing.
+
+## Program Specification
+
+Our grade book program needs to be able to:
+
+1. Store **multiple exam grades** for **multiple students**
+2. Display a report containing all grades and each student's **average**, with a **consistent** name ordering
+3. Find the **highest grade** and **lowest grade** across all the data, along with the name of the student who got it
+
+Expected sample output:
+```
+=== STUDENT GRADE REPORT ===
+
+Andi  : [80 90 75]  (average: 81.67)
+Budi  : [60 70 65]  (average: 65.00)
+Citra : [95 92 98]  (average: 95.00)
+
+Highest grade: 98 (Citra)
+Lowest grade : 60 (Budi)
+```
+
+## Stage 1: Planning
+
+**What data needs to be stored?**
+- Each student's grades — one student has **multiple** grades, and the count can differ between students. This fits `map[string][]int` perfectly: the key is the student's name (`string`), the value is a list of grades (`[]int`, a slice because the count is flexible).
+- The highest & lowest grade found so far, along with the name of the student who got it.
+
+Why not use `struct` to represent "one student" more cleanly? Because we don't learn `struct` until Unit 6 — for now, a combination of map and slice is powerful enough to solve this problem.
+
+**Program flow:**
+1. Define the student grade data
+2. Get all student names from the map, then **sort** them (so the report is consistent every time it runs — remember, `for range` order on a map isn't guaranteed!)
+3. For each student (in sorted order): compute the total and average of their grades, while tracking the overall highest/lowest grade
+4. Print the full report
+
+**Edge cases to think about:**
+- The average must be computed with decimal division (`float64`), not integer division which truncates
+- What if a student has an empty grade slice? We must guard against dividing by zero
+
+## Stage 2: Pseudocode
+
+```
+PROGRAM Grade Book:
+    DATA gradeBook = { "Andi": [80,90,75], "Budi": [60,70,65], "Citra": [95,92,98] }
+
+    studentNames = ALL KEYS from gradeBook
+    SORT studentNames alphabetically
+
+    PRINT title "STUDENT GRADE REPORT"
+
+    highest = not set yet
+    lowest = not set yet
+
+    FOR EACH name IN studentNames (sorted order):
+        gradeList = gradeBook[name]
+        IF gradeList is empty: SKIP this student
+
+        total = SUM all grades in gradeList
+        WHILE summing, UPDATE highest and lowest whenever found
+        average = total / count of grades (as decimal)
+
+        PRINT "name: gradeList (average: average)"
+
+    PRINT "Highest grade: highest (name of the student who got it)"
+    PRINT "Lowest grade: lowest (name of the student who got it)"
+```
+
+## Stage 3: Implementation
+
+### Version 1: Basic Skeleton
+
+Start from the simplest form — raw data, printed as-is through a direct `for range` without sorting:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    gradeBook := map[string][]int{
+        "Andi":  {80, 90, 75},
+        "Budi":  {60, 70, 65},
+        "Citra": {95, 92, 98},
+    }
+
+    fmt.Println("=== STUDENT GRADE REPORT ===")
+    fmt.Println()
+
+    for name, grades := range gradeBook {
+        fmt.Println(name, ":", grades)
+    }
+}
+```
+
+Try running this program **a few times**. Notice something odd: the order in which students are printed can change every time it runs! This isn't a bug in your code — it's exactly the warning we covered in the Map lesson: `for range` on a map **doesn't guarantee order**. For a report that's readable by humans, we need a consistent order.
+
+### Version 2: Add the Logic
+
+Now fix the ordering problem by sorting the student names first, and add the average calculation:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    gradeBook := map[string][]int{
+        "Andi":  {80, 90, 75},
+        "Budi":  {60, 70, 65},
+        "Citra": {95, 92, 98},
+    }
+
+    var studentNames []string
+    for name := range gradeBook {
+        studentNames = append(studentNames, name)
+    }
+    sort.Strings(studentNames)
+
+    fmt.Println("=== STUDENT GRADE REPORT ===")
+    fmt.Println()
+
+    for _, name := range studentNames {
+        gradeList := gradeBook[name]
+        total := 0
+        for _, g := range gradeList {
+            total += g
+        }
+        average := float64(total) / float64(len(gradeList))
+        fmt.Printf("%-6s: %v  (average: %.2f)\n", name, gradeList, average)
+    }
+}
+```
+
+Output:
+```
+=== STUDENT GRADE REPORT ===
+
+Andi  : [80 90 75]  (average: 81.67)
+Budi  : [60 70 65]  (average: 65.00)
+Citra : [95 92 98]  (average: 95.00)
+```
+
+Now the order is always the same every time it runs, and the average is showing up. Just one more feature left: the overall highest and lowest grade.
+
+## Understanding the Code
+
+### `map[string][]int` — A Map Holding a Slice
+
+```go
+gradeBook := map[string][]int{
+    "Andi": {80, 90, 75},
+    ...
+}
+```
+
+The value of this map is of type `[]int`, not a single `int` — so one key (a student's name) can hold **multiple** grades at once. Notice `gradeBook[name]` returns that student's entire slice of grades, ready to be iterated over.
+
+### Sorting Map Keys with `sort.Strings`
+
+```go
+var studentNames []string
+for name := range gradeBook {
+    studentNames = append(studentNames, name)
+}
+sort.Strings(studentNames)
+```
+
+This is the standard pattern for getting a consistent order from a map: collect all the keys into an empty slice via `append` inside a loop, then sort the slice with `sort.Strings`. After this, iterating through `studentNames` (instead of directly through `gradeBook`) always gives the same order.
+
+### Decimal Division for the Average
+
+```go
+average := float64(total) / float64(len(gradeList))
+```
+
+`total` and `len(gradeList)` are both `int`. If divided directly without conversion (`total / len(gradeList)`), Go performs **integer division**, which throws away the decimal remainder — `245 / 3` would become `81`, not `81.67`. That's why both sides are converted to `float64` first before dividing.
+
+### The `%-6s` and `%v` Formats
+
+```go
+fmt.Printf("%-6s: %v  (average: %.2f)\n", name, gradeList, average)
+```
+
+`%-6s` prints a string left-aligned with a minimum width of 6 characters (padding with spaces on the right if it's shorter) — so the name column stays neatly aligned. `%v` is the general-purpose *verb* that prints a value as-is according to its type — for `[]int`, the result looks like `[80 90 75]`.
+
+## Stage 4: Testing
+
+**Test 1: Normal data (three students, same grade count)**
+```
+Data: Andi[80,90,75], Budi[60,70,65], Citra[95,92,98]
+Expected average: Andi 81.67, Budi 65.00, Citra 95.00
+Expected highest: 98 (Citra)
+Expected lowest: 60 (Budi)
+```
+
+**Test 2: Students with different grade counts**
+```
+Add "Dedi": {100} -- just one grade
+Expected average for Dedi: 100.00 (the average of one number is that number itself)
+Expected new highest: 100 (Dedi)
+```
+This proves why we use `[]int` (flexible) instead of a fixed-size array — every student may have a different number of grades.
+
+**Test 3: Two students tied for the highest grade**
+```
+Andi has a grade of 98, Citra also has a grade of 98
+Expected: the program still runs fine, picking whichever is found first in the checking order
+```
+
+**Test 4: A student with an empty grade slice**
+```
+Add "Eka": {} -- no grades at all
+Expected: Eka's row is skipped (no average computed), program doesn't panic from dividing by zero
+```
+This is why the final code below has a `if len(gradeList) == 0 { continue }` check before computing the average.
+
+:::tip
+Look at Test 4 — this is a real example of why thinking about edge cases from Stage 1 matters. Without that check, `total / len(gradeList)` with `len` equal to 0 would produce `NaN` (Not a Number) for `float64`, instead of a clear error.
 :::
+
+## Complete Solution Code (Final Version)
+
+Here's the full code with highest and lowest grade tracking, plus edge case handling:
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    // === Student Grade Data ===
+    gradeBook := map[string][]int{
+        "Andi":  {80, 90, 75},
+        "Budi":  {60, 70, 65},
+        "Citra": {95, 92, 98},
+    }
+
+    // === Sort student names so the report is consistent ===
+    var studentNames []string
+    for name := range gradeBook {
+        studentNames = append(studentNames, name)
+    }
+    sort.Strings(studentNames)
+
+    // === Report Header ===
+    fmt.Println("=== STUDENT GRADE REPORT ===")
+    fmt.Println()
+
+    highest := -1
+    lowest := -1
+    topStudent := ""
+    bottomStudent := ""
+
+    for _, name := range studentNames {
+        gradeList := gradeBook[name]
+        if len(gradeList) == 0 {
+            continue // skip students with no grades, avoid dividing by zero
+        }
+
+        total := 0
+        for _, g := range gradeList {
+            total += g
+            if highest == -1 || g > highest {
+                highest = g
+                topStudent = name
+            }
+            if lowest == -1 || g < lowest {
+                lowest = g
+                bottomStudent = name
+            }
+        }
+        average := float64(total) / float64(len(gradeList))
+
+        fmt.Printf("%-6s: %v  (average: %.2f)\n", name, gradeList, average)
+    }
+
+    // === Summary ===
+    fmt.Println()
+    fmt.Printf("Highest grade: %d (%s)\n", highest, topStudent)
+    fmt.Printf("Lowest grade : %d (%s)\n", lowest, bottomStudent)
+}
+```
+
+Output:
+```
+=== STUDENT GRADE REPORT ===
+
+Andi  : [80 90 75]  (average: 81.67)
+Budi  : [60 70 65]  (average: 65.00)
+Citra : [95 92 98]  (average: 95.00)
+
+Highest grade: 98 (Citra)
+Lowest grade : 60 (Budi)
+```
+
+## Bonus Challenges
+
+Already done? Try these extra challenges:
+
+**Challenge 1: Add a New Student**
+
+Add one or two new students to `gradeBook`, complete with their grades. Notice how the report automatically adjusts — the new name will automatically land in the right order (thanks to `sort.Strings`) without you needing to change any logic.
+
+**Challenge 2: Overall Class Average**
+
+Add one extra line at the end of the report that computes the average across **the entire class** — the total of all grades from all students, divided by the total number of grades (not the average of averages!). Example extra output: `Class average: 80.56`.
+
+**Challenge 3: Letter Grades**
+
+Add a letter grade (A/B/C/D) next to each student's average, using the `if/else` you learned back in Unit 2:
+```go
+var letterGrade string
+switch {
+case average >= 90:
+    letterGrade = "A"
+case average >= 80:
+    letterGrade = "B"
+case average >= 70:
+    letterGrade = "C"
+default:
+    letterGrade = "D"
+}
+```
+
+## Reflection: What You've Learned
+
+In this project, you combined **almost every concept from Unit 5**:
+
+| Concept | Used For |
+|--------|---------------|
+| `map[string][]int` | Storing multiple grades per student name |
+| Slice (`[]int`, `[]string`) | Storing the grade list and the name list |
+| `sort.Strings` | Sorting map keys so the report is consistent |
+| `for range` over a map and a slice | Iterating over student data and their grades |
+| `float64()` conversion | Accurate decimal division for the average |
+| `%-6s`, `%v`, `%.2f` in `Printf` | Clean, readable report formatting |
+| Edge case handling | Avoiding division by zero on an empty slice |
+
+## Unit 5 Wrap-Up
+
+Congratulations! You've completed **Unit 5: Data Structures**! Let's recap what you've mastered:
+
+- Array — a fixed-size data structure and its value-type behavior
+- Slice — Go's most commonly used dynamic data structure, complete with `len`/`cap`, `append`, slicing, and the underlying-array-sharing gotcha
+- Map — the key-value data structure, the comma-ok pattern, `delete()`, and why sorting iteration results matters
+- String, rune, and byte — how Go actually stores text, and the correct way to index characters on non-ASCII text
+- Combining all of it into one real project from planning through testing
+
+These data structures are the backbone of nearly every Go program you'll write from here on. In **Unit 6**, you'll learn **struct and interface** — a way to bundle related data (like "one student" with their name, grades, and attributes) into one clean custom type, far more organized than juggling separate maps and slices the way we did in this project.
+
+Keep up the momentum — you're already halfway to real Go mastery!

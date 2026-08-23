@@ -1,19 +1,123 @@
 ---
-title: "Environment Setup"
+title: "Setting Up Your Environment"
 unit: 0
 lesson: 2
-description: "English translation of lesson 02-setup-lingkungan.mdx"
+description: "Set up your Go learning environment — whether right in the browser or on your own computer"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand that this site's playground can be used without installing anything"
+  - "Know how to install Go on your own computer (optional)"
+  - "Learn the basic commands: go version, go run, go build"
 estimatedTime: 20
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-0/01-apa-itu-go"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-0"]
+tags: ["setup", "installation", "tooling"]
 ---
 
-# Environment Setup
+# Setting Up Your Environment
+
+Good news: you're **not required** to install anything to follow this course. The playground on this site runs Go code directly on a server, so you can write and run code straight from any browser — a laptop, a school Chromebook, even a tablet.
+
+But if you'd like to code Go on your own computer (highly recommended once you get more serious), this lesson will walk you through the installation.
+
+## Option 1: Use This Site's Playground
+
+Nothing to set up. Open the **Playground** page from the navigation menu, write your code, and click **Run**. Your code is sent to a server, compiled, executed, and the result is sent back to your browser within seconds.
+
+This is the fastest way to start learning — and the approach we'll use throughout this course.
+
+## Option 2: Install Go on Your Computer
+
+If you want to write more serious Go projects (or you're just curious), here's how:
+
+1. Go to **[go.dev/dl](https://go.dev/dl)** and download the installer for your operating system (Windows, macOS, or Linux)
+2. Run the installer and follow the standard steps (Next → Next → Install)
+3. Open a terminal / command prompt and type:
+
+```bash
+go version
+```
+
+If the installation succeeded, you'll see output like this:
+
+```
+go version go1.23.4 darwin/arm64
+```
+
+## Breaking Down the `go version` Output
+
+**`go version`** — the command you ran. All Go tooling is accessed through a single executable called `go`, followed by a subcommand like `version`, `run`, or `build`.
+
+**`go1.23.4`** — the installed Go version. This number matters because some language features are only available in certain versions (for example, generics only arrived in Go 1.18).
+
+**`darwin/arm64`** — the target platform: OS (`darwin` = macOS, `linux`, or `windows`) and CPU architecture (`arm64`, `amd64`, etc). Go uses this info to compile a binary matching your machine.
+
+:::tip
+The recommended editor for Go is **VS Code** with the official **"Go"** extension from the Google team. This extension automatically gives you auto-complete, format-on-save, and shows compile errors right in the editor.
+:::
+
+## Two Commands You'll Use Often
+
+```bash
+go run main.go
+```
+Compiles and immediately runs the `main.go` file in one step — without leaving behind a permanent binary file. This is the command you'll use most often during development.
+
+```bash
+go build main.go
+```
+Compiles `main.go` into an executable binary file (e.g. `main` or `main.exe`) that can be run anytime without Go installed on the target machine. Used when you're ready to share/deploy your program.
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Since Go 1.16, modern project workspaces use **Go Modules** (marked by a `go.mod` file), instead of the old `GOPATH` folder structure. You'll get to know `go.mod` in Unit 8 — for now, this site's playground already handles all of that automatically.
 :::
+
+## Common Mistakes
+
+1. **Forgetting to restart the terminal after installing** — on some OSes, PATH changes are only picked up after the terminal is closed and reopened.
+   ```bash
+   go version
+   # command not found: go   ← even though it was just installed
+   ```
+   Fix: close the terminal, open a new one, try again.
+
+2. **Following an old tutorial that mentions `GOPATH`** — many tutorials from before 2019 required code to be placed in a specific `GOPATH` folder. With Go Modules (the default since Go 1.16), you can put a Go project in any folder you like.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u0l2-ex1"
+  title="Pick the Right Command"
+  description="Which command compiles Go into a permanent executable binary file (not just a temporary run)?"
+  type="multiple-choice"
+  options={["go run", "go build", "go version", "go install"]}
+  correctIndex={1}
+  hints={["'run' is great for fast development, but it doesn't leave any file behind.", "You want a file you can share and run repeatedly."]}
+  explanation="go build produces a permanent executable binary file. go run only compiles and runs once, without leaving a binary behind."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u0l2-ex2"
+  title="Complete the Command"
+  description="Complete the command to check the installed Go version."
+  type="fill-blank"
+  template="go {{BLANK}}"
+  blanks={["version"]}
+  hints={["Not 'run' or 'build' — you want to know the version, not run any code."]}
+  explanation="'go version' shows the version of Go currently installed on your computer."
+  lang="en"
+/>
+
+## Summary
+
+| Command | Function |
+|---|---|
+| `go version` | Check the installed Go version |
+| `go run file.go` | Compile + run immediately, no permanent binary file |
+| `go build file.go` | Compile into an executable binary file |
+| This site's playground | Run Go without installing anything |
+
+Your learning environment is ready — whether through the browser playground or a local install. In the next lesson, we'll take a **quick tour of the playground's features** so you're comfortable using it throughout the course!

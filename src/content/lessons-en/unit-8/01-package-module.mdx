@@ -2,18 +2,170 @@
 title: "Package & Module"
 unit: 8
 lesson: 1
-description: "English translation of lesson 01-package-module.mdx"
+description: "Fully understanding go.mod, Go modules, and the exported/unexported rule"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand what the go.mod file does and the concept of a module"
+  - "Know how import paths work within a module"
+  - "Fully understand the exported (capitalized) vs unexported (lowercase) rule"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-7/05-project-worker-pool"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-8"]
+tags: ["package", "module", "go-mod", "exported"]
 ---
 
 # Package & Module
 
+Since the very first lesson of this course, you've been writing `package main` without asking too many questions about "why?". Now, near the end of the journey, it's time to understand how real Go projects organize large codebases with many files and packages — through a concept called a **module**.
+
+## From One File to Many Files
+
+Every piece of code you've written so far fits in a single `main.go` file, run directly through this site's playground. But real projects usually have dozens, even hundreds, of files, grouped into many packages. Go needs a way to know: "what project is this, and how do the files inside it import each other?" The answer: the `go.mod` file.
+
+## Anatomy of go.mod
+
+If you run `go mod init myproject/calculator` in a terminal on your own computer (not on this site's playground), Go will create a `go.mod` file that looks like this:
+
+```
+module myproject/calculator
+
+go 1.13
+
+require (
+    github.com/example/some-dependency v1.2.3
+)
+```
+
+This isn't an ordinary Go file (it's not `.go`), so it doesn't get run — it's just read as configuration.
+
+## Breaking Down go.mod
+
+**`module myproject/calculator`** — the module's name, usually a path resembling a repository URL. This is used as the "base address" for every import path inside the project.
+
+**`go 1.13`** — the minimum Go version required to compile this project.
+
+**`require ( ... )`** — a list of external dependencies and their versions, automatically filled in the moment you run `go get somepackage` to use a third-party library.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+The playground on this site runs a single `main.go` file directly with no `go.mod` — that's enough for learning Go's syntax and logic. Once you start building a real project on your own computer, `go mod init` is the very first command you'll need to run.
 :::
+
+## Import Paths Within a Module
+
+Say your module is named `myproject/calculator`, and you have a folder `operations/` containing a package named `operations`. From `main.go` at the project root, you'd import it like this:
+
+```go
+import "myproject/calculator/operations"
+```
+
+Import path = module name + relative folder path. This is different from `import "fmt"`, which we've used throughout the course — `fmt` is a **standard library** package built into Go, not part of your own module, so it doesn't need any module name prefix.
+
+## Exported vs Unexported — The Full Rule
+
+Remember that small note about `Println` (capitalized) vs `main` (lowercase) back in the first lesson of this course? Now it's time to fully understand it.
+
+```go
+package geometry
+
+// Area — exported, callable from other packages
+func Area(side float64) float64 {
+    return side * side
+}
+
+// calculateInternal — unexported, only callable within the geometry package
+func calculateInternal(x float64) float64 {
+    return x * 2
+}
+```
+
+## Breaking Down the Exported Rule
+
+**Capitalized first letter (`Area`)** — exported. Accessible from other packages via `geometry.Area(5)`.
+
+**Lowercase first letter (`calculateInternal`)** — unexported. Only callable by code inside the `geometry` package itself — other packages can't access it at all, and it won't even show up in your editor's autocomplete.
+
+The same rule applies to everything: function names, package-level variable/constant names, type names (`struct`, `interface`), even **field** names inside a struct. This will become directly relevant in the next lesson — struct fields must be exported (capitalized) to be encoded into JSON, because the `encoding/json` package is itself "another package" from your struct's point of view.
+
+:::tip
+This is how Go replaces the `public`/`private` keywords found in Java/C++. There's no special keyword — you just look at the first letter of the name. Simple, but effective.
+:::
+
+:::fun
+This convention can trip up newcomers from other languages: the "important" function/variable names in Go often start with a capital letter — the opposite of the pure `camelCase` convention many other languages use for every identifier.
+:::
+
+## Common Mistakes
+
+1. **Assuming every function can automatically be called from another package:**
+   ```go
+   // in package math
+   func calculateTax(price float64) float64 {
+       return price * 0.11
+   }
+
+   // in package main
+   import "myproject/math"
+
+   func main() {
+       math.calculateTax(1000)  // ERROR: calculateTax is unexported
+   }
+   ```
+   Fix: if the function really does need to be called from outside its package, capitalize its first letter: `CalculateTax`.
+
+2. **Forgetting `go.mod` when moving code from the playground to your own computer:**
+   ```bash
+   go run main.go
+   # go: cannot find main module, but found .git/config in ...
+   ```
+   Fix: run `go mod init myproject` first in the project folder before `go run`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u8l1-ex1"
+  title="Which Function Is Exported?"
+  description="Which function CAN be called from another package?"
+  type="multiple-choice"
+  options={["calculateTotal(price float64) float64", "CalculateTotal(price float64) float64", "calculate_total(price float64) float64", "_CalculateTotal(price float64) float64"]}
+  correctIndex={1}
+  hints={["What determines exported or not is the FIRST letter of the function name.", "Look for the one starting with a capital letter."]}
+  explanation="CalculateTotal starts with a capital letter, so it's exported — callable from another package via packagename.CalculateTotal(...)."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u8l1-ex2"
+  title="Export This Function"
+  description="Change the function name 'convertTemperature' so it's exported (callable from another package), without changing anything else."
+  type="fill-blank"
+  template="func {{BLANK}}(celsius float64) float64 {"
+  blanks={["ConvertTemperature"]}
+  hints={["Just change the first letter of the function name to a capital letter."]}
+  explanation="ConvertTemperature (capital C) makes this function exported, so it can be called from another package."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u8l1-ex3"
+  title="The Purpose of go.mod"
+  description="What is the main purpose of the go.mod file in a Go project?"
+  type="multiple-choice"
+  options={["Storing the program's compiled output", "Marking the project root, the module's name, and its list of dependencies", "Storing editor configuration", "Replacing the package main function"]}
+  correctIndex={1}
+  hints={["This is a configuration file, not a Go code file that gets run.", "Its contents are similar to package.json in the Node.js world — project identity plus dependencies."]}
+  explanation="go.mod marks the root of a Go module, holding the module's name (used as the base for import paths) and a list of external dependencies with their versions."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Description |
+|---|---|
+| `go mod init name` | Creates the `go.mod` file, marking the project root |
+| Import path | module name + relative folder path |
+| Exported | Name starts with a capital letter, accessible from other packages |
+| Unexported | Name starts with a lowercase letter, only usable within that package |
+
+In the next lesson, we'll cover **testing with go test** — how to make sure your Go code truly works as expected, automatically!

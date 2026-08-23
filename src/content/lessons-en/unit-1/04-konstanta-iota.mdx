@@ -2,18 +2,182 @@
 title: "Constants & iota"
 unit: 1
 lesson: 4
-description: "English translation of lesson 04-konstanta-iota.mdx"
+description: "Create values that can't be changed with const, and auto-numbering with iota"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare constants with the const keyword"
+  - "Understand the difference between const and var"
+  - "Use iota to create automatic constant numbering"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/03-tipe-data"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["constants", "const", "iota"]
 ---
 
 # Constants & iota
 
+Imagine writing a physics program that uses the value of Pi repeatedly. If Pi is stored as an ordinary variable, there's a risk (however small) that its value gets tampered with somewhere in the code. For values that **really shouldn't change**, Go has a dedicated keyword: `const`.
+
+## Constants with `const`
+
+```go
+package main
+
+import "fmt"
+
+const Pi = 3.14159
+const AppName = "Go Calculator"
+
+func main() {
+    radius := 5.0
+    area := Pi * radius * radius
+    fmt.Println(AppName)
+    fmt.Println("Circle area:", area)
+}
+```
+
+Output:
+```
+Go Calculator
+Circle area: 78.53975
+```
+
+## Breaking Down Constants
+
+**`const Pi = 3.14159`** — declares a constant named `Pi`. Unlike `var`, its value is **fixed at compile time** and can never be changed after that — even attempting to reassign it makes the compiler reject the code.
+
+**Why not `var`?** — Technically you *could* use `var` and just be disciplined about never changing it. But `const` makes Go **enforce** that rule at the compiler level — if any line of code (intentional or not) tries to change `Pi`, the program simply won't compile.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Unlike Python, which has no real `const` keyword (its convention is just naming variables in `ALL_CAPS`), Go enforces this "cannot be changed" property at the language level.
 :::
+
+## Auto-Numbering with `iota`
+
+Now imagine you need to represent days of the week as numbers. Writing `0, 1, 2, 3...` manually is prone to typos. That's where `iota` comes in — a special identifier that automatically increases by 1 on every line within a `const` block.
+
+```go
+package main
+
+import "fmt"
+
+const (
+    Monday = iota // 0
+    Tuesday       // 1
+    Wednesday     // 2
+    Thursday      // 3
+    Friday        // 4
+)
+
+func main() {
+    fmt.Println("Monday =", Monday)
+    fmt.Println("Wednesday =", Wednesday)
+    fmt.Println("Friday =", Friday)
+}
+```
+
+Output:
+```
+Monday = 0
+Wednesday = 2
+Friday = 4
+```
+
+## Breaking Down `iota`
+
+**`const ( ... )`** — block syntax, grouping several constant declarations at once without repeating the `const` keyword on every line.
+
+**`Monday = iota`** — `iota` starts at `0` on the first line of every `const` block.
+
+**`Tuesday`** (with no explicit `= iota`) — within the same block, a line with no explicit value automatically inherits the previous line's expression (`= iota`), and `iota` itself has already advanced to `1`. And so on for every following line.
+
+This is similar to how Go "auto-fills" a repeating pattern — instead of writing `= iota` on every line, you only write it once on the first line.
+
+:::tip
+`iota` resets to `0` at the start of every new `const` block. If you create a second `const (...)` block, its `iota` starts back at `0`, regardless of the last value in the previous block.
+:::
+
+## Common Mistakes
+
+1. **Trying to change a constant's value:**
+   ```go
+   const Pi = 3.14159
+   Pi = 3.14  // ERROR: cannot assign to Pi (neither addressable nor a map index expression)
+   ```
+   Constants are designed to be unchangeable — if you need a value that can change, use `var`.
+
+2. **Forgetting that `iota` resets per block:**
+   ```go
+   const (
+       A = iota // 0
+       B        // 1
+   )
+   const (
+       C = iota // 0, NOT 2!
+   )
+   ```
+   Many beginners assume `iota` keeps increasing across blocks — but every new `const (...)` block starts `iota` back at `0`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l4-ex1"
+  title="Guess the iota Value"
+  description="This program uses iota for difficulty levels. Complete it so it correctly prints the value of 'Hard'."
+  type="code-output"
+  expectedOutput="2"
+  starterCode={`package main
+
+import "fmt"
+
+const (
+    Easy = iota
+    Medium
+    Hard
+)
+
+func main() {
+    fmt.Println(Hard)
+}`}
+  hints={["iota starts at 0 on the first line of a const block.", "Easy=0, Medium=1, so Hard should be 2 — this code is already correct, just try running it!"]}
+  explanation="iota starts at 0 for Easy, and increases by 1 each line: Easy=0, Medium=1, Hard=2."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l4-ex2"
+  title="const vs var"
+  description="What happens if you try to change the value of a variable declared with const?"
+  type="multiple-choice"
+  options={["The program still runs, its value changes like a normal var", "Compile error — Go refuses to change a constant", "The program crashes at runtime", "The value is ignored, stays the same as before"]}
+  correctIndex={1}
+  hints={["const means 'cannot be changed', enforced by the compiler.", "This is different from just an ALL_CAPS naming convention like in Python."]}
+  explanation="Go refuses to compile code that tries to change a const's value — the error appears before the program ever gets a chance to run."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l4-ex3"
+  title="Complete the Constant Block"
+  description="Complete the keyword for declaring a constant block with iota."
+  type="fill-blank"
+  template="{{BLANK}} (\n    A = iota\n    B\n)"
+  blanks={["const"]}
+  hints={["Not 'var' — iota is only valid inside a const block."]}
+  explanation="iota can only be used inside a const block, since its value must be determined at compile time."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Single constant | `const Pi = 3.14159` |
+| Constant block | `const ( A = iota; B; C )` |
+| iota on the first line | `0` |
+| iota increases each line | `1, 2, 3, ...` |
+| iota resets per block | a new block starts back at `0` |
+
+In the next lesson, we'll learn about **input and output** — how your program can read input from a user, not just print fixed text!

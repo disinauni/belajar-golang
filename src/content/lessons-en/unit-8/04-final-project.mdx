@@ -2,18 +2,372 @@
 title: "Final Project"
 unit: 8
 lesson: 4
-description: "English translation of lesson 04-final-project.mdx"
+description: "Build a Task Manager CLI that combines every concept from Unit 0 through Unit 8"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Design and build a complete Go program from scratch"
+  - "Combine structs, slices, error handling, and JSON in one project"
+  - "Reflect on your whole Go learning journey from the start of the course"
 estimatedTime: 120
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-8/03-json-encoding"]
 difficulty: "intermediate"
-tags: ["unit-8"]
+tags: ["project", "final-project", "cli", "capstone"]
+translationStatus: "complete"
 ---
 
-# Final Project
+# Final Project: Task Manager CLI
+
+Congratulations on reaching the end of the course! You've made it through 9 units — from a simple `fmt.Println("Hello, World!")` all the way to the intricacies of goroutines and channels. Now it's time to prove it all comes together in one real project: a **Task Manager (Todo List) CLI**.
+
+This isn't just a unit project — it's the **capstone for the entire course**. We'll go through every planning stage as usual, but this time you'll see just how far your skills have come.
+
+## Program Specification
+
+Our Todo List CLI needs to:
+
+1. Add a new task (`add <title>`)
+2. Display every task along with its status (`list`)
+3. Mark a task as done (`done <id>`)
+4. Exit the program, printing the saved data as JSON (`exit`)
+
+Expected interaction example:
+```
+=== GO TODO LIST ===
+Commands: add <title> | list | done <id> | exit
+
+> add Learn Go
+Task #1 added: Learn Go
+> add Practice goroutines
+Task #2 added: Practice goroutines
+> done 1
+Task marked as done.
+> list
+[x] #1 Learn Go
+[ ] #2 Practice goroutines
+> exit
+Saved data (simulated): [{"id":1,"title":"Learn Go","done":true},{"id":2,"title":"Practice goroutines","done":false}]
+Goodbye!
+```
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+This program stores data in memory (a slice), not to a physical file — the Judge0 playground on this site doesn't provide a writable filesystem. The "exit" step prints the data as JSON to **simulate** how this data would be saved in a real project (say, to a file or a database).
 :::
+
+## Stage 1: Planning
+
+**What data do we need to store?**
+- A list of tasks — a slice of `Task` structs
+- Each task: ID (`int`), Title (`string`), Done status (`bool`)
+- The next task ID to use (`int`, incremented every time a new task is added)
+
+**Program flow:**
+1. Display the title and list of commands
+2. Loop forever, reading one command line from the user
+3. Split the command name from its argument
+4. Run the action for the given command (`add`, `list`, `done`, `exit`)
+5. On the `exit` command, print the data as JSON and stop the program
+
+**Edge cases to think about:**
+- What if the user types `done` without an ID?
+- What if the entered ID isn't a number, or isn't found?
+- What if `list` is called when there are no tasks at all yet?
+
+## Stage 2: Pseudocode
+
+```
+PROGRAM TodoList:
+    tasks = [] (empty)
+    nextID = 1
+
+    DISPLAY title and list of commands
+
+    WHILE true:
+        READ one line of input as a command
+        SPLIT the command into commandName and argument
+
+        IF commandName is "add":
+            CREATE a new task with nextID and the argument as the title
+            APPEND to tasks
+            nextID = nextID + 1
+
+        IF commandName is "list":
+            IF tasks is empty:
+                DISPLAY "No tasks yet."
+            OTHERWISE:
+                FOR EACH task IN tasks:
+                    DISPLAY status, id, title
+
+        IF commandName is "done":
+            FIND the task with a matching id in tasks
+            IF found: mark done = true
+
+        IF commandName is "exit":
+            DISPLAY tasks as JSON
+            STOP the program
+
+        OTHERWISE:
+            DISPLAY "Unrecognized command."
+```
+
+## Stage 3: Implementation
+
+### Version 1: Basic Skeleton
+
+Start with the struct and a read-command loop, without running any actions yet:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strings"
+)
+
+type Task struct {
+    ID    int
+    Title string
+    Done  bool
+}
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+    var tasks []Task
+    nextID := 1
+
+    fmt.Println("=== GO TODO LIST ===")
+    fmt.Println("Commands: add <title> | list | done <id> | exit")
+    fmt.Println()
+
+    for {
+        fmt.Print("> ")
+        if !scanner.Scan() {
+            break
+        }
+        input := scanner.Text()
+        parts := strings.SplitN(input, " ", 2)
+        command := parts[0]
+
+        // TODO: run the action for this command
+
+        fmt.Println("Command received:", command)
+    }
+}
+```
+
+**`scanner.Scan()` as the loop condition `for { if !scanner.Scan() { break } ... }`** — this pattern reads input line by line until there's no more input (say, when stdin is closed), then naturally exits the loop.
+
+**`strings.SplitN(input, " ", 2)`** — splits the input into at most 2 parts at the first space. For `"add Learn Go"`, the result is `["add", "Learn Go"]` — the task title can contain spaces without getting cut off.
+
+Try running it — the program can already read commands, even though it doesn't do anything with them yet.
+
+### Version 2: Full Implementation
+
+Now let's add the logic for each command:
+
+```go
+package main
+
+import (
+    "bufio"
+    "encoding/json"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+type Task struct {
+    ID    int    `json:"id"`
+    Title string `json:"title"`
+    Done  bool   `json:"done"`
+}
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+    var tasks []Task
+    nextID := 1
+
+    fmt.Println("=== GO TODO LIST ===")
+    fmt.Println("Commands: add <title> | list | done <id> | exit")
+    fmt.Println()
+
+    for {
+        fmt.Print("> ")
+        if !scanner.Scan() {
+            break
+        }
+        input := scanner.Text()
+        parts := strings.SplitN(input, " ", 2)
+        command := parts[0]
+
+        switch command {
+        case "add":
+            if len(parts) < 2 {
+                fmt.Println("Format: add <task title>")
+                continue
+            }
+            newTask := Task{ID: nextID, Title: parts[1], Done: false}
+            tasks = append(tasks, newTask)
+            nextID++
+            fmt.Printf("Task #%d added: %s\n", newTask.ID, newTask.Title)
+
+        case "list":
+            if len(tasks) == 0 {
+                fmt.Println("No tasks yet.")
+                continue
+            }
+            for _, t := range tasks {
+                status := "[ ]"
+                if t.Done {
+                    status = "[x]"
+                }
+                fmt.Printf("%s #%d %s\n", status, t.ID, t.Title)
+            }
+
+        case "done":
+            if len(parts) < 2 {
+                fmt.Println("Format: done <id>")
+                continue
+            }
+            id, err := strconv.Atoi(parts[1])
+            if err != nil {
+                fmt.Println("ID must be a number.")
+                continue
+            }
+            found := false
+            for i := range tasks {
+                if tasks[i].ID == id {
+                    tasks[i].Done = true
+                    found = true
+                    break
+                }
+            }
+            if found {
+                fmt.Println("Task marked as done.")
+            } else {
+                fmt.Println("Task not found.")
+            }
+
+        case "exit":
+            data, _ := json.Marshal(tasks)
+            fmt.Println("Saved data (simulated):", string(data))
+            fmt.Println("Goodbye!")
+            return
+
+        default:
+            fmt.Println("Unrecognized command.")
+        }
+    }
+}
+```
+
+## Understanding the Important Parts
+
+### Why `for i := range tasks` for `done`?
+
+```go
+for i := range tasks {
+    if tasks[i].ID == id {
+        tasks[i].Done = true  // modifies the ORIGINAL element via index
+        ...
+    }
+}
+```
+
+Remember from Unit 3: `for _, t := range tasks` gives you a **copy** of each element in `t` — changing `t.Done` wouldn't change the data in the original slice. To actually modify an element inside the slice, we access it via index: `tasks[i]`.
+
+### Why `continue` Inside a `switch` Inside a `for`?
+
+`continue` jumps to the next `for` iteration (back to `fmt.Print("> ")`), skipping the rest of the code in the current `switch` case — a natural way to "cancel this action, ask for a new command" without needing an extra `bool` flag like in the Unit 1 calculator project.
+
+## Stage 4: Testing
+
+**Test 1: Normal flow**
+```
+add Buy milk
+list
+done 1
+list
+exit
+Expected: task #1 appears, then shows [x] checked after 'done 1'
+```
+
+**Test 2: List when empty**
+```
+list
+Expected: "No tasks yet."
+```
+
+**Test 3: done with an invalid ID**
+```
+add Test
+done abc
+Expected: "ID must be a number."
+```
+
+**Test 4: done with an ID that isn't found**
+```
+add Test
+done 99
+Expected: "Task not found."
+```
+
+**Test 5: Unrecognized command**
+```
+delete everything
+Expected: "Unrecognized command."
+```
+
+:::tip
+Try running this program on the **Playground** page (not the Exercise box) so you can type multiple command lines through the stdin field and watch the entire interaction flow play out at once.
+:::
+
+## Complete Solution Code
+
+The Version 2 code above is already the complete, ready-to-run solution — there's no extra version left to write. Copy that code into the Playground, try out the various testing scenarios above, and observe how every concept from these 9 units works together in one program.
+
+## Bonus Challenge
+
+Already done? Extra challenges to sharpen your skills even further:
+
+**Challenge 1: A `delete` Command**
+
+Add a `delete <id>` command that removes a task from `tasks`. Hint: use `append(tasks[:i], tasks[i+1:]...)` to remove the slice element at index `i`.
+
+**Challenge 2: Validate Empty Titles**
+
+Reject `add` if the title is just blank spaces (use `strings.TrimSpace` from Unit 1, and check whether the result is an empty string).
+
+**Challenge 3: Concurrency — Periodic Auto-save**
+
+You already learned goroutines and channels in Unit 7. Try adding a separate goroutine that "saves" (prints the JSON for) the task list every few actions, running concurrently with the main loop — use `sync.Mutex` to protect access to `tasks` from two goroutines at once.
+
+## Reflection: Your Learning Journey
+
+Look how far you've come. Every unit contributed something to this final project:
+
+| Unit | Concept | Used For |
+|---|---|---|
+| Unit 0 | Setup & Playground | The foundation for running every piece of code in this course |
+| Unit 1 | Variables, data types, strings, I/O | `bufio.Scanner`, `strings.SplitN`, `strconv.Atoi` |
+| Unit 2 | Branching (`if`, `switch`) | Routing user commands to the right action |
+| Unit 3 | Loops (`for`, `range`) | The program's main loop, displaying the task list |
+| Unit 4 | Functions, multiple return values | The `(result, error)` pattern from `strconv.Atoi` |
+| Unit 5 | Slices | `tasks []Task`, `append` |
+| Unit 6 | Structs, methods, error handling | `type Task struct{...}`, checking `err != nil` |
+| Unit 7 | Concurrency (goroutines, channels) | The foundation for Challenge 3 |
+| Unit 8 | Packages, testing, JSON | `encoding/json`, thinking in modular terms |
+
+## Congratulations, You've Mastered Go Fundamentals!
+
+You've just completed the entire **Learn Golang** course — from your first `package main` to building a complete CLI application, complete with concurrency and JSON encoding. That's a huge achievement!
+
+Go is the language behind some of the world's most important cloud infrastructure — and now you have the foundation to help build it too. Here are a few next steps you could try:
+
+- **Build a real REST API** with Go's built-in `net/http` package — the `struct`, `error handling`, and `encoding/json` concepts you just mastered are exactly the foundation you need.
+- **Explore popular third-party packages** like `gin` (a web framework) or `cobra` (a more advanced CLI framework than a manual `bufio.Scanner`).
+- **Try deploying your Go program** — compile it with `go build`, and see how easy it is to distribute a single binary file with no runtime dependencies.
+- **Contribute to an open-source Go project** — many major projects (Docker, Kubernetes, and thousands more) welcome contributions from programmers at every level.
+
+Thank you for seeing this journey through to the end. Happy coding, and see you in your next Go project! 🎉

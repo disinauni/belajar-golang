@@ -2,18 +2,207 @@
 title: "Range"
 unit: 3
 lesson: 2
-description: "English translation of lesson 02-range.mdx"
+description: "Concise iteration over slices, strings, and maps with range"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Use range to iterate over slices and arrays"
+  - "Use range to iterate over strings (and its UTF-8 pitfall)"
+  - "Use range to iterate over maps, and understand that their order isn't guaranteed"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-3/01-for-loop"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-3"]
+tags: ["range", "for", "slice", "map", "iteration"]
 ---
 
 # Range
 
+Writing `for i := 0; i < len(data); i++ { data[i] }` every time you want to iterate over a collection gets repetitive and is prone to typos. Go has a more concise way: the `range` clause.
+
+## Range on a Slice
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fruits := []string{"Apple", "Orange", "Mango"}
+
+    for index, value := range fruits {
+        fmt.Println(index, value)
+    }
+}
+```
+
+Output:
+```
+0 Apple
+1 Orange
+2 Mango
+```
+
+## Breaking Down Range on a Slice
+
+**`for index, value := range fruits {`** — `range fruits` produces two values on every iteration: `index` (the position, starting at `0`) and `value` (the element at that position). This is far more concise than writing `fruits[i]` manually over and over.
+
+**If you only need the value, not the index:**
+```go
+for _, value := range fruits {
+    fmt.Println(value)
+}
+```
+The underscore `_` (called the *blank identifier*) tells Go "I'm deliberately ignoring this value" — if you declare `index` but never use it, Go will error with "declared and not used," so `_` is the official way to discard a value you don't need.
+
+**If you only need the index:**
+```go
+for index := range fruits {
+    fmt.Println(index)
+}
+```
+
+## Range on a String
+
+This part needs extra attention:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    word := "Hello"
+
+    for i, r := range word {
+        fmt.Println(i, r, string(r))
+    }
+}
+```
+
+Output:
+```
+0 72 H
+1 101 e
+2 108 l
+3 108 l
+4 111 o
+```
+
+**`for i, r := range word {`** — for a string, `range` produces `i` (a **byte** position, not always neatly sequential 0,1,2,3 for non-ASCII characters) and `r`, which is of type `rune` (the Unicode code point for that character — that's why it prints as a number like `72` for `'H'`).
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+For strings containing non-ASCII characters (like "café" or emoji), the byte position from `range` can "jump" by more than 1 between iterations, because one Unicode character can use more than 1 byte. We'll cover this in more depth when we discuss `string`/`rune`/`byte` in Unit 5 — for now, just remember: **`range` on a string iterates per-character (rune), not per-byte**.
 :::
+
+## Range on a Map
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    scores := map[string]int{"Budi": 88, "Ani": 92, "Citra": 75}
+
+    for name, score := range scores {
+        fmt.Println(name, ":", score)
+    }
+}
+```
+
+Output (the order may differ every time it runs!):
+```
+Ani : 92
+Citra : 75
+Budi : 88
+```
+
+**`for name, score := range scores {`** — for a map, `range` produces a `key` and a `value`. Notice the output above: **the order isn't guaranteed**! Go **deliberately randomizes** map iteration order every time it runs, so programmers don't accidentally come to rely on an order that was never actually promised.
+
+:::tip
+If you need to iterate a map in a consistent order (say, alphabetically by key), you need to collect all the keys into a slice first, sort that slice (`sort.Strings`), then iterate the sorted slice to access the map. We'll cover `sort` further in a later unit.
+:::
+
+## Common Mistakes
+
+1. **Declaring the index but never using it:**
+   ```go
+   for index, value := range fruits {
+       fmt.Println(value)  // ERROR: index declared and not used
+   }
+   ```
+   Fix: replace `index` with `_` if you don't actually need it.
+
+2. **Expecting consistent map ordering:**
+   ```go
+   data := map[string]int{"a": 1, "b": 2, "c": 3}
+   for k := range data {
+       fmt.Println(k)  // the order CAN differ each run!
+   }
+   ```
+   Don't write logic that depends on a particular order when iterating a map — if you need order, sort the keys explicitly.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l2-ex1"
+  title="Sum with Range"
+  description="Complete the program so it sums all the elements of the slice using range — the result should be 60."
+  type="code-output"
+  expectedOutput="60"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    numbers := []int{10, 20, 30}
+    total := 0
+
+    for _, n := range numbers {
+        total += n
+    }
+
+    fmt.Println(total)
+}`}
+  hints={["Use _ to ignore the index since we only need the value.", "This code is already correct — try running it!"]}
+  explanation="range numbers produces an index and a value on every iteration; since the index is ignored with _, only the value (n) gets summed: 10+20+30=60."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l2-ex2"
+  title="Map Iteration Order"
+  description="Is the key order when iterating a map with range always the same every time the program runs?"
+  type="multiple-choice"
+  options={["Yes, always in the order written in the code", "Yes, always alphabetical", "No, Go deliberately randomizes the order", "No, the order is based on key length"]}
+  correctIndex={2}
+  hints={["Remember the explanation about maps in this lesson.", "This is a deliberate Go design decision, not a bug."]}
+  explanation="Go deliberately randomizes map iteration order every time the program runs, so programmers don't accidentally come to rely on an order the language never actually guarantees."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l2-ex3"
+  title="Complete the Blank Identifier"
+  description="Complete the code to iterate over a slice while ignoring its index."
+  type="fill-blank"
+  template={`for {{BLANK}}, value := range fruits {
+    fmt.Println(value)
+}`}
+  blanks={["_"]}
+  hints={["This character tells Go 'I'm deliberately ignoring this value'."]}
+  explanation="The underscore (_) is Go's blank identifier — used to ignore a value you don't need without triggering a 'declared and not used' error."
+  lang="en"
+/>
+
+## Summary
+
+| Target | Pattern | Result per iteration |
+|---|---|---|
+| Slice/Array | `for i, v := range s` | index, value |
+| String | `for i, r := range s` | byte position, rune |
+| Map | `for k, v := range m` | key, value (random order) |
+| Ignore one | `for _, v := range s` | blank identifier `_` |
+
+In the next lesson, we'll cover **break, continue, and label** — how to control loop flow with more precision!

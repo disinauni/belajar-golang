@@ -2,18 +2,455 @@
 title: "Project: Rock Paper Scissors"
 unit: 4
 lesson: 7
-description: "English translation of lesson 07-project-batu-gunting-kertas.mdx"
+description: "Build a Rock Paper Scissors game against the computer, combining every function concept from Unit 4"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Break a game program into small functions with clear responsibilities"
+  - "Use multiple return values, variadic functions, and defer in one real program"
+  - "Generate a random computer choice with math/rand and read player input with bufio.Scanner"
 estimatedTime: 75
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-4/06-closures"]
 difficulty: "beginner"
-tags: ["unit-4"]
+tags: ["project", "game", "rock-paper-scissors", "practice", "integration"]
+translationStatus: "complete"
 ---
 
 # Project: Rock Paper Scissors
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Congratulations! You've learned every function concept in Unit 4: declaration, parameters & return, multiple return values, variadic functions, defer, and closures. Now it's time to combine it all into a real project — a **Rock Paper Scissors** game against the computer.
+
+Just like the calculator project in Unit 1, we'll go through every stage: planning, pseudocode, step-by-step implementation, testing, all the way to the complete solution code.
+
+## Program Specification
+
+Our game needs to:
+
+1. Display the game title and available options
+2. Ask the player to enter their choice (`rock`, `scissors`, or `paper`)
+3. Have the computer pick **randomly** from the same three options
+4. Determine the winner based on Rock Paper Scissors rules
+5. Display both sides' choices and the final result
+6. Handle invalid input with a clear error message
+
+Winning rules:
+- **Rock** beats **Scissors**
+- **Scissors** beats **Paper**
+- **Paper** beats **Rock**
+- Same choice → **Tie**
+
+Expected interaction example:
+```
+=== ROCK PAPER SCISSORS ===
+
+Your choice (rock/scissors/paper): rock
+
+You chose      : rock
+Computer chose  : scissors
+
+Result: Win!
+
+Thanks for playing!
+```
+
+## Stage 1: Planning
+
+Before writing code, let's think through the structure:
+
+**What data do we need to store?**
+- The list of valid choices (`rock`, `scissors`, `paper`) — we'll store it as `[]string` (a slice — we'll cover this in detail in Unit 5, for now just think of it as an ordered collection of strings)
+- The player's choice (`string`, from input)
+- The computer's choice (`string`, randomly generated)
+- The match result (`string`: `"Win"`, `"Lose"`, or `"Tie"`)
+
+**What functions do we need?**
+- `validateInput` — checks whether the player's choice is valid, and also provides an error message if not (a great fit for **multiple return values**)
+- `computerChoice` — picks one option at random from a given list of options (a great fit for a **variadic function**, so it flexibly accepts any number of options)
+- `determineWinner` — compares two choices and returns the result
+
+**Program flow:**
+1. Display the game title
+2. Prompt for the player's choice
+3. Validate the input — if invalid, show an error and stop
+4. Generate the computer's random choice
+5. Determine the winner
+6. Display the result
+7. Display a closing message (using `defer`, so it always prints no matter which path the program exits through)
+
+**Edge cases to think about:**
+- What if the player types an unrecognized choice, like `"lizard"`?
+- What if the player types it in uppercase, like `"ROCK"`?
+
+## Stage 2: Pseudocode
+
+```
+PROGRAM RockPaperScissors:
+    OPTIONS = ["rock", "scissors", "paper"]
+
+    DISPLAY title "ROCK PAPER SCISSORS"
+    ASK for playerChoice
+    playerChoice = convert to lowercase
+
+    (valid, errorMessage) = VALIDATE playerChoice against OPTIONS
+    IF NOT valid:
+        DISPLAY errorMessage
+        STOP (but still show the closing message)
+
+    computerChoice = PICK RANDOMLY from OPTIONS
+
+    DISPLAY playerChoice and computerChoice
+
+    IF playerChoice == computerChoice:
+        result = "Tie"
+    IF (rock vs scissors) OR (scissors vs paper) OR (paper vs rock):
+        result = "Win"
+    OTHERWISE:
+        result = "Lose"
+
+    DISPLAY result
+    DISPLAY "Thanks for playing!" (always, via defer)
+```
+
+## Stage 3: Implementation
+
+### Version 1: Basic Skeleton
+
+Start with a skeleton that just reads the player's input and displays the computer's random choice, without any winner-determining logic yet:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strings"
+    "time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    scanner := bufio.NewScanner(os.Stdin)
+    options := []string{"rock", "scissors", "paper"}
+
+    fmt.Println("=== ROCK PAPER SCISSORS ===")
+    fmt.Println()
+
+    fmt.Print("Your choice (rock/scissors/paper): ")
+    scanner.Scan()
+    player := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+    computer := options[rand.Intn(len(options))]
+
+    // TODO: Validate the input
+    // TODO: Determine the winner
+
+    fmt.Println(player, "vs", computer)
+}
+```
+
+Try running it — the program can already accept input and make the computer choose randomly, even though there's no validation or winner logic yet.
+
+**Why `rand.Seed(time.Now().UnixNano())`?** Without giving a changing *seed* (a starting number), Go's random number generator produces the **exact same** sequence every time the program restarts — the computer would always pick the same option! Using the current time (`time.Now().UnixNano()`) as the seed guarantees a genuinely different result each session.
+
+### Version 2: Add the Logic
+
+Now let's add the functions for validation and determining the winner:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strings"
+    "time"
+)
+
+func validateInput(choice string, options ...string) (bool, string) {
+    for _, o := range options {
+        if choice == o {
+            return true, ""
+        }
+    }
+    return false, fmt.Sprintf("Choice '%s' not recognized. Available options: %s", choice, strings.Join(options, ", "))
+}
+
+func computerChoice(options ...string) string {
+    return options[rand.Intn(len(options))]
+}
+
+func determineWinner(player, computer string) string {
+    if player == computer {
+        return "Tie"
+    }
+    if (player == "rock" && computer == "scissors") ||
+        (player == "scissors" && computer == "paper") ||
+        (player == "paper" && computer == "rock") {
+        return "Win"
+    }
+    return "Lose"
+}
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    defer fmt.Println("\nThanks for playing!")
+
+    scanner := bufio.NewScanner(os.Stdin)
+    options := []string{"rock", "scissors", "paper"}
+
+    fmt.Println("=== ROCK PAPER SCISSORS ===")
+    fmt.Println()
+
+    fmt.Print("Your choice (rock/scissors/paper): ")
+    scanner.Scan()
+    player := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+    valid, errorMessage := validateInput(player, options...)
+    if !valid {
+        fmt.Println("\n[ERROR]", errorMessage)
+        return
+    }
+
+    computer := computerChoice(options...)
+    fmt.Printf("\nYou chose      : %s\n", player)
+    fmt.Printf("Computer chose : %s\n", computer)
+
+    result := determineWinner(player, computer)
+    fmt.Printf("\nResult: %s!\n", result)
+}
+```
+
+This is the complete version of our game! Let's understand the important parts.
+
+## Understanding the Code
+
+### Variadic + Multiple Return Values at Once
+
+```go
+func validateInput(choice string, options ...string) (bool, string) {
+    for _, o := range options {
+        if choice == o {
+            return true, ""
+        }
+    }
+    return false, fmt.Sprintf("...")
+}
+```
+
+This function combines **two** Unit 4 concepts at once: the `options ...string` parameter is **variadic** (it can accept any number of valid options, not just three), and its return is **multiple return values** `(bool, string)` — a valid/invalid status, plus an error message ready to display if invalid. This pattern resembles the `(result, error)` pattern you learned earlier, except here the message is a plain `string` rather than an `error` type.
+
+### The Spread Operator for Sending a Slice
+
+```go
+options := []string{"rock", "scissors", "paper"}
+valid, errorMessage := validateInput(player, options...)
+computer := computerChoice(options...)
+```
+
+`options` is defined **once** as a slice, then spread (`options...`) into two different variadic functions. If you later want to add a new option (say, for a "Rock Paper Scissors Lizard Spock" variant), you only need to change it in **one place** — `options` — and both functions automatically follow along.
+
+### Defer for a Closing Message That Always Appears
+
+```go
+defer fmt.Println("\nThanks for playing!")
+```
+
+This statement is placed near the top of `main()`, but because of `defer`, it only actually runs **right before** `main()` finishes — no matter which path gets there. Notice: if the player's input is invalid, the program calls `return` early (partway through the function) — but "Thanks for playing!" still gets printed, because `defer` always runs before a function truly ends, including via a `return` partway through.
+
+### The `determineWinner` Logic
+
+```go
+func determineWinner(player, computer string) string {
+    if player == computer {
+        return "Tie"
+    }
+    if (player == "rock" && computer == "scissors") ||
+        (player == "scissors" && computer == "paper") ||
+        (player == "paper" && computer == "rock") {
+        return "Win"
+    }
+    return "Lose"
+}
+```
+
+This function uses the compact parameter form `player, computer string` (two same-typed parameters, written once) from the Parameters & Return lesson. The logic: check for a tie first, then check all three "player wins" combinations, and if none match, the computer must have won.
+
+## Stage 4: Testing
+
+Since the computer's choice is random, we test by assuming a specific random outcome to verify the logic is correct. Try running the program repeatedly and match it against the following rules:
+
+**Test 1: Player wins**
+```
+Player: rock, Computer: scissors
+Expected: Result: Win!
+```
+
+**Test 2: Player loses**
+```
+Player: scissors, Computer: rock
+Expected: Result: Lose!
+```
+
+**Test 3: Tie**
+```
+Player: paper, Computer: paper
+Expected: Result: Tie!
+```
+
+**Test 4: Invalid input**
+```
+Player: lizard
+Expected: [ERROR] Choice 'lizard' not recognized. Available options: rock, scissors, paper
+(and "Thanks for playing!" still prints at the end, thanks to defer)
+```
+
+**Test 5: Uppercase input**
+```
+Player: ROCK
+Expected: still treated as valid (because strings.ToLower normalizes the input)
+```
+
+:::tip
+Because `computerChoice` uses a random number, you can't predict exactly what the computer will pick. To test the `determineWinner` function in isolation (without randomness), you can call it directly with fixed values, like `determineWinner("rock", "scissors")`, and check that the result is `"Win"` — this is the basic principle behind *unit testing*, which you'll learn more formally in Unit 8.
 :::
+
+## Complete Solution Code (Final Version)
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strings"
+    "time"
+)
+
+// validateInput checks whether the choice is in the list of valid options.
+// Uses both variadic parameters and multiple return values at once.
+func validateInput(choice string, options ...string) (bool, string) {
+    for _, o := range options {
+        if choice == o {
+            return true, ""
+        }
+    }
+    return false, fmt.Sprintf("Choice '%s' not recognized. Available options: %s", choice, strings.Join(options, ", "))
+}
+
+// computerChoice picks one option at random from the given list of options.
+func computerChoice(options ...string) string {
+    return options[rand.Intn(len(options))]
+}
+
+// determineWinner compares the player's and computer's choices, from the player's perspective.
+func determineWinner(player, computer string) string {
+    if player == computer {
+        return "Tie"
+    }
+    if (player == "rock" && computer == "scissors") ||
+        (player == "scissors" && computer == "paper") ||
+        (player == "paper" && computer == "rock") {
+        return "Win"
+    }
+    return "Lose"
+}
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    defer fmt.Println("\nThanks for playing!")
+
+    scanner := bufio.NewScanner(os.Stdin)
+    options := []string{"rock", "scissors", "paper"}
+
+    // === Header ===
+    fmt.Println("=== ROCK PAPER SCISSORS ===")
+    fmt.Println()
+
+    // === Input ===
+    fmt.Print("Your choice (rock/scissors/paper): ")
+    scanner.Scan()
+    player := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+    // === Validation ===
+    valid, errorMessage := validateInput(player, options...)
+    if !valid {
+        fmt.Println("\n[ERROR]", errorMessage)
+        return
+    }
+
+    // === Computer's Choice ===
+    computer := computerChoice(options...)
+    fmt.Printf("\nYou chose      : %s\n", player)
+    fmt.Printf("Computer chose : %s\n", computer)
+
+    // === Result ===
+    result := determineWinner(player, computer)
+    fmt.Printf("\nResult: %s!\n", result)
+}
+```
+
+## Bonus Challenge
+
+Already done? Try these extra challenges to test your skills:
+
+**Challenge 1: Multiple Rounds with Score**
+
+Wrap the game in a `for` loop so the player can play repeatedly without restarting the program. Store the player's and computer's scores in variables, increment them every round, and announce the overall winner of the session at the end (say, when the player types `"exit"`).
+
+**Challenge 2: Score Tracker with Closures**
+
+Instead of a plain score variable, try building a *function factory* like the one from the Closures lesson to track scores:
+
+```go
+func makeScoreCounter() func() int {
+    score := 0
+    return func() int {
+        score++
+        return score
+    }
+}
+```
+
+Call `addPlayerScore := makeScoreCounter()` and `addComputerScore := makeScoreCounter()` at the start of a multi-round session, then call `addPlayerScore()` every time the player wins to get their latest score.
+
+**Challenge 3: Add a New Option**
+
+Extend the game with a fourth option, say `"lizard"` — lizard beats `rock` and `paper`, but loses to `scissors`. Update `options` and the `determineWinner` logic so the new rules stay consistent with the old ones.
+
+## Reflection: What You've Learned
+
+In this project, you used **almost every concept** from Unit 4:
+
+| Concept | Used For |
+|--------|---------------|
+| `func` & function calls | Breaking the program into `validateInput`, `computerChoice`, `determineWinner` |
+| Compact parameters (same type) | `determineWinner(player, computer string)` |
+| Multiple return values | `validateInput` returns `(bool, string)` at once |
+| Variadic functions (`...string`) | The list of valid options is passed as variadic args to two different functions |
+| The spread operator (`options...`) | Passing the `options` slice as variadic arguments |
+| `defer` | The closing message always prints, even when the program exits early |
+| Closures (Bonus Challenge) | A function factory for tracking scores across rounds |
+| `math/rand` + `rand.Seed` | Generating a random, different computer choice each session |
+| `bufio.Scanner` | Reading the player's input |
+
+## Wrapping Up Unit 4
+
+Congratulations! You've completed **Unit 4: Functions**! Let's recap what you've mastered:
+
+- Declaring and calling functions to break a program into small pieces
+- Using explicitly typed parameters and the compact syntax for same-typed ones
+- Returning more than one value at once, including the idiomatic `(result, error)` pattern and named return values
+- Writing variadic functions that accept any number of arguments, plus the spread operator for passing a slice
+- Using `defer` to guarantee cleanup code always runs, with LIFO ordering for multiple defers
+- Building closures — anonymous functions that capture variables from an outer scope — and understanding the classic loop-variable trap in Go 1.13.5
+- Combining it all into a complete game program, from planning through testing
+
+Functions are the foundation for writing organized, reusable Go code — you'll use them in **every** Go program you write from here on.
+
+In **Unit 5: Data Structures**, you'll learn to store and process collections of data with **arrays**, **slices**, **maps**, and **strings/runes/bytes** — including slices, which you already got a small peek at in this project. That unit's project is a **Student Grade Book**, which will use the functions you've now mastered to manage data for many students at once.
+
+Keep up the momentum — you've built a really solid foundation!

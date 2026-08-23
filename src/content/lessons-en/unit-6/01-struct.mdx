@@ -1,19 +1,180 @@
 ---
-title: "Structs"
+title: "Struct"
 unit: 6
 lesson: 1
-description: "English translation of lesson 01-struct"
+description: "Grouping related data into a single custom type with struct"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare a custom struct type with type ... struct"
+  - "Create a struct instance with a struct literal"
+  - "Access and change struct fields using dot notation"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-5/05-project-buku-nilai"]
+translationStatus: "complete"
+difficulty: "intermediate"
+tags: ["struct", "type", "data-modeling"]
 ---
 
-# Structs
+# Struct
+
+So far you've stored related data in separate variables — a name in one variable, an age in another, a grade in a third. This approach quickly turns messy once the data gets more complex. **Struct** solves this problem: it groups several fields into one custom data type that you define yourself.
+
+## Defining and Creating a Struct
+
+```go
+package main
+
+import "fmt"
+
+type Student struct {
+    Name  string
+    Age   int
+    Grade float64
+}
+
+func main() {
+    budi := Student{
+        Name:  "Budi",
+        Age:   17,
+        Grade: 88.5,
+    }
+
+    fmt.Println(budi.Name)
+    fmt.Println(budi.Age)
+    fmt.Println(budi.Grade)
+}
+```
+
+Output:
+```
+Budi
+17
+88.5
+```
+
+## Breaking Down Each Part
+
+**`type Student struct { ... }`** — defines a new data type named `Student`. The `type` keyword is always used to create a custom type, and `struct` tells Go that this type is a collection of fields.
+
+Picture a struct like a registration form: there's a "Name" box, an "Age" box, a "Grade" box — each box (field) has its own name and data type, but together they form one complete form (struct).
+
+**`Name string`, `Age int`, `Grade float64`** — field declarations, just like regular variable declarations: the field name first, then its type.
+
+**`budi := Student{ Name: "Budi", Age: 17, Grade: 88.5 }`** — this is called a *struct literal*: a way to create a new instance/value of a struct type. Writing the field name (`Name:`, `Age:`, `Grade:`) before each value makes the code clearer and doesn't depend on the order the fields were declared.
+
+**`budi.Name`** — dot notation (`.`) is used to access a specific field of a struct. This is the same dot notation as when you call `fmt.Println` from the `fmt` package — the difference here is you're accessing a data field, not a package function.
+
+## Struct Zero Value
+
+If you declare a struct without filling in its values, every field is automatically filled with the *zero value* matching its type:
+
+```go
+var empty Student
+fmt.Println(empty)
+// Output: { 0 0}
+```
+
+`Name` (string) becomes `""`, `Age` (int) becomes `0`, `Grade` (float64) becomes `0` — exactly like the zero values of regular variables you learned back in Unit 1.
+
+## Changing a Field
+
+A struct's field can be changed after the instance is created, as long as you have a variable (not a constant) holding it:
+
+```go
+budi.Age = 18
+fmt.Println(budi.Age) // 18
+```
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+A struct literal can also be written without field names, simply relying on the value order matching the field declaration order: `Student{"Budi", 17, 88.5}`. But this style is **prone to bugs** — if the field order changes later, old code silently becomes wrong with no compile error. Get in the habit of always using field names like in the example above.
 :::
+
+:::tip
+A field name starting with an uppercase letter (like `Name`, `Age`) means the field is *exported* — accessible from other packages, following the same uppercase/lowercase rule you learned in Unit 1 for functions.
+:::
+
+## Common Mistakes
+
+1. **Wrong order on a struct literal without field names:**
+   ```go
+   student := Student{17, "Budi", 88.5} // ERROR: cannot use 17 (untyped int constant) as string value
+   ```
+   `Student`'s first field is `Name` (string), but here a number `17` is written first — Go rejects the compile because the type doesn't match the field order.
+
+2. **Forgetting a trailing comma on a multi-line struct literal:**
+   ```go
+   budi := Student{
+       Name:  "Budi",
+       Age:   17  // ERROR: missing ',' before newline in composite literal
+       Grade: 88.5,
+   }
+   ```
+   Every field line in a multi-line struct literal **must** end with a comma, including the line before the last one.
+
+3. **Accessing a field that doesn't exist:**
+   ```go
+   fmt.Println(budi.Address) // ERROR: budi.Address undefined (type Student has no field or method Address)
+   ```
+   Go checks struct fields at compile time — if the field isn't declared in the `type`, compilation fails immediately.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l1-ex1"
+  title="Print Struct Data"
+  description="Change the program so it prints `City: Jakarta` (change the value of the City field in the struct literal)."
+  type="code-output"
+  expectedOutput="City: Jakarta"
+  starterCode={`package main
+
+import "fmt"
+
+type Address struct {
+    City string
+}
+
+func main() {
+    house := Address{City: "Bandung"}
+    fmt.Printf("City: %s\\n", house.City)
+}`}
+  hints={["You only need to change the value of the City field in the struct literal.", "The City field is filled with a string inside quotes."]}
+  explanation='Changing "Bandung" to "Jakarta" inside the struct literal Address{City: "Jakarta"} makes fmt.Printf print "City: Jakarta".'
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l1-ex2"
+  title="Struct Zero Value"
+  description="The field <code>Age int</code> is declared, but <code>var s Student</code> is created without setting its value. What is <code>s.Age</code>?"
+  type="multiple-choice"
+  options={["0 (zero value int)", "nil", "A compile error", "A random number"]}
+  correctIndex={0}
+  hints={["Remember the zero value rules for each data type from Unit 1.", "int has a zero value of 0, not nil -- nil is only for pointer, slice, map, interface, channel, and function."]}
+  explanation="Every struct field that isn't set automatically gets the zero value matching its type -- int becomes 0, string becomes an empty string, and so on."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l1-ex3"
+  title="Complete the Field Access"
+  description="Complete the code to access the Name field from the budi struct."
+  type="fill-blank"
+  template="fmt.Println(budi{{BLANK}}Name)"
+  blanks={["."]}
+  hints={["Struct fields are accessed with one punctuation character after the variable name."]}
+  explanation="Dot notation (.) is used to access any field of a struct instance."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Struct type declaration | `type Student struct { Name string }` |
+| Struct literal (named fields) | `Student{Name: "Budi"}` |
+| Access a field | `budi.Name` |
+| Change a field | `budi.Age = 18` |
+| Struct zero value | `var s Student` |
+
+In the next lesson, we'll learn **method & receiver** — how to "attach" functions to a struct so it has behavior, not just data.

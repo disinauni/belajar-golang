@@ -2,18 +2,226 @@
 title: "Channels"
 unit: 7
 lesson: 2
-description: "English translation of lesson 02-channels.mdx"
+description: "Communicating safely between goroutines using channels"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand what a channel is and why it's needed for goroutine communication"
+  - "Create a channel with make(chan T)"
+  - "Send and receive data through a channel with the <- operator"
+  - "Understand blocking behavior on unbuffered channels"
 estimatedTime: 40
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-7/01-goroutines"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-7"]
+tags: ["channel", "concurrency", "chan", "unit-7"]
 ---
 
 # Channels
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+In the previous lesson we learned how to launch goroutines, but there's a problem: how does a goroutine "return" its work to `main()`, or communicate with another goroutine, **safely**? The answer: **channels**.
+
+Picture a channel like a **mail pipe** between two rooms: one goroutine drops a letter (data) in at one end of the pipe, another goroutine picks it up from the other end. Go even has a famous philosophy about this: *"Don't communicate by sharing memory; share memory by communicating"* — don't share data by having many goroutines poke at the same variable, send data through a channel instead.
+
+```go
+package main
+
+import "fmt"
+
+func calculateSquare(n int, result chan int) {
+    result <- n * n // send the result into the channel
+}
+
+func main() {
+    ch := make(chan int) // create an int channel
+
+    go calculateSquare(7, ch)
+
+    value := <-ch // receive the result from the channel (blocks until data arrives)
+    fmt.Println("Square result:", value)
+}
+```
+
+Output:
+
+```
+Square result: 49
+```
+
+## Breaking Down the Concept
+
+### Creating a Channel: `make(chan int)`
+
+```go
+ch := make(chan int)
+```
+
+`make(chan int)` creates a new channel of type `int` — meaning this channel can only send/receive `int` values. Channels, like slices and maps, are a reference type that must be created with `make` before use. You can make a channel of any type: `chan string`, `chan bool`, `chan float64`, even `chan []int`.
+
+### Sending Data: `ch <- value`
+
+```go
+result <- n * n
+```
+
+The `<-` operator on the **right** of the channel name means **sending** a value into that channel. Read it as an arrow showing the direction data flows: the value "flows into" `result`.
+
+### Receiving Data: `<-ch`
+
+```go
+value := <-ch
+```
+
+The `<-` operator on the **left** of the channel name (before the channel name) means **receiving** a value from that channel. The received value is stored into the `value` variable.
+
+:::tip
+An easy way to remember the direction of `<-`: the arrow always points **toward where the data is flowing**. `ch <- v` means "v flows into ch". `v := <-ch` means "a value from ch flows into v".
 :::
+
+### Blocking Behavior of Channels (Unbuffered)
+
+This is the **most important** part to understand: a plain channel (created without capacity, called an *unbuffered channel*) is **blocking** on both sides:
+
+- A send, `ch <- v`, will **block** until another goroutine is ready to receive from that channel.
+- A receive, `v := <-ch`, will **block** until another goroutine sends something into that channel.
+
+This is actually a feature, not a bug — this blocking behavior is exactly what makes channels useful for **synchronization**. In the example program above, the line `value := <-ch` in `main()` waits until the `calculateSquare` goroutine finishes computing and sends its result — no `time.Sleep` needed at all!
+
+```go
+ch := make(chan int)
+go calculateSquare(7, ch)
+value := <-ch // main() automatically waits here until data arrives
+```
+
+Compare this to the previous lesson, which needed `time.Sleep` to guess a duration — channels solve this elegantly: `main()` waits **exactly as long** as the goroutine needs, no more, no less.
+
+:::note
+A channel and a `nil` variable (not yet `make`'d) are different things! A channel that hasn't been created with `make` has the value `nil`, and sending/receiving on a `nil` channel will **block forever** (deadlock). Always make sure a channel has been `make`'d before you use it.
+:::
+
+## Common Mistakes
+
+1. **Deadlock: receiving from a channel that will never be sent to:**
+   ```go
+   func main() {
+       ch := make(chan int)
+       value := <-ch // RUNTIME ERROR: fatal error: all goroutines are
+       // asleep - deadlock! (no other goroutine is sending)
+       fmt.Println(value)
+   }
+   ```
+   Since no other goroutine ever sends to `ch`, `main()` waits forever — and the Go runtime detects this as a deadlock and stops the program with an error.
+
+2. **Forgetting that channels block, expecting the code to run like normal:**
+   ```go
+   func main() {
+       ch := make(chan int)
+       ch <- 5 // BUG: blocks here, because there's no receiving
+       // goroutine yet — main() is the only "thread" running,
+       // so it's stuck waiting on itself!
+       fmt.Println(<-ch)
+   }
+   ```
+   Sending on an unbuffered channel from within the same goroutine, with no other receiver, deadlocks immediately — because there's no "other party" that could receive while `main()` itself is busy waiting on the send.
+
+3. **Receiving from a channel twice when it was only sent to once:**
+   ```go
+   ch := make(chan int)
+   go func() {
+       ch <- 10
+   }()
+   a := <-ch
+   b := <-ch // BUG: blocks forever, there's no second send!
+   fmt.Println(a, b)
+   ```
+   Every channel needs to receive exactly as many sends as the number of receives performed — if they're unbalanced, one side will block forever.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u7l2-ex1"
+  title="Simple Send and Receive"
+  description="Complete the program so it sends the number 100 into a channel from a goroutine, then main() receives and prints it."
+  type="code-output"
+  expectedOutput="Received: 100"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int)
+
+    go func() {
+        ch <- 100
+    }()
+
+    value := <-ch
+    fmt.Println("Received:", value)
+}`}
+  hints={["This program is actually already complete — try running it first to see the output.", "Notice the order: the goroutine sends with ch <- 100, main receives with <-ch."]}
+  explanation="The anonymous goroutine sends the value 100 into channel ch. main() blocks on the line <-ch until data arrives, then prints it. This blocking behavior is what makes main() automatically wait for the goroutine to finish, no time.Sleep needed."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u7l2-ex2"
+  title="Collecting Results from Multiple Goroutines"
+  description="Three goroutines each send the square of 1, 2, and 3 into the same channel. Collect all three, sort them, then print."
+  type="code-output"
+  expectedOutput="Square: 1
+Square: 4
+Square: 9"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    ch := make(chan int)
+
+    for _, n := range []int{1, 2, 3} {
+        go func(x int) {
+            ch <- x * x
+        }(n)
+    }
+
+    var results []int
+    for i := 0; i < 3; i++ {
+        results = append(results, <-ch)
+    }
+
+    sort.Ints(results)
+    for _, r := range results {
+        fmt.Println("Square:", r)
+    }
+}`}
+  hints={["This program is already complete and correct — try running it first.", "Notice: we receive from the channel exactly 3 times (the number of goroutines sending) with the loop for i := 0; i < 3; i++.", "sort.Ints is used so the result order is always deterministic even though the goroutines finish in a random order."]}
+  explanation="Each goroutine sends one value into the same channel. main() receives exactly 3 times (matching the number of goroutines) through a loop, collects all results into a slice, and sorts it with sort.Ints before printing — this matters because goroutines can finish in a different order every run."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u7l2-ex3"
+  title="Channel Operator Direction"
+  description="Which statement about the <code>&lt;-</code> operator on channels is correct?"
+  type="multiple-choice"
+  options={["ch <- v sends v into channel ch, while v := <-ch receives a value from ch", "ch <- v and <-ch always mean the same thing: receiving", "<-ch sends a value into the channel, ch <- v receives a value from the channel", "The <- operator can only be used in one direction per program — you can't both send and receive in the same program"]}
+  correctIndex={0}
+  hints={["The arrow shows the direction data flows.", "If the channel is on the left side of the operator (ch <- v), data is flowing INTO the channel — that's a send."]}
+  explanation="ch <- v means sending the value v into channel ch (the channel is on the left of the operator, as the destination). Conversely, v := <-ch means receiving a value from channel ch and storing it into v (the channel is on the right of the operator, as the source)."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Creating a channel | `ch := make(chan int)` |
+| Sending into a channel | `ch <- 42` |
+| Receiving from a channel | `value := <-ch` |
+| Unbuffered channel behavior | Blocks on both sides until a matching partner is ready |
+| Synchronization without Sleep | Receiving from a channel = automatically waiting for the goroutine |
+
+Unbuffered channels are useful, but sometimes we want a goroutine to be able to send a few values ahead of time **without** immediately waiting for a receiver to be ready. In the next lesson, we'll learn about **select** and **buffered channels** for exactly that.

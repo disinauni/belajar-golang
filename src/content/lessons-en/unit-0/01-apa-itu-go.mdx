@@ -2,18 +2,131 @@
 title: "What is Go?"
 unit: 0
 lesson: 1
-description: "English translation of lesson 01-apa-itu-go.mdx"
+description: "Get to know the Go programming language and why so many big companies use it"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand the brief history and reasons behind Go's creation"
+  - "Know Go's main characteristics: compiled, statically-typed, and concurrency-first"
+  - "Recognize real-world examples of Go in use"
 estimatedTime: 20
 prerequisites: []
-translationStatus: "draft"
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-0"]
+tags: ["introduction", "history", "go"]
 ---
 
 # What is Go?
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+In 2007, three programmers at Google — Robert Griesemer, Rob Pike, and Ken Thompson — were waiting for a massive C++ program to finish compiling. The process took **more than 45 minutes**. Instead of just waiting, they started sketching out a new programming language on a whiteboard. That language was released to the public in 2009 under the name **Go** (sometimes also called **Golang**, because its official domain is golang.org).
+
+## Why Was Go Created?
+
+Google had a unique problem: they managed millions of lines of C++ code that were compiled thousands of times a day by thousands of engineers. The languages available at the time all had annoying trade-offs:
+
+- **C++** runs fast, but compiles slowly and has a complicated syntax
+- **Python** is easy to write, but runs slowly and has no static typing
+- **Java** has solid static typing, but is verbose and has heavy startup times
+
+Go was designed to take the best of all three: **as fast as C++** at runtime, **as fast as Python** to write and read, and still **type-safe** like Java — without the excess complexity of any of them.
+
+## What Does Go Code Look Like?
+
+Here's the simplest possible Go program:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, Go!")
+}
+```
+
+Output:
+```
+Hello, Go!
+```
+
+Don't worry if you don't fully understand every line yet — that's the full topic of the next lesson. For now, just notice: the syntax is concise, there's no mandatory class to create, and the structure is clear.
+
+## Go's Main Characteristics
+
+**Compiled** — Go code is translated directly into a binary file before it runs, rather than being read line by line like Python. The result: execution is much faster, and you can share a single executable file without anyone else needing to install Go at all.
+
+**Statically Typed** — Every variable has a fixed type that's checked at compile time, not at runtime. Many bugs get caught before the code ever runs — unlike Python, which only "notices" a problem once the buggy line is actually executed.
+
+**Concurrency-First** — Go was designed from the ground up to run many processes at once easily, through features called **goroutines** and **channels**. This is one of the main reasons Go is used for large-scale server systems. We'll cover this in depth in Unit 7.
+
+**Garbage Collected** — Go automatically cleans up memory that's no longer in use, just like Python. You never need to manually `malloc`/`free` like in C.
+
+**Minimalist Syntax** — Go was deliberately designed with very few keywords (just 25!) and without "nice to have" features that make other languages complex — no class inheritance, no fussy generics (until version 1.18), no exceptions.
+
+:::fun
+Go's mascot is a sky-blue gopher (a kind of ground squirrel), designed by Renee French. You'll see it all over the Go community!
 :::
+
+:::note
+"Go" and "Golang" refer to the same language. "Golang" became popular because the official domain was originally golang.org (the name "go" alone was too generic to work as a domain/search hashtag).
+:::
+
+## Where Is It Used?
+
+Go isn't just an experimental project — here's a list of well-known software written (mostly) in Go:
+
+- **Docker** and **Kubernetes** — two core foundations of modern cloud computing
+- **Terraform** — infrastructure-as-code favored by many companies
+- **CockroachDB** and **etcd** — distributed databases
+- High-performance backends at Google, Uber, Twitch, and even Shopee
+
+:::tip
+If you're interested in backend, DevOps, or cloud infrastructure, Go is one of the languages with the highest return on investment to learn — a lot of critical tooling in this industry is written in Go.
+:::
+
+## Common Misconceptions
+
+Before moving on, let's clear up a few misconceptions that often come up about Go:
+
+1. **"Go is just Google's internal-only language"** — Wrong. Go has been open source from the start and is widely used outside Google.
+2. **"Go is hard because it's a systems language like C"** — Wrong. Go was actually designed to be easier to learn than C/C++, with a garbage collector and much cleaner syntax.
+3. **"Go = Google App Engine"** — Different things. Go App Engine (a Google cloud product) is indeed one place where Go is used, but Go itself is a general-purpose programming language usable anywhere.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u0l1-ex1"
+  title="Go's Release Year"
+  description="In what year was Go first released to the public?"
+  type="multiple-choice"
+  options={["2005", "2009", "2015", "1999"]}
+  correctIndex={1}
+  hints={["Design started in 2007, but the public release came two years later.", "This was a few years after the first smartphones appeared."]}
+  explanation="Go started being designed in 2007 at Google and was officially released to the public in 2009."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u0l1-ex2"
+  title="Go's Characteristics"
+  description="Which of these is NOT a main characteristic of Go?"
+  type="multiple-choice"
+  options={["Compiled", "Statically typed", "Has class inheritance like Java", "Concurrency-first with goroutines"]}
+  correctIndex={2}
+  hints={["Go does have a notion of 'objects', but through structs + methods, not classes.", "Remember: Go is deliberately minimalist, avoiding complex OOP features."]}
+  explanation="Go has no classes or inheritance like Java/C++. Go uses structs, methods, and interfaces instead — covered in full in Unit 6."
+  lang="en"
+/>
+
+## Summary
+
+| Fact | Detail |
+|---|---|
+| Created by | Google (Griesemer, Pike, Thompson) |
+| Designed | 2007, released publicly 2009 |
+| Type | Compiled, statically typed |
+| Signature feature | Goroutines & channels (concurrency) |
+| Also known as | Golang |
+| Example users | Docker, Kubernetes, Terraform |
+
+Now you know what Go is and why it's worth learning. In the next lesson, we'll **set up your learning environment** — so you're ready to write and run your first Go code!

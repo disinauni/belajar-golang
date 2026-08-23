@@ -2,18 +2,228 @@
 title: "Switch"
 unit: 2
 lesson: 3
-description: "English translation of lesson 03-switch.mdx"
+description: "More concise branching with switch — and why Go doesn't need break"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Write switch branches with multiple cases"
+  - "Understand that Go doesn't fall through automatically (unlike C++/Java)"
+  - "Use switch without an expression as an alternative to a chain of if-else"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-2/02-if-else"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-2"]
+tags: ["switch", "fallthrough", "branching"]
 ---
 
 # Switch
 
+You've already used `switch` briefly in the Unit 1 calculator project. Now it's time for a proper introduction — including one big difference from C++/Java that you need to know.
+
+## Basic Syntax
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    day := "Wednesday"
+
+    switch day {
+    case "Monday":
+        fmt.Println("Start of the week")
+    case "Wednesday":
+        fmt.Println("Midweek")
+    case "Friday":
+        fmt.Println("Almost the weekend")
+    default:
+        fmt.Println("Just an ordinary day")
+    }
+}
+```
+
+Output:
+```
+Midweek
+```
+
+## Breaking Down Switch
+
+**`switch day {`** — evaluates `day` once, then matches it against each `case`.
+
+**`case "Wednesday":`** — if `day` equals `"Wednesday"`, run this block.
+
+**`default:`** — runs when no `case` matches. It's optional (can be omitted).
+
+## No Automatic Fallthrough!
+
+This is the most important difference from C++/Java: in Go, **every `case` automatically stops after its block finishes** — it doesn't "fall through" to the next `case` like in other languages.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    value := 2
+
+    switch value {
+    case 1:
+        fmt.Println("One")
+    case 2:
+        fmt.Println("Two")
+    case 3:
+        fmt.Println("Three")
+    }
+}
+```
+
+Output:
+```
+Two
+```
+
+The program **only** prints `"Two"` — it doesn't continue to print `"Three"`, even though no `break` was written. This is a big difference from C++, where you're **required** to write `break` at the end of every `case`, or execution will "fall through" to the next `case`.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+If you actually **want** fallthrough behavior (rarely used, but occasionally useful), Go provides the explicit `fallthrough` keyword:
+```go
+switch value {
+case 1:
+    fmt.Println("One")
+    fallthrough
+case 2:
+    fmt.Println("Two is also printed even though value isn't 2!")
+}
+```
+Because it must be written explicitly, Go code is far less prone to the "forgot break" bug that's common in C/C++.
 :::
+
+## Switch Without an Expression
+
+There's another very useful form: a `switch` with no value to match against, where every `case` holds its own boolean condition — this is a more concise alternative to a long chain of `if/else if`.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    score := 85
+
+    switch {
+    case score >= 90:
+        fmt.Println("Grade: A")
+    case score >= 80:
+        fmt.Println("Grade: B")
+    case score >= 70:
+        fmt.Println("Grade: C")
+    default:
+        fmt.Println("Grade: D")
+    }
+}
+```
+
+Output:
+```
+Grade: B
+```
+
+**`switch {`** (no value after `switch`) — every `case` is treated as its own `if` condition, checked from top to bottom, stopping at the first one that's `true`. The result is identical to the `if-else if-else` pattern you wrote in the previous lesson, but it's more concise to read.
+
+:::tip
+Many Go programmers prefer a switch without an expression over a long chain of `if/else if` once there are more than 3-4 conditions — it's easier for the eye to scan.
+:::
+
+## Common Mistakes
+
+1. **Thinking you need `break` at the end of every case:**
+   ```go
+   switch value {
+   case 1:
+       fmt.Println("One")
+       break  // not wrong, but redundant — Go already stops automatically
+   case 2:
+       fmt.Println("Two")
+   }
+   ```
+   It's not an error, but `break` here doesn't do anything that wasn't already happening automatically. Idiomatic Go code usually doesn't write `break` at the end of a case.
+
+2. **Forgetting that cases are evaluated in order from the top, not all at once:**
+   ```go
+   switch {
+   case score >= 70:
+       fmt.Println("Pass")
+   case score >= 90:
+       fmt.Println("Excellent")  // NEVER reached for score >= 90!
+   }
+   ```
+   Since `case score >= 70` already covers every score of 90 and above, the `case score >= 90` below it will never be reached. Ordering cases from most specific/strict to most lenient matters.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u2l3-ex1"
+  title="Switch Without Fallthrough"
+  description="This program prints a status based on a value. Complete it so the result is <code>OK</code> for a value of 6."
+  type="code-output"
+  expectedOutput="OK"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    value := 6
+
+    switch {
+    case value >= 8:
+        fmt.Println("Great")
+    case value >= 5:
+        fmt.Println("OK")
+    default:
+        fmt.Println("Poor")
+    }
+}`}
+  hints={["A switch with no value after the switch keyword means each case is its own condition.", "This code is already correct — try running it!"]}
+  explanation="value=6 fails the first case (>= 8), then matches the second case (>= 5), so it prints 'OK'."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u2l3-ex2"
+  title="Go's Default Switch Behavior"
+  description="What happens after one case in a Go switch finishes running, WITHOUT an explicit break?"
+  type="multiple-choice"
+  options={["It continues to the next case (fallthrough) like C++", "It automatically stops, without continuing to other cases", "The program errors because break is missing", "It repeats the same case"]}
+  correctIndex={1}
+  hints={["This is a big difference from C++/Java that you need to remember.", "Go is designed so the 'forgot break' bug simply can't happen."]}
+  explanation="Unlike C++/Java, every case in Go automatically stops once it finishes — it doesn't fall through to the next case unless you write the fallthrough keyword explicitly."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u2l3-ex3"
+  title="Complete the Explicit Fallthrough"
+  description="Complete the keyword to make case 1 deliberately continue into case 2."
+  type="fill-blank"
+  template={`case 1:
+    fmt.Println("One")
+    {{BLANK}}
+case 2:`}
+  blanks={["fallthrough"]}
+  hints={["This keyword literally describes its behavior: falling through to the next case."]}
+  explanation="The fallthrough keyword forces execution to continue into the next case, without re-checking its condition — the opposite of Go's default behavior."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Switch with a value | `switch day { case "Monday": ... }` |
+| Switch without a value | `switch { case x >= 90: ... }` |
+| Automatic stop | No `break` needed |
+| Explicit fallthrough | `fallthrough` keyword |
+
+In the next lesson, we'll combine everything you've learned in this unit to build a **project: Number Guessing Game**!

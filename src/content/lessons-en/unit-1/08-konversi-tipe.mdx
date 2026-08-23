@@ -2,18 +2,198 @@
 title: "Type Conversion"
 unit: 1
 lesson: 8
-description: "English translation of lesson 08-konversi-tipe.mdx"
+description: "Correctly convert between int, float64, and string — plus a rounding trap you need to know about"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Convert between numeric types with int()/float64()"
+  - "Convert string to number and back with the strconv package"
+  - "Understand that converting float to int truncates rather than rounds"
 estimatedTime: 20
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/07-string-dasar"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["conversion", "strconv", "type-conversion"]
 ---
 
 # Type Conversion
 
+Since the Data Types lesson, you've known that Go doesn't do automatic conversion. Now it's time to master how to do it **explicitly** — and learn about one trap that quietly causes bugs.
+
+## Converting Between Numeric Types
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var wholeNumber int = 9
+    var decimalNumber float64 = float64(wholeNumber)
+    fmt.Println(decimalNumber)  // 9
+
+    var pi float64 = 3.99
+    var piInt int = int(pi)
+    fmt.Println(piInt)  // 3 — not 4!
+}
+```
+
+Output:
+```
+9
+3
+```
+
+## Breaking Down Numeric Conversion
+
+**`float64(wholeNumber)`** — converts an `int` to `float64`. Safe, no data is lost.
+
+**`int(pi)`** — converts a `float64` to `int`. Notice the result is `3`, even though `3.99` "should" round to `4`. Converting `float64` to `int` in Go **always truncates** the decimal part, **never rounds**.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+If you actually need mathematical rounding (not truncation), use a function from the `math` package: `math.Round()`, `math.Ceil()` (rounds up), or `math.Floor()` (rounds down, same as truncation for positive numbers).
 :::
+
+## Converting String ↔ Number
+
+Converting to/from `string` is a bit different — you can't use `int(...)` or `float64(...)` directly, you have to go through the `strconv` package.
+
+```go
+package main
+
+import (
+    "fmt"
+    "strconv"
+)
+
+func main() {
+    // Number to string
+    age := 17
+    ageText := strconv.Itoa(age)
+    fmt.Println("You are: " + ageText + " years old")
+
+    // String to number
+    input := "42"
+    number, err := strconv.Atoi(input)
+    if err != nil {
+        fmt.Println("Conversion failed:", err)
+        return
+    }
+    fmt.Println(number + 8)
+
+    // String to float64
+    decimalInput := "3.14"
+    decimal, _ := strconv.ParseFloat(decimalInput, 64)
+    fmt.Println(decimal * 2)
+}
+```
+
+Output:
+```
+You are: 17 years old
+50
+6.28
+```
+
+## Breaking Down the strconv Functions
+
+**`strconv.Itoa(age)`** — "**I**nteger **to** **A**SCII", converts an `int` to a `string`. Only needs one argument, and it never fails (doesn't return an error).
+
+**`strconv.Atoi(input)`** — the reverse, "**A**SCII **to** **I**nteger". **Can fail** (e.g. if `input` isn't a valid number), which is why it returns two values: the result and an `error`.
+
+**`strconv.ParseFloat(decimalInput, 64)`** — converts a `string` to `float64`. The second argument (`64`) specifies bit precision — always use `64` unless you have a specific reason not to.
+
+:::tip
+An alternative for inserting numbers into a string is `fmt.Sprintf`, which works like `Printf` but returns a `string` instead of printing directly:
+```go
+message := fmt.Sprintf("You are: %d years old", age)
+```
+This is often more concise than `strconv.Itoa` plus manual `+` concatenation.
+:::
+
+## Common Mistakes
+
+1. **Ignoring the error from Atoi/ParseFloat:**
+   ```go
+   number, _ := strconv.Atoi("not-a-number")
+   fmt.Println(number)  // 0, with no clear error message if _ is ignored
+   ```
+   Always check `err` unless you're 100% sure the input is valid.
+
+2. **Assuming `int(3.99)` rounds to 4:**
+   ```go
+   result := int(3.99)
+   fmt.Println(result)  // 3, NOT 4 — Go truncates, it doesn't round
+   ```
+   Use `math.Round(3.99)` if you need actual mathematical rounding.
+
+3. **Using `int()`/`float64()` to convert from a string:**
+   ```go
+   number := int("42")  // ERROR: cannot convert "42" (untyped string constant) to type int
+   ```
+   Converting a string to a number **must** go through `strconv` — you can't use `int(...)` directly.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l8-ex1"
+  title="Convert and Add"
+  description="Complete the program so it reads two number strings, converts them, and prints their sum: 30"
+  type="code-output"
+  expectedOutput="30"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "strconv"
+)
+
+func main() {
+    textA := "12"
+    textB := "18"
+
+    a, _ := strconv.Atoi(textA)
+    b, _ := strconv.Atoi(textB)
+
+    fmt.Println(a + b)
+}`}
+  hints={["strconv.Atoi converts a string to int, returning (int, error).", "This code is already complete — try running it!"]}
+  explanation="strconv.Atoi converts both strings to int, which can then be added with the regular + operator: 12 + 18 = 30."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l8-ex2"
+  title="Truncate vs Round"
+  description="What is the result of `int(7.8)` in Go?"
+  type="multiple-choice"
+  options={["8 (rounded up)", "7 (truncated, not rounded)", "7.8 (stays decimal)", "Compile error"]}
+  correctIndex={1}
+  hints={["Converting float64 to int in Go never rounds.", "The decimal part is simply discarded."]}
+  explanation="Converting float64 to int always truncates the decimal part — int(7.8) produces 7, not rounded up to 8."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l8-ex3"
+  title="Complete the Int-to-String Conversion"
+  description="Complete the function from the strconv package to convert an int into a string."
+  type="fill-blank"
+  template="text := strconv.{{BLANK}}(age)"
+  blanks={["Itoa"]}
+  hints={["The name is short for 'Integer to ASCII'."]}
+  explanation="strconv.Itoa(age) converts an int value into a string — the reverse of strconv.Atoi."
+  lang="en"
+/>
+
+## Summary
+
+| Conversion | How | Can Fail? |
+|---|---|---|
+| int → float64 | `float64(x)` | No |
+| float64 → int | `int(x)` (truncates, doesn't round!) | No |
+| int → string | `strconv.Itoa(x)` | No |
+| string → int | `strconv.Atoi(s)` | Yes (returns error) |
+| string → float64 | `strconv.ParseFloat(s, 64)` | Yes (returns error) |
+
+You've now mastered all of Go's fundamentals: variables, data types, constants, input/output, arithmetic, strings, and type conversion. Time to put it all together in **this unit's project: a Simple Calculator**!

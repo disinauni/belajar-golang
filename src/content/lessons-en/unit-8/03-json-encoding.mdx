@@ -2,18 +2,214 @@
 title: "JSON Encoding"
 unit: 8
 lesson: 3
-description: "English translation of lesson 03-json-encoding.mdx"
+description: "Converting a Go struct to JSON and back with the encoding/json package"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Convert a struct to JSON with json.Marshal"
+  - "Convert JSON to a struct with json.Unmarshal"
+  - "Use struct tags to control JSON field names"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-8/02-testing"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-8"]
+tags: ["json", "encoding", "struct-tag", "marshal", "unmarshal"]
 ---
 
 # JSON Encoding
 
+JSON is the most common data-exchange format on the web — used by REST APIs, config files, even messages between microservices. Go has built-in JSON support through the `encoding/json` package, and it fits neatly together with the `struct` type you've mastered since Unit 6.
+
+## Struct to JSON: json.Marshal
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type Student struct {
+    Name   string
+    Age    int
+    Active bool
+}
+
+func main() {
+    student := Student{Name: "Budi", Age: 17, Active: true}
+
+    data, err := json.Marshal(student)
+    if err != nil {
+        fmt.Println("Encode failed:", err)
+        return
+    }
+
+    fmt.Println(string(data))
+}
+```
+
+Output:
+```
+{"Name":"Budi","Age":17,"Active":true}
+```
+
+## Breaking Down json.Marshal
+
+**`json.Marshal(student)`** — converts a Go value (here, the `Student` struct) into JSON. It returns **two values**: `[]byte` (the JSON data as bytes) and `error`.
+
+**`string(data)`** — `Marshal` returns `[]byte`, not `string`, so it needs an explicit conversion to display as text — a type conversion pattern you've known since Unit 1.
+
+**The JSON field names match the struct field names exactly** (`Name`, `Age`, `Active`) — because the fields are exported (capitalized). If you want different JSON names (say, lowercase, or the `snake_case` style more common in JSON), you need a **struct tag**.
+
+## Controlling Field Names with Struct Tags
+
+```go
+type Student struct {
+    Name   string `json:"name"`
+    Age    int    `json:"age"`
+    Active bool   `json:"active"`
+}
+```
+
+With this struct tag, the result of `json.Marshal` becomes:
+```
+{"name":"Budi","age":17,"active":true}
+```
+
+A struct tag is written inside backticks, `` `json:"name"` ``, right after the field's type. This isn't an ordinary comment — Go reads this text through reflection when `Marshal`/`Unmarshal` runs.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Struct fields **must be exported** (capitalized) to be encoded into JSON at all — this is a direct continuation of the exported/unexported rule you learned in this unit's first lesson. Unexported fields (lowercase) are **silently skipped**, with no error.
 :::
+
+## JSON to Struct: json.Unmarshal
+
+The reverse — turning JSON text into a Go struct:
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type Student struct {
+    Name string `json:"name"`
+    Age  int    `json:"age"`
+}
+
+func main() {
+    jsonText := `{"name": "Ani", "age": 16}`
+
+    var student Student
+    err := json.Unmarshal([]byte(jsonText), &student)
+    if err != nil {
+        fmt.Println("Decode failed:", err)
+        return
+    }
+
+    fmt.Println(student.Name, student.Age)
+}
+```
+
+Output:
+```
+Ani 16
+```
+
+## Breaking Down json.Unmarshal
+
+**`` `{"name": "Ani", "age": 16}` ``** — a backtick string literal (raw string), handy for text with lots of double quotes that would otherwise need escaping one by one.
+
+**`var student Student`** — declare an empty variable first (zero value: `Name` = `""`, `Age` = `0`), which `Unmarshal` will then **fill in**.
+
+**`json.Unmarshal([]byte(jsonText), &student)`** — notice the `&` before `student`! `Unmarshal` needs the **address (pointer)** of the target variable, because it needs to **modify `student`'s contents directly**, not just return a new value. You've known the pointer concept since Unit 6 (pointer receivers).
+
+:::tip
+You can add `,omitempty` to a struct tag (`json:"name,omitempty"`) so a field with a zero value (`""`, `0`, `false`) is left out of the JSON output entirely. Useful for optional fields.
+:::
+
+## Common Mistakes
+
+1. **Forgetting `&` when calling Unmarshal:**
+   ```go
+   var student Student
+   json.Unmarshal([]byte(jsonText), student)  // ERROR: json: Unmarshal(non-pointer main.Student)
+   ```
+   `Unmarshal` always needs a pointer as its second argument, so it can fill in the original variable.
+
+2. **Assuming an unexported field gets encoded too:**
+   ```go
+   type Student struct {
+       name string  // unexported — will NOT show up in the JSON
+   }
+   // json.Marshal(student) produces: {}
+   ```
+   If a field doesn't show up in the `Marshal` result, check first: is its first letter capitalized?
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u8l3-ex1"
+  title="Encode a Struct to JSON"
+  description="Complete the program so it prints the JSON for a Product struct with field names 'name' and 'price' (lowercase)."
+  type="code-output"
+  expectedOutput='{"name":"Book","price":25000}'
+  starterCode={`package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type Product struct {
+    Name  string \`json:"name"\`
+    Price int    \`json:"price"\`
+}
+
+func main() {
+    p := Product{Name: "Book", Price: 25000}
+    data, _ := json.Marshal(p)
+    fmt.Println(string(data))
+}`}
+  hints={["The struct tag json:\"name\" controls the field name in the JSON output.", "This code is already complete — try running it!"]}
+  explanation='The struct tags json:"name" and json:"price" make json.Marshal produce lowercase keys matching the tags, instead of the original Go field names (Name, Price).'
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u8l3-ex2"
+  title="Why Doesn't the Field Show Up in JSON?"
+  description="A struct field named 'address' (all lowercase) never shows up in the result of json.Marshal. Why?"
+  type="multiple-choice"
+  options={["Because there's no struct tag json:\"address\"", "Because unexported fields (lowercase) are always skipped during encoding", "Because the data type is wrong", "Because JSON doesn't support a field named 'address'"]}
+  correctIndex={1}
+  hints={["Remember the exported/unexported rule from the previous lesson.", "encoding/json uses reflection, and reflection can't 'see' an unexported field from another package."]}
+  explanation="A struct field must be exported (capitalized first letter) to be accessible to the encoding/json package via reflection. Unexported fields are always skipped, with or without a struct tag."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u8l3-ex3"
+  title="Complete Unmarshal"
+  description="Complete the json.Unmarshal argument so the student variable actually gets filled in."
+  type="fill-blank"
+  template="json.Unmarshal([]byte(jsonText), {{BLANK}}student)"
+  blanks={["&"]}
+  hints={["Unmarshal needs the variable's address, not its value directly."]}
+  explanation="&student provides a pointer (address) to the student variable, so Unmarshal can modify its contents directly."
+  lang="en"
+/>
+
+## Summary
+
+| Function | Direction | Return |
+|---|---|---|
+| `json.Marshal(v)` | Go → JSON | `([]byte, error)` |
+| `json.Unmarshal(data, &v)` | JSON → Go | `error` (fills `v` via pointer) |
+| `` `json:"name"` `` | Struct tag | Controls a field's name in JSON |
+| `` `json:"name,omitempty"` `` | Struct tag | Hides a field when it's a zero value |
+
+You've now mastered packages, modules, testing, and JSON — the complete toolkit for building real Go programs. Time to bring it **all** together in the **Final Project**: a Task Management CLI!

@@ -2,18 +2,215 @@
 title: "For Loop"
 unit: 3
 lesson: 1
-description: "English translation of lesson 01-for-loop.mdx"
+description: "The only loop keyword in Go — and its three forms"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand that for is the only loop construct in Go"
+  - "Write a for loop with three clauses (init, condition, post)"
+  - "Write for as a replacement for while and an infinite loop"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-2/04-project-tebak-angka"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-3"]
+tags: ["for", "loop", "iteration"]
 ---
 
 # For Loop
 
+If you've seen code from other languages, you know there's `for`, `while`, and `do-while`. Go simplifies all of that into **just one keyword: `for`**. Don't mistake this for Go "lacking features" — it's actually a deliberate design decision that makes Go simpler to learn.
+
+## Form 1: For with Three Clauses
+
+This is the form most similar to other languages — if you've used `for (int i=0; i<n; i++)` in C++/Java, this is the pattern:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for i := 0; i < 5; i++ {
+        fmt.Println("Loop number", i)
+    }
+}
+```
+
+Output:
+```
+Loop number 0
+Loop number 1
+Loop number 2
+Loop number 3
+Loop number 4
+```
+
+## Breaking Down the Three Clauses
+
+**`i := 0`** — the **init** clause, run once at the start, before the loop begins.
+
+**`i < 5`** — the **condition** clause, checked before every iteration. The loop keeps running as long as this is `true`.
+
+**`i++`** — the **post** clause, run after every iteration finishes.
+
+Just like `if`, notice there are **no parentheses** around the three clauses — they're only separated by semicolons, and the curly braces `{}` are still mandatory.
+
+## Form 2: For as a While Loop
+
+If you only need a condition without an explicit init/post, just write the condition on its own:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    n := 1
+    for n <= 16 {
+        fmt.Println(n)
+        n *= 2
+    }
+}
+```
+
+Output:
+```
+1
+2
+4
+8
+16
+```
+
+This is equivalent to `while (n <= 16)` in other languages — Go doesn't need a separate keyword, just `for` with a single condition.
+
+## Form 3: Infinite Loop
+
+Without any clauses at all, `for` becomes an infinite loop — useful when you want to control the exit yourself with `break` somewhere in the block:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    count := 0
+    for {
+        count++
+        fmt.Println("Iteration:", count)
+        if count >= 3 {
+            break
+        }
+    }
+}
+```
+
+Output:
+```
+Iteration: 1
+Iteration: 2
+Iteration: 3
+```
+
+**`for {`** — with no condition at all, this means "always true," so the loop will run forever unless there's a `break` (or `return`) inside it.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+This is a pattern often used for servers that need to keep "listening" for requests, or games that keep running until the player quits. You'll see `for { ... }` a lot in real-world Go code.
 :::
+
+:::tip
+Go doesn't have `do-while` (a loop whose body runs at least once before the condition is checked). If you need that behavior, use this pattern: run the loop body once outside, then wrap the rest with `for condition { ... }`, or use an infinite loop with a condition check + `break` at the end of the loop body.
+:::
+
+## Common Mistakes
+
+1. **Adding parentheses around the clauses:**
+   ```go
+   for (i := 0; i < 5; i++) {  // ERROR: syntax error
+       fmt.Println(i)
+   }
+   ```
+   Just like `if`, parentheses around the `for` clauses are **not valid** in Go.
+
+2. **Forgetting `break` in an infinite loop, so the program never stops:**
+   ```go
+   for {
+       fmt.Println("This will print forever...")
+       // forgot break!
+   }
+   ```
+   Always make sure there's a way out (`break` or `return`) in an infinite loop, or the program will hang (or time out, in the playground).
+
+3. **Forgetting to update the variable in a while-style loop, causing an accidental infinite loop:**
+   ```go
+   n := 1
+   for n <= 5 {
+       fmt.Println(n)
+       // forgot n++  → loops forever!
+   }
+   ```
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l1-ex1"
+  title="Countdown"
+  description="Complete the program so it prints a countdown from 5 to 1."
+  type="code-output"
+  expectedOutput="5
+4
+3
+2
+1"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    for i := 5; i >= 1; i-- {
+        fmt.Println(i)
+    }
+}`}
+  hints={["For a countdown, the post clause is a decrement, and the condition is >= (not <=).", "This code is already correct — try running it!"]}
+  explanation="The loop starts at i=5, keeps running as long as i >= 1, and i decreases by 1 each iteration — producing the countdown 5, 4, 3, 2, 1."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l1-ex2"
+  title="Go's Only Loop"
+  description="Which keyword(s) does Go use for every kind of loop (for, while, do-while)?"
+  type="multiple-choice"
+  options={["for, while, and do-while — same as C++", "Just for, used in various forms", "Just while", "loop (a Go-specific keyword)"]}
+  correctIndex={1}
+  hints={["Remember the main takeaway of this lesson!", "Go deliberately simplifies things down to a single keyword."]}
+  explanation="Go has only one loop keyword: for. Its form can be flexible — with three clauses, a condition only (like while), or no clauses at all (an infinite loop)."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l1-ex3"
+  title="Complete the Infinite Loop with Break"
+  description="Complete the condition so the loop stops once count reaches 3."
+  type="fill-blank"
+  template={`for {
+    count++
+    if count {{BLANK}} 3 {
+        break
+    }
+}`}
+  blanks={[">="]}
+  hints={["We want to stop as soon as count reaches or passes 3."]}
+  explanation="if count >= 3 { break } stops the infinite loop as soon as the count variable reaches 3."
+  lang="en"
+/>
+
+## Summary
+
+| Form | Example | Equivalent to |
+|---|---|---|
+| Three clauses | `for i := 0; i < n; i++ { ... }` | classic for |
+| Condition only | `for condition { ... }` | while |
+| No clauses | `for { ... }` | while(true), needs a break |
+
+In the next lesson, we'll cover **range** — a concise way to iterate over slices, strings, and maps without needing a manual index!

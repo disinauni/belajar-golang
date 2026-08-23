@@ -2,18 +2,112 @@
 title: "Playground Tour"
 unit: 0
 lesson: 3
-description: "English translation of lesson 03-tour-playground.mdx"
+description: "Get to know the Go Playground and write your first code"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand the Playground's features"
+  - "Successfully run your first Go code"
+  - "Understand how to read a compile error message"
 estimatedTime: 10
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-0/02-setup-lingkungan"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-0"]
+tags: ["playground", "first-code", "error"]
 ---
 
 # Playground Tour
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Time to try it out! In this lesson we'll tour the Playground and write our first Go code.
+
+## Anatomy of the Playground
+
+The Playground consists of a few parts:
+
+- **Toolbar** (top) — Run, Reset, Copy, and Download buttons
+- **Editor** (left/top) — where you write Go code
+- **Output** (right/bottom) — where you see your code's result
+
+## Your First Code
+
+Try typing this code into the Playground and clicking **Run**:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}
+```
+
+You'll see the output:
+```
+Hello, World!
+```
+
+Congratulations! You just ran your first Go program! 🎉
+
+## Experimenting with Code
+
+Now try changing the code to this:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("My name is:", "Alex")
+    fmt.Println("I like Go!")
+    fmt.Println(2024 + 1)
+}
+```
+
+Expected output:
+```
+My name is: Alex
+I like Go!
+2025
+```
+
+`fmt.Println` can display text (strings) and numbers together, automatically separated by a space.
+
+## Understanding Compile Errors
+
+Errors are a normal part of programming — every programmer has run into them! Because Go is a **compiled** language, errors are often caught before the program ever gets to run. Let's deliberately create an error:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("This code is broken"
+}
+```
+
+You'll see an error message like:
+```
+./main.go:6:39: syntax error: unexpected newline, expected comma or )
+```
+
+This means you forgot to close a parenthesis in the `fmt.Println` call. The `6:39` shows the line and column where the problem was detected — this is called a **compile error**, different from a runtime error, which only shows up once the program is actually running.
+
+:::tip
+Don't be afraid of errors! Go's compile errors are usually very specific — complete with a line number. Read the error message carefully; it's a friend telling you exactly where your program needs fixing.
 :::
+
+## The Important Buttons
+
+| Button | Function |
+|--------|--------|
+| **Run** | Compile and run the code |
+| **Reset** | Restore the code to its original state |
+| **Copy** | Copy all the code |
+| **Download** | Download the code as a `.go` file |
+
+## Ready to Learn!
+
+You now know the Playground and successfully ran your first Go code. Now we're ready to move into Unit 1 and start learning Go in depth.
+
+Next lesson: **Hello, World!** — every programmer's first tradition!

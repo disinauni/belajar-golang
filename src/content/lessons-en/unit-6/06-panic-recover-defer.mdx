@@ -2,18 +2,210 @@
 title: "Panic, Recover & Defer"
 unit: 6
 lesson: 6
-description: "English translation of lesson 06-panic-recover-defer"
+description: "Handling truly unexpected, fatal errors with panic and recover — used far less often than regular errors"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand when Go triggers a panic automatically"
+  - "Catch a panic with recover inside a deferred function"
+  - "Understand why panic/recover is not a replacement for the regular error pattern"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-6/05-error-handling"]
+difficulty: "intermediate"
+tags: ["panic", "recover", "defer", "runtime-error"]
+translationStatus: "complete"
 ---
 
 # Panic, Recover & Defer
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+You already learned `defer` in Unit 4 and the regular error pattern in the previous lesson. Now it's time to cover the other side of failure handling in Go: **panic** — for truly unexpected, fatal errors — and **recover**, a way to catch one before the program stops entirely.
+
+## When Panic Happens
+
+A panic can be triggered automatically by the Go runtime when a condition occurs that's genuinely unreasonable to continue from, like dividing an integer by zero:
+
+```go
+package main
+
+import "fmt"
+
+func divide(a, b int) int {
+    return a / b
+}
+
+func main() {
+    fmt.Println("Program starting")
+    result := divide(10, 0)
+    fmt.Println("Result:", result)
+}
+```
+
+Output:
+```
+Program starting
+panic: runtime error: integer divide by zero
+```
+
+...and then the program **stops immediately**, prints a *stack trace*, and exits with a failure status.
+
+## Breaking Down Panic
+
+Notice: this is different from dividing a `float64` by zero, which you saw in the Unit 1 project — dividing a `float64` by zero produces `+Inf` (not an error). But dividing an **integer** by zero is a condition Go considers genuinely unreasonable to continue from, so the runtime immediately triggers a `panic`.
+
+Other situations that automatically trigger a panic: accessing a slice/array index out of bounds, dereferencing a `nil` pointer, or calling `panic("message")` manually in your own code.
+
+Think of panic like a fire alarm: the moment it goes off, everyone immediately evacuates the building without finishing what they were doing first — unlike a regular error, which is more like a written memo you can read and respond to calmly.
+
+## Catching a Panic with Recover
+
+`recover()` lets a program **catch** a panic before it fully stops, but it only works when called **directly inside a deferred function**:
+
+```go
+package main
+
+import "fmt"
+
+func safeDivide(a, b int) (result int) {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Caught panic:", r)
+            result = 0
+        }
+    }()
+    result = a / b
+    return result
+}
+
+func main() {
+    fmt.Println(safeDivide(10, 2))
+    fmt.Println(safeDivide(10, 0))
+    fmt.Println("The program is still running!")
+}
+```
+
+Output:
+```
+5
+Caught panic: runtime error: integer divide by zero
+0
+The program is still running!
+```
+
+**`defer func() { ... }()`** — a deferred anonymous function, run right before `safeDivide` actually finishes — whether through a normal `return` or because of a panic.
+
+**`recover()`** — when called while a panic is happening, it returns the value that was *panicked* with (here, the runtime error message) and **stops** that panic from propagating up to the caller. If there's no panic happening, `recover()` just returns `nil` with no effect.
+
+**`result int` (named return)** — because `result` is a *named return value*, the deferred function can change it before `safeDivide` actually returns — this is how `result = 0` "rescues" the return value after the panic has been caught.
+
+:::warning
+Panic and recover are **not** a replacement for `try`/`except` like in Python, or `try`/`catch` in Java. In Go, regular errors (the `if err != nil` pattern) remain the **primary** and **far more common** way to handle failure. Panic is used **much more rarely** — only for truly fatal, unexpected conditions where the program can't reasonably continue.
 :::
+
+:::note
+`recover()` is only useful when called **directly** inside a deferred function. Calling it anywhere else (say, directly in a regular function body) always returns `nil` and does nothing.
+:::
+
+:::tip
+A practical rule of thumb from the Go community: *"don't panic, return an error"* — when in doubt, it's better to return an `error` as you learned in the previous lesson than to call `panic()` yourself.
+:::
+
+## Common Mistakes
+
+1. **Calling `recover()` outside a deferred function:**
+   ```go
+   func main() {
+       r := recover() // no panic is happening & not inside a defer
+       fmt.Println(r) // always <nil>, this recover is useless
+   }
+   ```
+
+2. **Using panic for a regular error that should be handled by returning an error:**
+   ```go
+   func findUser(id int) User {
+       user, found := database[id]
+       if !found {
+           panic("user not found") // anti-pattern -- should return an error instead
+       }
+       return user
+   }
+   ```
+   "User not found" is a condition that **happens normally** and should be handled by the caller via a returned `error`, not by halting the entire program with a panic.
+
+3. **`defer recover()` without capturing its value:**
+   ```go
+   func safe() {
+       defer recover() // the panic is still "silenced", but its message is lost
+       panic("something went wrong")
+   }
+   ```
+   This does stop the panic from propagating, but you lose information about what actually happened. The correct pattern is still like the `safeDivide` example above: wrap `recover()` inside `if r := recover(); r != nil { ... }` so its value can be checked and logged.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l6-ex1"
+  title="Catching a Panic with Recover"
+  description="Complete the program so it prints `Caught: index out of range` when a panic happens from an invalid slice index access."
+  type="code-output"
+  expectedOutput="Caught: index out of range"
+  starterCode={`package main
+
+import "fmt"
+
+func safeAccess(data []int, idx int) {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Caught: index out of range")
+        }
+    }()
+    fmt.Println(data[idx])
+}
+
+func main() {
+    numbers := []int{1, 2, 3}
+    safeAccess(numbers, 10)
+}`}
+  hints={["This code is actually already correct — try running it.", "data[10] triggers a panic because the numbers slice only has 3 elements (index 0-2)."]}
+  explanation="Accessing data[10] on a 3-element slice triggers an index-out-of-range panic. The deferred function catches it via recover() and prints a custom message, so the program doesn't stop entirely."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l6-ex2"
+  title="When to Use Panic"
+  description="When should you manually use panic() in Go code?"
+  type="multiple-choice"
+  options={["For every failure, as a replacement for the if err != nil pattern", "Only for truly fatal, unexpected conditions where the program can't reasonably continue", "Every time a function returns an error", "For validating user input that happens normally"]}
+  correctIndex={1}
+  hints={["Remember: panic/recover is NOT a replacement for the regular error pattern.", "Failures that 'happen normally' should be handled by returning an error, not panicking."]}
+  explanation="Panic is used far less often than regular errors — specifically for fatal, unexpected conditions that leave the program unable to reasonably continue. Regular failures (bad input, data not found) should still be handled through the return-error pattern."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l6-ex3"
+  title="Complete the Recover Call"
+  description="Complete the code so recover() is called correctly inside the deferred function."
+  type="fill-blank"
+  template={`defer func() {
+    if r := {{BLANK}}(); r != nil {
+        fmt.Println("panic caught:", r)
+    }
+}()`}
+  blanks={["recover"]}
+  hints={["This built-in function is used to catch a panic inside a deferred function."]}
+  explanation="recover() is called directly inside the deferred anonymous function. If a panic is happening, recover() returns the panicked value and stops it from propagating; if there's no panic, it just returns nil."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Automatic panic | Integer division by zero, index out of range, etc. |
+| Manual panic | `panic("fatal error message")` |
+| Catch a panic | `defer func() { recover() }()` |
+| Check the recover result | `if r := recover(); r != nil { ... }` |
+| Named return + recover | `func f() (result int) { defer func() { ...; result = 0 }() }` |
+
+All the core concepts of Unit 6 are now complete: structs, methods, embedding, interfaces, error handling, and panic/recover. Time to combine it all in this unit's project: **A Simple Bank Account**!

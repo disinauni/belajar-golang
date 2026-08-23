@@ -2,18 +2,181 @@
 title: "Nested Loops"
 unit: 3
 lesson: 4
-description: "English translation of lesson 04-nested-loops.mdx"
+description: "A loop inside a loop — the foundation for building patterns, tables, and grids"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Write a nested loop"
+  - "Understand how the inner loop runs fully for every iteration of the outer loop"
+  - "Build simple patterns with nested loops"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-3/03-break-continue-label"]
 difficulty: "beginner"
-tags: ["unit-3"]
+tags: ["nested-loop", "pattern", "grid"]
+translationStatus: "complete"
 ---
 
 # Nested Loops
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+You already got a glimpse of nested loops in the Labels lesson. Now let's master this pattern formally — it's the essential foundation for this unit's project: building a star pattern.
+
+## A Loop Inside a Loop
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for row := 1; row <= 3; row++ {
+        for col := 1; col <= 3; col++ {
+            fmt.Printf("(%d,%d) ", row, col)
+        }
+        fmt.Println()
+    }
+}
+```
+
+Output:
+```
+(1,1) (1,2) (1,3) 
+(2,1) (2,2) (2,3) 
+(3,1) (3,2) (3,3) 
+```
+
+## Breaking Down the Nested Loop
+
+**The outer loop (`row`)** runs 3 times. **For every single iteration of the outer loop**, the inner loop (`col`) runs **fully** from start to finish (3 times as well) — so overall the inner loop executes `3 × 3 = 9` times.
+
+**`fmt.Println()`** sits outside the inner loop (but still inside the outer loop) — it's called once every time a `row` finishes, to move to a new line in the output.
+
+Think of it like a clock: for every one turn of the hour hand (outer loop), the second hand (inner loop) has already gone around 60 full times.
+
+:::tip
+A simple rule for calculating a nested loop's total iterations: multiply the iteration counts of each level. Outer loop 3x, inner loop 3x → total `3 × 3 = 9` executions of the innermost part. If you have 3 nested levels each running 10x, the total is `10 × 10 × 10 = 1000`!
 :::
+
+## Building a Simple Pattern
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for row := 1; row <= 5; row++ {
+        for col := 1; col <= row; col++ {
+            fmt.Print("*")
+        }
+        fmt.Println()
+    }
+}
+```
+
+Output:
+```
+*
+**
+***
+****
+*****
+```
+
+Notice `col <= row` — not a fixed number! The number of stars per row **changes** based on the current value of `row`. This is a very common pattern for building triangles, and it's the foundation for the star pattern project in the next lesson.
+
+:::note
+The nested loop trick for patterns: the outer loop usually controls **how many rows**, and the inner loop controls **what gets printed on that one row**. The inner loop's condition often depends on the outer loop's variable, like the `col <= row` example above.
+:::
+
+## Common Mistakes
+
+1. **Swapping the variables, producing a pattern flipped from what you expected:**
+   ```go
+   for row := 1; row <= 5; row++ {
+       for col := 1; col <= 6-row; col++ {  // not <= row
+           fmt.Print("*")
+       }
+       fmt.Println()
+   }
+   // Produces an inverted triangle, not a regular one
+   ```
+   Always double-check the inner loop's condition carefully — a swapped `<=` vs `>=`, or the wrong variable, can flip the entire pattern.
+
+2. **Forgetting `fmt.Println()` to move to a new line:**
+   ```go
+   for row := 1; row <= 3; row++ {
+       for col := 1; col <= 3; col++ {
+           fmt.Print("*")
+       }
+       // forgot fmt.Println() here!
+   }
+   // Output: *********  (everything sticks together on one line)
+   ```
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l4-ex1"
+  title="Simple Multiplication Table"
+  description="Complete the program so it prints a 1-3 multiplication table, formatted as 'row x col = result' per line."
+  type="code-output"
+  expectedOutput="1 x 1 = 1
+1 x 2 = 2
+2 x 1 = 2
+2 x 2 = 4"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    for row := 1; row <= 2; row++ {
+        for col := 1; col <= 2; col++ {
+            fmt.Printf("%d x %d = %d\\n", row, col, row*col)
+        }
+    }
+}`}
+  hints={["row*col computes the multiplication result for each combination.", "This code is already correct — try running it!"]}
+  explanation="The nested loop produces every combination of row and col from 1 to 2, printing their multiplication result each time."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l4-ex2"
+  title="Total Nested Loop Iterations"
+  description="If the outer loop runs 4 times and the inner loop runs 5 times on every outer iteration, how many total executions of the innermost part are there?"
+  type="multiple-choice"
+  options={["9 (4+5)", "20 (4x5)", "4 (only the outer loop counts)", "5 (only the inner loop counts)"]}
+  correctIndex={1}
+  hints={["Remember the rule of multiplying the iteration counts of each level.", "It's not added together, it's multiplied."]}
+  explanation="The total executions of a nested loop's innermost part is calculated by multiplying the iteration counts of each level: 4 x 5 = 20."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l4-ex3"
+  title="Complete the Triangle Condition"
+  description="Complete the inner loop's condition so the number of stars per row matches its row number (forming a triangle)."
+  type="fill-blank"
+  template={`for row := 1; row <= 5; row++ {
+    for col := 1; col {{BLANK}} row; col++ {
+        fmt.Print("*")
+    }
+    fmt.Println()
+}`}
+  blanks={["<="]}
+  hints={["Stars keep printing as long as col hasn't passed the current row value."]}
+  explanation="col <= row makes the number of stars on each row match its row number — row 1 has 1 star, row 2 has 2 stars, and so on."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Explanation |
+|---|---|
+| Nested loop | A loop inside a loop |
+| Total iterations | Multiply the iteration counts of each level |
+| Outer loop | Usually controls the number of rows |
+| Inner loop | Usually controls the content of one row |
+| Dynamic condition | The inner loop's condition can depend on the outer loop's variable |
+
+You've now mastered every fundamental of Go looping: `for` in its three forms, `range`, `break`/`continue`/labels, and nested loops. Time to put it all together in this unit's project: **Star Patterns**!

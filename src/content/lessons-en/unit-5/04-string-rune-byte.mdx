@@ -2,18 +2,225 @@
 title: "String, Rune & Byte"
 unit: 5
 lesson: 4
-description: "English translation of lesson 04-string-rune-byte"
+description: "Diving into how Go actually stores text — and why len() can be deceiving"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand strings as a sequence of UTF-8 encoded bytes"
+  - "Tell the result of len() (byte count) apart from the actual character count"
+  - "Use []rune(s) for correct character indexing on non-ASCII text"
+  - "Understand what for range over a string gives you: byte index + rune, not character index"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-5/03-map"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-5"]
+tags: ["string", "rune", "byte", "utf-8", "unicode"]
 ---
 
 # String, Rune & Byte
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Back to strings — but this time we tear it open down to the root. Remember in the Basic Strings lesson, there was one sentence deliberately left hanging: *"`len()` actually counts the number of bytes, not the number of characters — we'll cover this fully in Unit 5."* Now it's time to unpack why that matters, and what you should do about it.
+
+## `len()` Counts Bytes, Not Characters
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    word := "café"
+    fmt.Println("len:", len(word))
+}
+```
+
+Output:
+```
+len: 5
+```
+
+Wait — `"café"` looks like just 4 characters (c-a-f-é), but `len()` says 5! This isn't a bug. Strings in Go are **stored as a sequence of bytes, UTF-8 encoded** — and an accented letter like `é` needs **2 bytes** to represent, while a regular ASCII letter (`c`, `a`, `f`) only needs 1 byte. So: 3 bytes for `caf` + 2 bytes for `é` = 5 bytes total, even though only 4 characters are visible.
+
+:::fun
+Emoji are even more extreme. Try `len("😀")` — the result is `4`, not `1`! An emoji is 1 character (1 *code point*), but needs a full 4 bytes in UTF-8 because it sits far outside the ASCII/Latin character range.
 :::
+
+## Three Terms You Need to Distinguish
+
+- **`byte`** — an alias for `uint8`. One unit of raw storage, a number 0-255. A string in Go is fundamentally a *read-only* byte slice.
+- **`rune`** — an alias for `int32`. Represents **one Unicode code point**, meaning one actual "character" according to the Unicode standard — whether it needs 1, 2, 3, or 4 bytes to store.
+- **`string`** — a sequence of bytes **conventionally** assumed to be UTF-8 encoded, though Go doesn't enforce it. ASCII characters (letters, digits, common symbols) always fit exactly 1 byte = 1 rune, but other characters (accents, non-Latin letters, emoji) can need 2-4 bytes per rune.
+
+This is why for pure ASCII text like in the Basic Strings lesson, `len()` looks "correct" — the byte count happens to equal the character count. The problem only shows up once your text contains non-ASCII characters.
+
+## Indexing a String Directly Returns a Byte, Not a Character
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    word := "café"
+    fmt.Println(word[3])
+    fmt.Printf("%c\n", word[3])
+}
+```
+
+Output:
+```
+195
+Ã
+```
+
+`word[3]` **doesn't** give you the 4th character (`é`) as you might expect. Because `é` is stored as 2 bytes (`0xC3 0xA9`, or 195 and 169 in decimal), index 3 only gives you **the first of those two bytes** — a raw `byte` value of 195, which when forced to print as a character (`%c`) turns into an entirely different letter (`Ã`). This is exactly the problem hinted at in the Basic Strings lesson when trying `word[1:]` — string indexing works per **byte**, not per character.
+
+## `[]rune(s)`: Correct Character Indexing
+
+The fix: convert the string to `[]rune` first. This "re-decodes" the UTF-8 byte sequence into a sequence of actual Unicode characters.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    word := "café"
+    letters := []rune(word)
+
+    fmt.Println("Actual character count:", len(letters))
+    fmt.Printf("4th character: %c\n", letters[3])
+}
+```
+
+Output:
+```
+Actual character count: 4
+4th character: é
+```
+
+Now `len(letters)` returns `4` — the actual character count, not the byte count — and `letters[3]` really does give you `é`. Every element of `[]rune` is one whole character, regardless of how many bytes it originally took.
+
+:::tip
+Rule of thumb: if you're only displaying or concatenating strings, leave it as a regular `string` — Go already handles encoding correctly in `fmt.Println` and `+`. But once you need **per-character indexing** or to **count the actual number of characters** on text that might be non-ASCII, convert to `[]rune` first.
+:::
+
+## `for range` over a String: Byte Index + Rune
+
+This part often causes confusion. `for range` over a string **doesn't** give you sequential character indexes (0, 1, 2, 3, ...) — it gives you **the byte index where that character starts**, plus its correctly decoded rune.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    word := "café!"
+    for i, r := range word {
+        fmt.Printf("index=%d rune=%c (code: %d)\n", i, r, r)
+    }
+}
+```
+
+Output:
+```
+index=0 rune=c (code: 99)
+index=1 rune=a (code: 97)
+index=2 rune=f (code: 102)
+index=3 rune=é (code: 233)
+index=5 rune=! (code: 33)
+```
+
+Notice the indexes: `0, 1, 2, 3, 5` — jumping from 3 to 5, not to 4! That's because `é` at index 3 takes up **2 bytes** (index 3 and 4), so the next character (`!`) only starts at byte index 5. The good news: `for range` already decodes UTF-8 correctly for you automatically — the `r` you receive each iteration is always one whole rune (`é`, not two separate bytes). All you need to remember: `i` is a **byte position**, not a sequential character number.
+
+## Common Mistakes
+
+1. **Assuming `len(s)` always equals the character count:**
+   ```go
+   name := "José"
+   fmt.Println(len(name)) // 5, not 4 -- because 'é' needs 2 bytes
+   ```
+   Fix: use `len([]rune(name))` if you need the actual character count.
+
+2. **Indexing a string directly to grab a "character" on non-ASCII text:**
+   ```go
+   name := "café"
+   fmt.Printf("%c", name[3]) // wrong! prints 'Ã', not 'é'
+   ```
+   Fix: convert to `[]rune` first, then index: `[]rune(name)[3]`.
+
+3. **Forgetting to convert `[]rune` back to `string` after modifying it:**
+   ```go
+   word := "Hello"
+   letters := []rune(word)
+   letters[0] = 'h'
+   fmt.Println(letters) // prints [104 101 108 108 111], not "hello"!
+   ```
+   `[]rune` is a slice of numbers (int32), not text — printing it directly shows its numeric codes. Fix: convert back with `string(letters)` before displaying as text: `fmt.Println(string(letters))` will correctly print `hello`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l4-ex1"
+  title="Actual Character Count"
+  description="Change the program so it prints `4` — the actual character count of `café`, not its byte count."
+  type="code-output"
+  expectedOutput="4"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    word := "café"
+    fmt.Println(len(word))
+}`}
+  hints={["len() on a string counts bytes. You need another way to count characters.", "Convert to []rune first before counting len(): len([]rune(word))."]}
+  explanation="len(word) counts bytes (the result is 5, because é needs 2 bytes). len([]rune(word)) first decodes into actual Unicode characters, giving 4."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l4-ex2"
+  title="Correct Character Indexing"
+  description="Change the program so it prints `é` — the 4th character of `café`, using conversion to []rune."
+  type="code-output"
+  expectedOutput="é"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    word := "café"
+    letters := []rune(word)
+    fmt.Printf("%c\\n", letters[0])
+}`}
+  hints={["The 4th character is at index 3 (index starts from 0).", "Change letters[0] to letters[3]."]}
+  explanation="[]rune(word) decodes the string into a sequence of actual characters, so letters[3] gives the correct 4th character: é."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l4-ex3"
+  title="Why Direct Indexing Can Be Wrong"
+  description="Why doesn't `word[3]` on the string `café` produce the correct character `é`?"
+  type="multiple-choice"
+  options={["Because strings can't be accessed by index at all", "Because string indexing returns a single byte, while é needs 2 bytes to represent", "Because accented letters aren't supported by Go", "Because indexes must start from 1 for non-ASCII text"]}
+  correctIndex={1}
+  hints={["Remember the difference between byte and rune in this lesson.", "é takes up 2 bytes in UTF-8 -- index 3 only captures its first byte."]}
+  explanation="String indexing in Go always returns a single byte. Because 'é' is encoded in 2 UTF-8 bytes, index 3 only gives its first byte, not the whole character -- the fix is to convert to []rune first."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| String is UTF-8 bytes | `"café"` is stored as 5 bytes |
+| Length in bytes | `len(s)` |
+| Length in characters | `len([]rune(s))` |
+| Raw byte indexing | `s[i]` (can be wrong for non-ASCII) |
+| Correct character indexing | `[]rune(s)[i]` |
+| Correctly iterating characters | `for i, r := range s` (i = byte index, r = rune) |
+| Converting a rune back to text | `string(runeSlice)` |
+
+Now you truly understand what happens behind every Go string. Time to combine array, slice, map, and this string understanding into one real project: **Student Grade Book**!

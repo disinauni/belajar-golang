@@ -2,18 +2,187 @@
 title: "Struct Embedding"
 unit: 6
 lesson: 3
-description: "English translation of lesson 03-embedding"
+description: "Inserting one struct into another so its fields and methods automatically 'surface' on the outer struct"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Embed one struct inside another"
+  - "Understand field and method promotion"
+  - "Tell struct embedding apart from inheritance in other languages"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-6/02-method-receiver"]
+translationStatus: "complete"
+difficulty: "intermediate"
+tags: ["embedding", "struct", "composition"]
 ---
 
 # Struct Embedding
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Go **doesn't have** an inheritance concept like Java or C++. Instead, Go has **struct embedding** — a way to insert one struct into another so its fields and methods automatically "come along". This is Go's approach to *code reuse*: composition, not inheritance.
+
+## Embedding a Struct
+
+```go
+package main
+
+import "fmt"
+
+type Animal struct {
+    Name string
+    Age  int
+}
+
+func (a Animal) Description() string {
+    return fmt.Sprintf("%s (%d years old)", a.Name, a.Age)
+}
+
+type Dog struct {
+    Animal
+    Breed string
+}
+
+func main() {
+    doggo := Dog{
+        Animal: Animal{Name: "Rex", Age: 3},
+        Breed:  "Golden Retriever",
+    }
+
+    fmt.Println(doggo.Name)
+    fmt.Println(doggo.Description())
+    fmt.Println(doggo.Breed)
+}
+```
+
+Output:
+```
+Rex
+Rex (3 years old)
+Golden Retriever
+```
+
+## Breaking Down Struct Embedding
+
+**`type Dog struct { Animal; Breed string }`** — notice `Animal` is written **without a field name**, just the type name alone. This is what's called an *embedded field*. This field automatically gets a name equal to its type name, `Animal`.
+
+**`doggo.Name`** — even though `Name` is defined inside `Animal`, you can access it directly from `doggo` without writing `doggo.Animal.Name`. This is called **field promotion** — a field from the embedded struct "surfaces" onto the outer struct.
+
+**`doggo.Description()`** — the same thing applies to methods too: `Description()` is defined for `Animal`, but can be called directly from `Dog`. This is **method promotion**.
+
+Picture `Dog` like a box that has an `Animal` box inside it, with no label. Because there's no label, everything inside the `Animal` box feels like it "directly belongs" to the `Dog` box.
+
+**`doggo.Animal.Name`** — the full path still exists and is still valid. Sometimes you need to write this explicitly, for example when field names collide (see Common Mistakes).
+
+## Not Inheritance — This Is Composition
+
+An important distinction: `Dog` doesn't **"become"** `Animal`. You can't treat `Dog` as `Animal` directly the way you'd *upcast* in classic object-oriented languages. What happens is `Dog` **has** an `Animal` inside it (a "has-a" relationship, not "is-a"), and Go simply makes it easier to access through promotion.
+
+You can also **override** a promoted method by defining a method with the same name directly on the outer struct:
+
+```go
+func (d Dog) Description() string {
+    return fmt.Sprintf("%s the %s", d.Name, d.Breed)
+}
+```
+
+After this, `doggo.Description()` calls `Dog`'s version, not `Animal`'s anymore.
+
+:::tip
+Go's philosophy is often summarized as: *"prefer composition over inheritance"*. Struct embedding is how Go supports this philosophy without a special keyword like `extends`.
 :::
+
+:::note
+Embedding isn't limited to structs — you can also embed an interface into another struct or interface. We'll touch on this a little in the next lesson.
+:::
+
+## Common Mistakes
+
+1. **Ambiguous field when two embedded structs share the same field name:**
+   ```go
+   type A struct{ Name string }
+   type B struct{ Name string }
+   type C struct {
+       A
+       B
+   }
+
+   func main() {
+       c := C{A{"X"}, B{"Y"}}
+       fmt.Println(c.Name) // ERROR: ambiguous selector c.Name
+   }
+   ```
+   Go doesn't know whether `Name` refers to `A`'s or `B`'s — you must write it explicitly as `c.A.Name` or `c.B.Name`.
+
+2. **Forgetting the embedded field's name when creating a struct literal:**
+   ```go
+   doggo := Dog{Name: "Rex"} // ERROR: unknown field 'Name' in struct literal of type Dog
+   ```
+   `Name` isn't a direct field of `Dog` — you must fill it in through `Animal`: `Dog{Animal: Animal{Name: "Rex"}}`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l3-ex1"
+  title="Field Promotion"
+  description="Complete the program so it prints `Employee: Sinta, Salary: 5000000` using a field promoted from the Person struct."
+  type="code-output"
+  expectedOutput="Employee: Sinta, Salary: 5000000"
+  starterCode={`package main
+
+import "fmt"
+
+type Person struct {
+    Name string
+}
+
+type Employee struct {
+    Person
+    Salary int
+}
+
+func main() {
+    e := Employee{
+        Person: Person{Name: "Sinta"},
+        Salary: 5000000,
+    }
+    fmt.Printf("Employee: %s, Salary: %d\\n", e.Name, e.Salary)
+}`}
+  hints={["This code is actually already correct -- try running it.", "e.Name is valid even though Name is defined inside Person, because of field promotion."]}
+  explanation="Name is a field belonging to the Person struct embedded in Employee. Because of embedding, e.Name is automatically accessible directly from e without needing to write e.Person.Name."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l3-ex2"
+  title="Embedding vs Inheritance"
+  description="Which statement is most accurate about struct embedding in Go?"
+  type="multiple-choice"
+  options={["Struct embedding is a form of composition (has-a), not inheritance (is-a) like in classic OOP languages", "Struct embedding automatically makes the outer struct a subclass of the inner struct", "Struct embedding requires the extends keyword", "Struct embedding only works one level deep, and never applies to methods"]}
+  correctIndex={0}
+  hints={["Go deliberately has no keyword like extends or class.", "Fields and methods 'surface' through promotion, but the outer type doesn't truly 'become' the inner type."]}
+  explanation="Struct embedding is composition: the outer struct has (has-a) the inner struct as part of itself, and Go makes access easier through field/method promotion -- but this isn't is-a inheritance like a class in Java/C++."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l3-ex3"
+  title="Complete the Embedded Field"
+  description="Complete the Dog struct declaration so it embeds the Animal struct (without an explicit field name)."
+  type="fill-blank"
+  template="type Dog struct {\n    {{BLANK}}\n    Breed string\n}"
+  blanks={["Animal"]}
+  hints={["An embedded field is written as just the type name, without a field name in front of it."]}
+  explanation="Writing just Animal (without a field name) inside the Dog struct makes Animal an embedded field -- its fields and methods automatically get promoted onto Dog."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Embedded field | `type Dog struct { Animal; Breed string }` |
+| Field promotion | `doggo.Name` (even though `Name` belongs to `Animal`) |
+| Method promotion | `doggo.Description()` |
+| Explicit access | `doggo.Animal.Name` |
+| Overriding a method | Redefine a method with the same name on the outer struct |
+
+In the next lesson, we move on to one of Go's most distinctive features: **interface** — an abstract type satisfied implicitly, without an `implements` keyword.

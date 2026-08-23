@@ -1,19 +1,318 @@
 ---
-title: "Slices"
+title: "Slice"
 unit: 5
 lesson: 2
-description: "English translation of lesson 02-slice"
+description: "The most commonly used dynamic data structure in Go — built on top of array but far more flexible"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Tell the difference between len() and cap() on a slice"
+  - "Use append() and understand its growth behavior"
+  - "Slice with [low:high] and understand slice literals and make()"
+  - "Recognize the underlying-array-sharing gotcha between slices"
 estimatedTime: 45
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-5/01-array"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-5"]
+tags: ["slice", "append", "data-structure", "underlying-array"]
 ---
 
-# Slices
+# Slice
+
+Array is rigid — its size stays fixed forever. Slice solves this problem: it's built **on top of** array, but can grow as needed. This is why almost every data collection in Go — the result of `strings.Split`, a list of items, anything — takes the form of a slice, not an array.
+
+## Slice Literal
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fruits := []string{"Apple", "Orange", "Mango"}
+
+    fmt.Println(fruits)
+    fmt.Println("len:", len(fruits))
+}
+```
+
+Output:
+```
+[Apple Orange Mango]
+len: 3
+```
+
+## Breaking Down the Slice Literal
+
+**`[]string{...}`** — notice there's **no number** inside the square brackets, unlike array's `[3]string{...}`. This is the sign that the type is a slice, not an array — the size isn't part of the type.
+
+Behind the scenes, a slice is actually just a **small header** containing three pieces of information: a pointer to the underlying array (the actual array where the data is stored), the current length (`len`), and the maximum capacity before reallocation is needed (`cap`).
+
+## `len()` vs `cap()`
+
+This is what makes slice different from array: slice has two size numbers, not one.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    numbers := make([]int, 3, 5)
+
+    fmt.Println(numbers)
+    fmt.Println("len:", len(numbers))
+    fmt.Println("cap:", cap(numbers))
+}
+```
+
+Output:
+```
+[0 0 0]
+len: 3
+cap: 5
+```
+
+**`make([]int, 3, 5)`** — creates an `int` slice with length (`len`) 3 and capacity (`cap`) 5. Length is the number of elements that **actually exist right now** (that's why 3 zeros are printed). Capacity is the number of elements that **fit** in the underlying array before Go is forced to allocate a new, larger array.
+
+If you call just `make([]int, 3)` (without the third argument), `cap` automatically equals `len`.
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Picture `cap` like the size of a box, and `len` like the number of items currently inside that box. A box with capacity 5 might only have 3 items in it right now — there's still room for 2 more items without needing to switch boxes.
 :::
+
+## `append()` — Adding Elements
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    numbers := []int{1, 2, 3}
+    numbers = append(numbers, 4)
+    numbers = append(numbers, 5, 6)
+
+    fmt.Println(numbers)
+    fmt.Println("len:", len(numbers))
+}
+```
+
+Output:
+```
+[1 2 3 4 5 6]
+len: 6
+```
+
+**`append(numbers, 4)`** — adds `4` to the end of the slice, then returns a new slice that you must capture back into a variable (`numbers = append(...)`). `append` also accepts multiple values at once, like `append(numbers, 5, 6)`.
+
+:::warning
+The result of `append()` **must** be captured, usually into the same variable. If you write `append(numbers, 4)` alone without `numbers = ...` in front of it, the result is simply thrown away and `numbers` doesn't change!
+:::
+
+### Growth Behavior
+
+If `append` makes the slice's length exceed its capacity, Go **allocates a new, larger underlying array** (usually doubling in size for small slices), copies the old data into it, then adds the new element. If the capacity is still enough, Go simply places the new element in the remaining space — no new allocation at all.
+
+```go
+s := make([]int, 0, 2)
+for i := 0; i < 5; i++ {
+    s = append(s, i)
+    fmt.Printf("len=%d cap=%d slice=%v\n", len(s), cap(s), s)
+}
+```
+
+One possible output (the `cap` numbers can vary slightly depending on Go version and architecture — what matters is the **trend**):
+```
+len=1 cap=2 slice=[0]
+len=2 cap=2 slice=[0 1]
+len=3 cap=4 slice=[0 1 2]
+len=4 cap=4 slice=[0 1 2 3]
+len=5 cap=8 slice=[0 1 2 3 4]
+```
+
+Notice: `cap` doesn't increase every time `append` is called — it only grows when the old capacity is no longer enough, and it usually jumps (here, from 2 to 4, then 4 to 8).
+
+## Slicing with `[low:high]`
+
+You can grab a "slice" of an existing slice (or array) with the `[low:high]` syntax — `low` inclusive, `high` exclusive:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    numbers := []int{1, 2, 3, 4, 5}
+
+    fmt.Println(numbers[1:4]) // index 1 through 3
+    fmt.Println(numbers[:2])  // from the start through index 1
+    fmt.Println(numbers[3:])  // from index 3 to the end
+}
+```
+
+Output:
+```
+[2 3 4]
+[1 2]
+[4 5]
+```
+
+`numbers[1:4]` takes elements at index 1, 2, 3 (not 4! `high` isn't included). If `low` or `high` is left empty, it means "from the start" or "to the end."
+
+## Gotcha: Slices Share the Underlying Array
+
+This is the most important part of this lesson. A slice created by slicing another slice **can share the same underlying array** — changing one slice can silently change the other!
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    original := []int{1, 2, 3, 4, 5}
+    piece := original[1:3]
+    piece[0] = 99
+
+    fmt.Println("original:", original)
+    fmt.Println("piece   :", piece)
+}
+```
+
+Output:
+```
+original: [1 99 3 4 5]
+piece   : [99 3]
+```
+
+`piece` isn't an independent copy of `original` — it's just a "window" pointing into the same portion of the underlying array. Changing `piece[0]` actually changes `original[1]`, because both point to the exact same memory slot.
+
+This can also happen through `append()`, if the capacity is still enough:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    original := make([]int, 5, 5)
+    copy(original, []int{1, 2, 3, 4, 5})
+
+    front := original[0:2]      // len 2, cap 5 (still riding on original's underlying array)
+    front = append(front, 999)  // enough room -> no reallocation, overwrites original[2]!
+
+    fmt.Println("original:", original)
+    fmt.Println("front   :", front)
+}
+```
+
+Output:
+```
+original: [1 2 999 4 5]
+front   : [1 2 999]
+```
+
+`front` only has `len` 2, but its `cap` inherits `cap(original)`, which is 5 (calculated as `cap(original) - low`). Since there's still room, `append` places `999` directly into `original[2]` — overwriting the original data without you realizing it!
+
+Compare that to when the capacity is **already full** (`cap == len`, no room left): `append` is forced to allocate a new underlying array to hold the extra element, and from that point on both slices become fully independent — changing one no longer affects the other.
+
+:::warning
+The rule: **if there's enough capacity, append overwrites the same underlying array** (which can affect other slices). **If there's not enough capacity, Go allocates a new array** (the slice becomes independent). If you need a truly independent copy from the start, use `copy()` into a new slice, rather than relying on plain slicing.
+:::
+
+## Common Mistakes
+
+1. **Forgetting to capture the result of `append()`:**
+   ```go
+   s := []int{1, 2, 3}
+   append(s, 4)     // the result is thrown away! s doesn't change
+   fmt.Println(s)   // still [1 2 3], not [1 2 3 4]
+   ```
+   Fix: always write `s = append(s, 4)`.
+
+2. **Accessing an index beyond the slice's length:**
+   ```go
+   numbers := []int{1, 2, 3}
+   fmt.Println(numbers[5]) // panic: runtime error: index out of range [5] with length 3
+   ```
+   Unlike array, this mistake always becomes a runtime *panic*, because a slice's length can change and isn't known for certain at compile time.
+
+3. **Modifying a slice from slicing without realizing the underlying array changes too:**
+   ```go
+   original := []int{1, 2, 3}
+   part := original[0:2]
+   part[0] = 100 // original[0] becomes 100 too!
+   ```
+   Fix: if you need independence, make an explicit copy with `copy()`:
+   ```go
+   part := make([]int, 2)
+   copy(part, original[0:2]) // now truly independent
+   ```
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l2-ex1"
+  title="The Right Slicing Range"
+  description="Change the slicing range so it prints `[2 3 4]` (elements at index 1 through 3)."
+  type="code-output"
+  expectedOutput="[2 3 4]"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    numbers := []int{1, 2, 3, 4, 5}
+    fmt.Println(numbers[0:3])
+}`}
+  hints={["Remember: low is inclusive, high is exclusive.", "Change numbers[0:3] to numbers[1:4]."]}
+  explanation="numbers[1:4] takes index 1, 2, 3 (elements with value 2, 3, 4) — index 4 isn't included because high is exclusive."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l2-ex2"
+  title="len() and cap() with make()"
+  description="Change the program so it prints `len: 3` and `cap: 10`, matching a slice made with length 3 and capacity 10."
+  type="code-output"
+  expectedOutput="len: 3
+cap: 10"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    s := make([]int, 3, 8)
+    fmt.Println("len:", len(s))
+    fmt.Println("cap:", cap(s))
+}`}
+  hints={["The third argument in make() is the capacity.", "Change make([]int, 3, 8) to make([]int, 3, 10)."]}
+  explanation="make([]int, 3, 10) creates a slice with length 3 and capacity 10 — len() and cap() each return that number."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l2-ex3"
+  title="Sharing the Underlying Array"
+  description="If slice B is created from slice A via `B := A[1:3]`, and you then change `B[0]`, what happens to A?"
+  type="multiple-choice"
+  options={["A doesn't change, because B is an independent copy", "A changes too, because A and B share the same underlying array", "The program will panic at compile time", "A only changes if its size is greater than 10"]}
+  correctIndex={1}
+  hints={["Remember the gotcha covered in this lesson.", "Slicing doesn't create a new copy — it points to the same data."]}
+  explanation="A slice created by slicing (like A[1:3]) shares the same underlying array as the original slice. Changing an element in B via index also changes the same element in A."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Slice literal | `[]int{1, 2, 3}` |
+| Create with length & capacity | `make([]int, len, cap)` |
+| Current length | `len(s)` |
+| Capacity before reallocation | `cap(s)` |
+| Add an element | `s = append(s, value)` |
+| Slicing | `s[low:high]` |
+| Independent copy | `copy(destination, source)` |
+
+Now you understand Go's most important data structure. Next up we cover **map** — the key-value data structure for storing paired data like names and grades.

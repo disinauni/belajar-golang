@@ -2,18 +2,161 @@
 title: "What is a Function?"
 unit: 4
 lesson: 1
-description: "English translation of lesson 01-apa-itu-fungsi.mdx"
+description: "Meet functions in Go — reusable blocks of code that keep your programs organized instead of repeating yourself"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand what a function is and why functions matter for reusability"
+  - "Declare and call simple functions without parameters"
+  - "Know that functions in Go must be declared at package level, never nested"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-3/05-project-pola-bintang"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-4"]
+tags: ["function", "func", "reusability"]
 ---
 
 # What is a Function?
 
+Welcome to Unit 4! So far, every line of code you've written has lived inside a single function: `main()`. That works fine for small programs, but imagine you needed to print the same "welcome message" in five different places in your program — copy-paste it five times? If there's ever a typo, you'd have to fix it in five places at once. This is where **functions** save you.
+
+## A Simple Function
+
+```go
+package main
+
+import "fmt"
+
+func greet() {
+    fmt.Println("Hello! Welcome to the Go program.")
+}
+
+func main() {
+    greet()
+    greet()
+    greet()
+}
+```
+
+Output:
+```
+Hello! Welcome to the Go program.
+Hello! Welcome to the Go program.
+Hello! Welcome to the Go program.
+```
+
+## Breaking Down the Function Declaration
+
+**`func greet() { ... }`** — this declares a new function named `greet`. Let's break down each part:
+- `func` — the required keyword for declaring any function in Go
+- `greet` — the function name. Go convention uses `camelCase` for ordinary function names (lowercase first letter)
+- `()` — parentheses for parameters. Empty means this function takes no input at all (we'll cover parameters in the next lesson)
+- `{ ... }` — the function *body*, containing the code that runs every time the function is called
+
+**`greet()`** inside `main()` — this is how you **call** a function. Notice: declaring a function alone does **not** run anything. The code inside `greet()` only actually runs once you call it with `greet()`.
+
+Think of a function like a recipe written on paper. Writing the recipe doesn't make the food appear — you actually have to **cook it** (call the function) to get a result. And the same recipe can be used over and over without rewriting it.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Functions in Go **must** be declared at package level (alongside `func main()`), and **cannot** be nested inside another function like in some other languages (e.g. JavaScript). If you need a "local" function that's only used in one place, Go has another solution called an *anonymous function* — a topic for the Closures lesson later in this unit.
 :::
+
+:::tip
+Functions are your main tool for organizing code. A good rule of thumb: if you write the same (or similar) block of code more than once, that's a sign it's time to make a function. This principle is known as **DRY** — *Don't Repeat Yourself*.
+:::
+
+## Why Functions Matter
+
+Without functions, a large program would turn into one giant pile of code inside `main()` that's hard to read, hard to test, and hard to fix. With functions, you get:
+
+- **Reusability** — write the logic once, use it many times
+- **Organization** — break a big problem into small pieces, each with a clear responsibility
+- **Easier testing** — small functions are easier to test individually than one giant block of code
+- **Easier reading** — a clear function name (`calculateTotal`, `validateInput`) explains the intent of the code without needing to read the implementation details
+
+## Common Mistakes
+
+1. **Declaring a function inside another function (not allowed in Go):**
+   ```go
+   func main() {
+       func greet() { // ERROR: nested function declaration is not valid
+           fmt.Println("Hello")
+       }
+       greet()
+   }
+   ```
+   Every `func functionName(...)` declaration must sit at package level, alongside `main()` — not inside it.
+
+2. **Forgetting to call a function:**
+   ```go
+   func greet() {
+       fmt.Println("Hello!")
+   }
+
+   func main() {
+       // forgot to call greet() here
+   }
+   ```
+   This is **not** a compile error — the program still runs, it just doesn't print anything. Unlike an unused variable or unused import (which Go refuses to compile), a function that is never called is still syntactically valid — it's just useless if nothing ever calls it.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l1-ex1"
+  title="Create and Call a Function"
+  description="Complete the <code>sayHello</code> function so it prints <code>Happy learning Go!</code>, then call that function 2 times from <code>main</code>."
+  type="code-output"
+  expectedOutput="Happy learning Go!
+Happy learning Go!"
+  starterCode={`package main
+
+import "fmt"
+
+func sayHello() {
+    fmt.Println("Happy learning Go!")
+}
+
+func main() {
+    sayHello()
+    sayHello()
+}`}
+  hints={["The sayHello function is already complete — try running it first to see the result.", "Calling a function twice means writing sayHello() twice in main()."]}
+  explanation="Each call to sayHello() re-runs the body of that function, so the fmt.Println line inside it prints every time it's called."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l1-ex2"
+  title="A Function That's Never Called"
+  description="What happens if you declare a function in Go but never call it?"
+  type="multiple-choice"
+  options={["The program still compiles and runs normally, it's just that the function's body is never executed", "Go refuses to compile with a 'function declared and not used' error", "The function is automatically called when the program starts", "The program crashes at runtime"]}
+  correctIndex={0}
+  hints={["Compare this to the rule for unused variables/imports — is the rule the same for functions?", "Go is fairly 'relaxed' about functions that are never called, unlike unused local variables."]}
+  explanation="Unlike an unused local variable or unused import (which fails to compile), a function that's declared but never called is still syntactically valid — the program still runs, it's just that the code inside that function is never executed."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l1-ex3"
+  title="Complete the Function Declaration"
+  description="Fill in the keyword used to declare a new function in Go."
+  type="fill-blank"
+  template="{{BLANK}} greet() {"
+  blanks={["func"]}
+  hints={["This keyword is the same for every function declaration, including func main()."]}
+  explanation="Every function declaration in Go starts with the keyword 'func', followed by the function name and the parameter parentheses."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Function declaration | `func greet() { ... }` |
+| Calling a function | `greet()` |
+| Declaration level | Must be at package level, cannot be nested |
+| Naming convention | `camelCase`, lowercase first letter (unless *exported*) |
+| Main benefits | Reusability, organization, easier reading & testing |
+
+Our function right now is still "empty" — it doesn't receive any data from the outside. In the next lesson, we'll learn about **parameters and return values** — how to send data into a function and get results back out.

@@ -2,18 +2,190 @@
 title: "Comments & Variables"
 unit: 1
 lesson: 2
-description: "English translation of lesson 02-komentar-variabel.mdx"
+description: "Write notes in your code with comments and store data with variables"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Write single-line and multi-line comments"
+  - "Declare variables with var and short declaration (:=)"
+  - "Understand the concept of zero values in Go"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/01-hello-world"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["comments", "variables", "var", "zero-value"]
 ---
 
 # Comments & Variables
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Imagine writing a recipe but forgetting to note down how much salt to use — a month later you're confused yourself. In programming, a similar problem happens all the time: you (or someone else) will forget **why** a line of code was written a certain way. The solution: **comments**. And to store data your program uses, we need **variables**.
+
+## Comments
+
+A comment is text the compiler ignores — purely for humans reading the code.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    // This is a single-line comment
+    fmt.Println("Hello!") // can also go at the end of a line
+
+    /*
+       This is a multi-line comment.
+       Great for longer explanations.
+    */
+    fmt.Println("Done!")
+}
+```
+
+Output:
+```
+Hello!
+Done!
+```
+
+## Breaking Down Comment Syntax
+
+**`// single-line comment`** — all text after `//` until the end of the line is ignored by the compiler.
+
+**`/* multi-line comment */`** — all text between `/*` and `*/` is ignored, and it can span multiple lines at once.
+
+:::tip
+A good comment explains **why**, not **what**. `// add 1` above `x++` is useless — what's more helpful is `// adjust the 0-based index to 1-based for display to the user`.
 :::
+
+## Variables
+
+A variable is a named storage location for data. Go has two ways to declare one:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var name string = "Alex"
+    var age int = 17
+
+    city := "Jakarta"
+
+    fmt.Println(name, age, city)
+}
+```
+
+Output:
+```
+Alex 17 Jakarta
+```
+
+## Breaking Down the Two Declaration Styles
+
+**`var name string = "Alex"`** — the explicit way. The order is: the `var` keyword, the variable name, the data type, an equals sign, then the value. Can be used anywhere, including outside functions.
+
+**`var age int = 17`** — the same pattern, using the `int` type for whole numbers.
+
+**`city := "Jakarta"`** — *short variable declaration*. The data type is inferred automatically from the value (here, `string`, because `"Jakarta"` is wrapped in quotes). More concise, but it can **only be used inside a function** — not at the package/global level.
+
+Think of `var` as filling out a full form (name, type, and value all written out), while `:=` is like filling out a quick form that automatically guesses part of the entry from what you wrote.
+
+:::note
+**Zero Value** — if you declare a variable without an initial value (`var total int`), Go does **not** leave it empty/undefined like many other languages. Go automatically fills in a *zero value*: `0` for numbers, `""` for strings, `false` for bools.
+```go
+var total int      // automatically 0
+var message string // automatically "" (empty string)
+fmt.Println(total, message)  // Output: 0
+```
+:::
+
+:::tip
+Go's naming convention for variables uses **camelCase** (`fullName`, not `full_name` or `FullName`) for ordinary variables. A capitalized first letter (`FullName`) has a special meaning — exported from the package — which we'll cover in Unit 8.
+:::
+
+## Common Mistakes
+
+1. **Declaring a variable but never using it:**
+   ```go
+   func main() {
+       name := "Alex"  // ERROR: declared and not used
+       fmt.Println("Hello!")
+   }
+   ```
+   Go **refuses to compile** if a local variable is declared but never used at all — unlike many other languages that only give a warning.
+
+2. **Using `:=` outside a function:**
+   ```go
+   package main
+
+   name := "Alex"  // ERROR: syntax error, non-declaration statement outside function body
+
+   func main() {
+       fmt.Println(name)
+   }
+   ```
+   `:=` is only valid inside a function. At the package level (outside any function), you must use `var`.
+
+3. **Redeclaring with `:=` in the same scope:**
+   ```go
+   name := "Alex"
+   name := "Sam"  // ERROR: no new variables on left side of :=
+   ```
+   If the variable already exists in the same scope, use a plain equals sign (`name = "Sam"`), not `:=` again.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l2-ex1"
+  title="Fix the Unused Variable"
+  description="This code errors because the variable 'message' is declared but never used. Fix it so the program prints that variable's content."
+  type="code-output"
+  expectedOutput="Happy learning Go!"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    message := "Happy learning Go!"
+}`}
+  hints={["Add a line to print the 'message' variable with fmt.Println.", "fmt.Println(message) will display its content."]}
+  explanation="Add fmt.Println(message) so the message variable is actually used, following Go's rule against idle local variables."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l2-ex2"
+  title="Zero Value of int"
+  description="What is the value of the variable 'total' after the line `var total int` runs, before it's assigned any value?"
+  type="multiple-choice"
+  options={["undefined", "null", "0", "Error, it must be assigned a value"]}
+  correctIndex={2}
+  hints={["Go has no concept of 'undefined' or 'null' for a variable that hasn't been assigned yet.", "The zero value for all numeric types is zero."]}
+  explanation="Go automatically fills in a zero value for a variable declared without an initial value. For the int type, the zero value is 0."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l2-ex3"
+  title="Short Declaration"
+  description="Complete the way to declare a variable 'score' with the value 100 using short declaration."
+  type="fill-blank"
+  template="score {{BLANK}} 100"
+  blanks={[":="]}
+  hints={["Short declaration uses a colon followed by an equals sign."]}
+  explanation="score := 100 declares and assigns the score variable at once, with its int type inferred automatically from the value."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Single-line comment | `// note` |
+| Multi-line comment | `/* longer note */` |
+| Explicit declaration | `var name string = "Alex"` |
+| Short declaration | `name := "Alex"` |
+| Zero value int/string/bool | `0` / `""` / `false` |
+
+In the next lesson, we'll dig deeper into **data types** — what type choices Go offers and when to use them!

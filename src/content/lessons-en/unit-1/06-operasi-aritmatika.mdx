@@ -2,18 +2,176 @@
 title: "Arithmetic Operations"
 unit: 1
 lesson: 6
-description: "English translation of lesson 06-operasi-aritmatika.mdx"
+description: "Math operators in Go: addition, subtraction, multiplication, division, remainder, and the integer division trap"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Use basic arithmetic operators: + - * / %"
+  - "Understand the difference between integer and float division"
+  - "Learn that ++ and -- in Go are statements, not expressions"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-1/05-input-output"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["arithmetic", "operators", "division", "modulus"]
 ---
 
 # Arithmetic Operations
 
+A calculator is one of the first programs anyone builds while learning to program — and this unit's project is indeed a simple calculator! Before we get there, let's master Go's basic math operators, including one trap that surprises a lot of beginners.
+
+## Basic Operators
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    a := 17
+    b := 5
+
+    fmt.Println(a + b)  // 22
+    fmt.Println(a - b)  // 12
+    fmt.Println(a * b)  // 85
+    fmt.Println(a / b)  // 3   ← not 3.4!
+    fmt.Println(a % b)  // 2
+}
+```
+
+Output:
+```
+22
+12
+85
+3
+2
+```
+
+## Breaking Down Each Operator
+
+**`+` `-` `*`** — addition, subtraction, multiplication. They work as you'd expect.
+
+**`/`** — division. This is the trap: **because `a` and `b` are `int`, the result is also `int`** — the decimal part is discarded (truncated), not rounded. `17 / 5` is mathematically `3.4`, but Go prints `3`.
+
+**`%`** — modulus (remainder). `17 % 5` = `2`, because `17 = 3×5 + 2`. Very useful for checking odd/even (`n % 2 == 0`) or keeping a number within a certain range.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+**Integer vs float division** — if you want an accurate decimal result, at least one operand must be `float64`:
+```go
+a := 17.0
+b := 5.0
+fmt.Println(a / b)  // 3.4
+```
+Or convert explicitly: `float64(17) / float64(5)`. This is different from Python 3, where `/` always produces a float even when both operands are integers.
 :::
+
+## Increment & Decrement
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    count := 0
+    count++
+    count++
+    count--
+    fmt.Println(count)  // 1
+}
+```
+
+**`count++`** and **`count--`** add/subtract 1. But there's an important restriction: in Go, `++`/`--` are **statements**, not **expressions** — meaning they can't be used within another line.
+
+```go
+x := 5
+y := x++       // ERROR: x++ used as value
+fmt.Println(x++) // ERROR too
+```
+
+This is a big difference from C++/Java, which allow `y = x++`. In Go, `count++` must stand alone as a complete statement on its own line.
+
+:::tip
+Operator precedence in Go follows standard math rules: multiplication and division happen before addition and subtraction. Use parentheses `()` to make sure the order matches your intent — just like on a regular calculator.
+```go
+result := 2 + 3 * 4    // 14, not 20
+otherResult := (2 + 3) * 4  // 20
+```
+:::
+
+## Common Mistakes
+
+1. **Expecting integer division to produce a decimal:**
+   ```go
+   total := 10
+   count := 3
+   average := total / count
+   fmt.Println(average)  // 3, not 3.33!
+   ```
+   Fix: convert to `float64` first before dividing.
+
+2. **Using `++`/`--` as an expression:**
+   ```go
+   total := 0
+   fmt.Println(total++)  // ERROR: total++ used as value
+   ```
+   `count++` has to be its own separate statement — it can't be used directly inside another function call.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l6-ex1"
+  title="Fix the Division"
+  description="This code is supposed to compute the average of 3 values and print '85.33' (2 decimal digits), but the result is wrong because of integer division. Fix it!"
+  type="code-output"
+  expectedOutput="85.33"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    total := 256
+    count := 3
+    average := float64(total) / float64(count)
+    fmt.Printf("%.2f\\n", average)
+}`}
+  hints={["This starter code has already been converted correctly — try running it first to see the result.", "float64(total) / float64(count) makes sure the division stays decimal."]}
+  explanation="Converting total and count to float64 before dividing ensures the result is a full decimal (85.333...), and then %.2f rounds it to 2 digits after the decimal point."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l6-ex2"
+  title="Integer Division Result"
+  description="What is the result of `17 / 5` if both variables are of type int in Go?"
+  type="multiple-choice"
+  options={["3.4", "3", "4", "Error"]}
+  correctIndex={1}
+  hints={["Dividing two ints in Go produces an int, with the decimal part discarded.", "17 divided by 5 equals 3 remainder 2 — it's the '3' part that's used."]}
+  explanation="Since 17 and 5 are both int, the division result is also int: 3 (the 0.4 decimal part is discarded, not rounded)."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l6-ex3"
+  title="The Remainder Operator"
+  description="Complete the operator for checking whether variable n is an even number."
+  type="fill-blank"
+  template="even := n {{BLANK}} 2 == 0"
+  blanks={["%"]}
+  hints={["This operator produces the remainder of a division, not the quotient."]}
+  explanation="n % 2 == 0 checks whether the remainder of n divided by 2 is zero — that's the sign that n is even."
+  lang="en"
+/>
+
+## Summary
+
+| Operator | Function | Example |
+|---|---|---|
+| `+` `-` `*` | Add, subtract, multiply | `a * b` |
+| `/` | Divide (int ÷ int = int, rounded down) | `17 / 5` → `3` |
+| `%` | Remainder (modulus) | `17 % 5` → `2` |
+| `++` `--` | Add/subtract 1 (statement, not an expression) | `count++` |
+
+In the next lesson, we'll cover **basic strings** — how to concatenate, compare, and manipulate text in Go!

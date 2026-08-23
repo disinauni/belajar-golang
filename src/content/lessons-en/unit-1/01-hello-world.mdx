@@ -2,18 +2,203 @@
 title: "Hello, World!"
 unit: 1
 lesson: 1
-description: "English translation of lesson 01-hello-world.mdx"
+description: "Write your first Go program and understand every line of it"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Write and run a Hello World program in Go"
+  - "Understand the role of package, import, func main(), and fmt.Println"
+  - "Get to know the concept of packages in Go"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-0/03-tour-playground"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-1"]
+tags: ["hello-world", "fmt", "package", "main", "basics"]
 ---
 
 # Hello, World!
 
+There's a tradition in the programming world: the first program you write in a new language should display "Hello, World!" on the screen. This tradition started with the legendary 1978 book "The C Programming Language." Now it's your turn to carry on this tradition — this time in Go!
+
+## Your First Program
+
+Here's the Hello World program in Go:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}
+```
+
+Type this code into the playground, then click **Run**. You'll see:
+
+```
+Hello, World!
+```
+
+Congratulations! You just wrote your first Go program! It might look simple, but there's a lot happening behind the scenes. Let's break down **every line**.
+
+## Breaking Down Each Line
+
+### Line 1: `package main`
+
+```go
+package main
+```
+
+Every Go file **must** start with a package declaration. A package is how Go groups related code together — think of it like a folder for code.
+
+Think of it this way: a `package` is like a big house where related pieces of code "live" together. The name `main` is special — it tells Go "this is a program that can be run directly," not a library that's only used by other programs. If you change `main` to a different name, you're creating a *library* instead — that's a topic for Unit 8.
+
+### Line 3: `import "fmt"`
+
+```go
+import "fmt"
+```
+
+This line brings in the `fmt` package (short for **f**or**m**a**t**) — part of Go's standard library, containing functions for printing text to the screen and reading input.
+
+Think of it this way: you want to cook, but the tools you need are in a drawer. `import` is like opening the drawer and taking out the tool you need. Without `import "fmt"`, you can't use `fmt.Println` at all — and Go will refuse to compile your code.
+
+**Important facts:**
+- Package names are wrapped in double quotes `"..."`, not `<...>` like in C++
+- If you import something but never use it, Go will **refuse to compile** — not just a warning!
+
+### Line 5: `func main() {`
+
+```go
+func main() {
+```
+
+This is the **main function** — the program's entry point. Every runnable Go program **must** have exactly one `main()` function inside `package main`.
+
+Think of your program as a building. `main()` is the front door — no matter how big the building is, everyone comes in through the front door. Same with a program: no matter how complex the code, execution always starts at `main()`.
+
+Let's break down the pieces:
+- `func` — the keyword for declaring a function
+- `main` — the function's name. This name **must** be `main`, it can't be changed
+- `()` — parentheses for parameters (empty means it takes no parameters)
+- `{` — opening curly brace, marks the start of the function *body*
+
+### Line 6: `fmt.Println("Hello, World!")`
+
+```go
+    fmt.Println("Hello, World!")
+```
+
+This is the line that actually does something — printing text to the screen. Let's break it down piece by piece:
+
+**`fmt.Println`** — calls the `Println` function that "lives" inside the `fmt` package. The dot (`.`) is how Go accesses something from within a package — similar to how you'd say "drawer.knife" to grab a knife from a drawer named "drawer".
+
+**`("Hello, World!")`** — the parentheses contain the *argument*: the value passed to the function. Here the argument is the string literal `"Hello, World!"` — text wrapped in double quotes, displayed exactly as written.
+
+**`Println`** — short for "**Print** **Ln**e" (print line). This function automatically adds a newline after the text — unlike `fmt.Print`, which doesn't add a newline.
+
+Notice: **there's no semicolon** at the end of the line! Go automatically inserts semicolons behind the scenes based on newline rules — you don't need to write them yourself (and in fact, you're not allowed to).
+
+### Line 7: `}`
+
+```go
+}
+```
+
+The closing curly brace, marking the end of the `main()` function's *body*. Every `{` in Go **must** have a matching `}` — if you forget one, the compiler will complain.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+**About uppercase/lowercase letters** — `Println` starts with an uppercase letter (`P`), while `main` starts with lowercase. This isn't a coincidence! In Go, a capital first letter marks a function/variable as accessible from outside its package (*exported*), while lowercase means it's only accessible within that package. We'll cover this in more depth in Unit 8.
 :::
+
+:::tip
+There are three similar print functions: `fmt.Print` (no automatic newline), `fmt.Println` (with a newline, arguments separated by spaces), and `fmt.Printf` (formats a string with placeholders like `%d`, `%s`). We'll use all three throughout this course.
+:::
+
+## Common Mistakes
+
+1. **Forgetting `import "fmt"` but still using `fmt.Println`:**
+   ```go
+   package main
+
+   func main() {
+       fmt.Println("Hello!")  // ERROR: undefined: fmt
+   }
+   ```
+   Go will refuse to compile with the message `undefined: fmt` — the package hasn't been *imported*.
+
+2. **Incomplete parentheses or quotes:**
+   ```go
+   fmt.Println("Hello, World!"   // ERROR: syntax error, missing closing parenthesis
+   ```
+   Always make sure every `(` has a matching `)`, and every opening `"` has a closing `"`.
+
+3. **Unused import:**
+   ```go
+   import (
+       "fmt"
+       "os"  // ERROR: "os" imported and not used
+   )
+
+   func main() {
+       fmt.Println("Hello!")
+   }
+   ```
+   Go **refuses to compile** if any import is completely unused — this isn't just a warning like in many other languages.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l1-ex1"
+  title="Change the Hello World Output"
+  description="Change the program to display `Hello, Go!` (exactly, matching the same case)."
+  type="code-output"
+  expectedOutput="Hello, Go!"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}`}
+  hints={["You only need to change the text inside the quotes.", "Make sure the case matches the target exactly."]}
+  explanation='Simply change the string inside fmt.Println("...") to "Hello, Go!" — the rest of the program stays the same.'
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l1-ex2"
+  title="Purpose of the fmt Package"
+  description="What does the line <code>import &quot;fmt&quot;</code> do in a Go program?"
+  type="multiple-choice"
+  options={["Brings in the fmt package so functions like Println can be used", "Creates a new file named fmt", "Prints the text 'fmt' to the screen", "Defines a variable named fmt"]}
+  correctIndex={0}
+  hints={["'import' means bringing in something from outside.", "fmt is the name of a standard library package, not a variable or a file."]}
+  explanation='import "fmt" brings in the fmt standard library package, which contains functions for printing text and reading input, such as Println, Print, and Printf.'
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u1l1-ex3"
+  title="Complete the Entry Point"
+  description="Complete the declaration of a Go program's entry point function."
+  type="fill-blank"
+  template="func {{BLANK}}() {"
+  blanks={["main"]}
+  hints={["Go's entry point function name must be all lowercase."]}
+  explanation="Every runnable Go program must have a function named exactly 'main', inside package main."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Package declaration | `package main` |
+| Import a package | `import "fmt"` |
+| Program entry point | `func main() { ... }` |
+| Print text + newline | `fmt.Println("text")` |
+| Print without newline | `fmt.Print("text")` |
+
+In the next lesson, we'll learn about **comments and variables** — how to write notes in your code and store data for later use!

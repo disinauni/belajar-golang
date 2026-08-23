@@ -2,18 +2,213 @@
 title: "Defer"
 unit: 4
 lesson: 5
-description: "English translation of lesson 05-defer.mdx"
+description: "Postponing a statement's execution until a function finishes — Go's tidy way of handling cleanup"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand that defer postpones execution until the surrounding function returns"
+  - "Know the LIFO (Last In, First Out) order for multiple defer statements"
+  - "Use defer for cleanup tasks such as closing resources"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-4/04-variadic-functions"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-4"]
+tags: ["defer", "lifo", "cleanup", "function"]
 ---
 
 # Defer
 
+Imagine you open a file, and partway through the function there are several different `return` paths (success, error, etc.). On every one of those paths, you have to remember to close that file — easy to forget, and an easy source of bugs. Go has an elegant solution: `defer`.
+
+## Defer Basics
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Start")
+    defer fmt.Println("Done (deferred)")
+    fmt.Println("Middle")
+}
+```
+
+Output:
+```
+Start
+Middle
+Done (deferred)
+```
+
+## Breaking Down Defer
+
+**`defer fmt.Println("Done (deferred)")`** — the `defer` keyword postpones this call to `fmt.Println(...)` until the **currently running function** (`main` here) is truly about to finish (right before it actually returns to its caller) — **not** until the end of the nearest block of code.
+
+Notice the output order: even though `defer` is written as the **second** line, it prints **last** — after `"Middle"`. The statement below it (`fmt.Println("Middle")`) still runs first as normal, and only after `main()` is otherwise done does the deferred statement run.
+
+Think of `defer` like sticking a note on the door that says "turn off the lights before you leave" — you keep working as usual, but that note **will** be seen and acted on right before you actually leave the room.
+
+## LIFO Order for Multiple Defers
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    defer fmt.Println("One")
+    defer fmt.Println("Two")
+    defer fmt.Println("Three")
+    fmt.Println("Main function running")
+}
+```
+
+Output:
+```
+Main function running
+Three
+Two
+One
+```
+
+When there are **multiple** `defer` statements in one function, they execute in **LIFO** order (*Last In, First Out*) — the one deferred **most recently** runs **first**. Just like a stack of plates: the last plate you put on top is the first one you pick back up.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Remember the order with a stack analogy: `defer` pushes a task onto the top of a stack, and when the function finishes, that stack gets "unwound" from the top down — so the last one in is the first one out.
 :::
+
+## Gotcha: Arguments Are Evaluated Now, Not Later
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    i := 0
+    defer fmt.Println("value of i when defer was created:", i)
+    i = 100
+    fmt.Println("value of i now:", i)
+}
+```
+
+Output:
+```
+value of i now: 100
+value of i when defer was created: 0
+```
+
+This often surprises beginners: the **arguments** of a deferred statement are evaluated **the moment that `defer` line executes**, not when the call is actually run later. So `i`'s value gets "photographed" (`0`) right when `defer` is written — even though `i` is later changed to `100`, the postponed `fmt.Println` call still uses that "frozen" `0` value.
+
+:::warning
+Only the **function call itself** is postponed (when it actually runs), not the **evaluation of its arguments**. If you need the *current* value at the moment the defer actually runs, wrap it in an anonymous function: `defer func() { fmt.Println(i) }()` — we'll dig deeper into this in the upcoming **Closures** lesson.
+:::
+
+## Common Use: Cleanup
+
+The most common pattern for `defer` is making sure a resource gets "cleaned up" no matter which path the function takes to end:
+
+```go
+func processData(valid bool) {
+    fmt.Println("Opening connection...")
+    defer fmt.Println("Closing connection.") // always runs, no matter the outcome
+
+    if !valid {
+        fmt.Println("Data is invalid, stopping here.")
+        return // defer STILL runs even with an early return
+    }
+    fmt.Println("Processing data...")
+}
+```
+
+No matter whether the function stops via a `return` in the middle or runs all the way to the end, the deferred statement is **always** executed — this is what makes `defer` so reliable for cleanup compared to manually placing "closing" code on every possible exit path.
+
+## Common Mistakes
+
+1. **Assuming defer runs immediately, in normal code order:**
+   ```go
+   defer fmt.Println("A")
+   fmt.Println("B")
+   // Output: B then A — not A then B!
+   ```
+
+2. **Assuming a defer's arguments are evaluated later, rather than when the defer statement is written:**
+   ```go
+   n := 5
+   defer fmt.Println(n) // n is "photographed" now: its value is 5
+   n = 10
+   // When the function finishes, it still prints 5, not 10
+   ```
+
+3. **Placing a defer inside a loop for a resource that should be closed per-iteration:**
+   ```go
+   for i := 0; i < 1000; i++ {
+       // defer openFile(...) here would pile up 1000 defers
+       // and all of them would only run after the ENTIRE function finishes,
+       // not at the end of each iteration — this can exhaust resources!
+   }
+   ```
+   `defer` is always tied to the **function** that's currently running, not the nearest block of code (like a loop or an `if`).
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l5-ex1"
+  title="Defer Execution Order"
+  description="Predict the output order of a program with several defer statements."
+  type="code-output"
+  expectedOutput="Program started
+C
+B
+A"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    defer fmt.Println("A")
+    defer fmt.Println("B")
+    defer fmt.Println("C")
+    fmt.Println("Program started")
+}`}
+  hints={["Remember: defer runs LIFO — the one deferred last runs first.", "Non-defer statements (a regular fmt.Println) always run before any of the defers."]}
+  explanation="The regular fmt.Println runs immediately, printing 'Program started'. Then the three defers run in LIFO order: C (deferred last) first, then B, then A (deferred first) last."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l5-ex2"
+  title="When Are Defer Arguments Evaluated"
+  description="When is the argument value of a deferred statement actually evaluated/determined?"
+  type="multiple-choice"
+  options={["The moment the defer line itself is executed, not when the function is actually called", "The moment the deferred function is actually invoked at the end", "The moment the program is first compiled", "Arguments are never evaluated for a defer statement"]}
+  correctIndex={0}
+  hints={["Remember the example where variable i got 'photographed' before it was changed.", "Only the function call is postponed, not the evaluation of its arguments."]}
+  explanation="A defer's arguments are evaluated the instant the defer line executes (its value is 'frozen' right then). Only the actual function call is postponed until the surrounding function finishes."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l5-ex3"
+  title="Complete the Defer Statement"
+  description="Fill in the keyword that postpones a function call's execution until the surrounding function finishes."
+  type="fill-blank"
+  template='{{BLANK}} fmt.Println("Done")'
+  blanks={["defer"]}
+  hints={["This keyword has the same name as the feature you're learning about in this lesson."]}
+  explanation="The 'defer' keyword postpones the function call that follows it until the currently running function is truly about to finish."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Postponing execution | `defer fmt.Println("done")` |
+| Runs when | The surrounding function finishes (right before it actually returns) |
+| Multiple-defer order | LIFO — deferred last, runs first |
+| Argument evaluation | At the moment the defer line executes, not when it runs later |
+| Common use | Cleanup (closing files, connections, etc.), closing messages |
+
+Now it's time for a slightly more challenging but very powerful topic: **closures** — anonymous functions that can "remember" and access variables from the scope outside themselves. We'll also uncover one classic gotcha that often trips up beginners!

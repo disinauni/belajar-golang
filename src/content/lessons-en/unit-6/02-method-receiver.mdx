@@ -1,19 +1,212 @@
 ---
-title: "Methods & Receivers"
+title: "Method & Receiver"
 unit: 6
 lesson: 2
-description: "English translation of lesson 02-method-receiver"
+description: "Attaching functions to a struct with method, and understanding value receiver vs pointer receiver"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare a method with receiver syntax"
+  - "Tell value receiver and pointer receiver apart"
+  - "Choose the right receiver type for the situation"
 estimatedTime: 40
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-6/01-struct"]
+translationStatus: "complete"
+difficulty: "intermediate"
+tags: ["method", "receiver", "pointer", "struct"]
 ---
 
-# Methods & Receivers
+# Method & Receiver
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+A struct that only stores data is useful, but a struct becomes far more useful once it has **behavior** — functions "attached" directly to it. In Go, functions like this are called **methods**, and the way you attach them is called a **receiver**.
+
+## Declaring a Method
+
+```go
+package main
+
+import "fmt"
+
+type Square struct {
+    Side float64
+}
+
+func (s Square) Area() float64 {
+    return s.Side * s.Side
+}
+
+func main() {
+    box := Square{Side: 4}
+    fmt.Println(box.Area())
+}
+```
+
+Output:
+```
+16
+```
+
+## Breaking Down the Method Syntax
+
+**`func (s Square) Area() float64 { ... }`** — this is a method, not a regular function. There's exactly one difference: `(s Square)` sits between `func` and the method name. This part is called the **receiver** — it tells Go "this method is attached to the `Square` type".
+
+Picture the receiver like a "belongs to" label on an item. `func Area(s Square) float64` (a regular function) and `func (s Square) Area() float64` (a method) essentially do the same thing — but a method can be called with `box.Area()`, far more natural than `Area(box)`.
+
+**`s`** — the receiver name, freely chosen (convention favors short names, usually the type's first letter). Inside the method body, `s` acts like a regular parameter representing the struct instance that called it.
+
+**`box.Area()`** — calls the method. Go automatically fills `s` with `box`.
+
+## Value Receiver vs Pointer Receiver
+
+This is the **most important** part of methods in Go: there are two kinds of receiver, and the difference is crucial.
+
+```go
+package main
+
+import "fmt"
+
+type Square struct {
+    Side float64
+}
+
+// Value receiver -- operates on a COPY
+func (s Square) ChangeSideWrong(newSide float64) {
+    s.Side = newSide
+}
+
+// Pointer receiver -- operates on the ORIGINAL data
+func (s *Square) ChangeSide(newSide float64) {
+    s.Side = newSide
+}
+
+func main() {
+    box := Square{Side: 4}
+
+    box.ChangeSideWrong(10)
+    fmt.Println(box.Side) // 4 -- unchanged!
+
+    box.ChangeSide(10)
+    fmt.Println(box.Side) // 10 -- changed!
+}
+```
+
+Output:
+```
+4
+10
+```
+
+## Breaking Down Value vs Pointer Receiver
+
+**Value receiver `(s Square)`** — Go creates a **copy** of the struct when the method is called. Every change to `s` inside the method only happens to that copy, and it's gone as soon as the method finishes. Picture this like giving someone else a **photocopy** of your document — they can scribble on the photocopy all they want, your original stays clean.
+
+**Pointer receiver `(s *Square)`** — Go hands over the **memory address** of the original struct, not a copy. Changes to `s` directly change the original data. This is like handing over the **actual house key**, not a photocopy — whoever holds that key can genuinely change what's inside the house.
+
+**`box.ChangeSide(10)`** — notice, `box` isn't a pointer, yet this is still valid! Go automatically turns it into `(&box).ChangeSide(10)` behind the scenes, as long as `box` is a variable whose address can be taken (*addressable*).
+
+:::tip
+When should you use a pointer receiver? Whenever the method **needs to change** the struct's original data. When should you use a value receiver? When the method only **reads** data (like `Area()` above) and never changes it.
 :::
+
+:::warning
+If one method of a type uses a pointer receiver, Go convention recommends **all** methods of that type use a pointer receiver too — even ones that only read data. This keeps things consistent and avoids confusion about which type you're actually holding.
+:::
+
+## Common Mistakes
+
+1. **Using a value receiver when you need to change the original data:**
+   ```go
+   type Counter struct {
+       Total int
+   }
+
+   func (c Counter) Add() { // logic ERROR: value receiver, not pointer
+       c.Total++
+   }
+
+   func main() {
+       c := Counter{}
+       c.Add()
+       c.Add()
+       fmt.Println(c.Total) // 0 -- not 2, because Add() only changes a copy
+   }
+   ```
+   This code compiles without error, but the result is logically wrong — a classic Go beginner trap.
+
+2. **Calling a pointer receiver method on a value that isn't addressable:**
+   ```go
+   type Cat struct{ Age int }
+   func (c *Cat) AddAge() { c.Age++ }
+
+   func main() {
+       cats := map[string]Cat{"Tom": {Age: 3}}
+       cats["Tom"].AddAge() // ERROR: cannot call pointer method on cats["Tom"]
+   }
+   ```
+   A value inside a map is **not addressable** — Go can't take its address, so a method with a pointer receiver can't be called on it directly.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l2-ex1"
+  title="A Method with a Pointer Receiver"
+  description="Complete the program so the Deposit method actually changes Balance, printing `Balance: 150`."
+  type="code-output"
+  expectedOutput="Balance: 150"
+  starterCode={`package main
+
+import "fmt"
+
+type Savings struct {
+    Balance int
+}
+
+func (s *Savings) Deposit(amount int) {
+    s.Balance = s.Balance + amount
+}
+
+func main() {
+    s := Savings{Balance: 100}
+    s.Deposit(50)
+    fmt.Printf("Balance: %d\\n", s.Balance)
+}`}
+  hints={["This code is actually already correct -- try running it first.", "Notice Deposit's receiver already uses the * sign (pointer receiver), so the Balance change is preserved."]}
+  explanation="Because Deposit uses a pointer receiver (*Savings), changing s.Balance inside the method directly changes the original s data, not a copy -- so Balance ends up as 100 + 50 = 150."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l2-ex2"
+  title="Value vs Pointer Receiver"
+  description="A method with a value receiver changes a struct field inside its body. What happens to the original struct once the method finishes?"
+  type="multiple-choice"
+  options={["The original struct doesn't change -- only the copy changes", "The original struct changes too", "The program fails to compile", "The program panics at runtime"]}
+  correctIndex={0}
+  hints={["A value receiver operates on a copy of the struct, not the original data.", "The code still compiles successfully -- the problem is purely logical, not syntax."]}
+  explanation="A value receiver receives a copy of the struct, so field changes inside the method only apply to that copy and vanish once the method finishes. To change the original data, the method must use a pointer receiver."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l2-ex3"
+  title="Complete the Pointer Receiver"
+  description="Complete the method declaration so it uses a pointer receiver of type *Car."
+  type="fill-blank"
+  template="func (c {{BLANK}}Car) Fill(liters int) {"
+  blanks={["*"]}
+  hints={["A pointer receiver is marked with one symbol before the type name."]}
+  explanation="Adding * before the type name (func (c *Car) ...) makes the method use a pointer receiver, so it can change the struct's original data."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Method declaration | `func (s Square) Area() float64 { ... }` |
+| Value receiver | `func (s Square) Method()` — operates on a copy |
+| Pointer receiver | `func (s *Square) Method()` — operates on the original data |
+| Call a method | `box.Area()` |
+| Auto address | `box.ChangeSide(10)` equals `(&box).ChangeSide(10)` |
+
+In the next lesson, we'll learn **struct embedding** — a way to insert one struct into another so its fields and methods automatically "surface" on the outer struct.

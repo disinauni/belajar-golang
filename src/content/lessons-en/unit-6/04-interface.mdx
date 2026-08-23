@@ -1,19 +1,212 @@
 ---
-title: "Interfaces"
+title: "Interface"
 unit: 6
 lesson: 4
-description: "English translation of lesson 04-interface"
+description: "An abstract type made of a set of method signatures, satisfied implicitly with no implements keyword"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare an interface with a set of method signatures"
+  - "Understand implicit interface satisfaction -- a Go hallmark"
+  - "Write functions that accept a parameter of interface type"
 estimatedTime: 40
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-6"]
+prerequisites: ["unit-6/03-embedding"]
+translationStatus: "complete"
+difficulty: "intermediate"
+tags: ["interface", "polymorphism", "implicit"]
 ---
 
-# Interfaces
+# Interface
+
+This is one of Go's most distinctive features. In many languages (Java, C#), a type must **explicitly** declare `implements InterfaceName`. In Go, **there's no such step at all** — a type automatically satisfies an interface simply by implementing all the methods it requires. This is called **implicit interface satisfaction**, and it changes how you design programs in Go.
+
+## Declaring and Satisfying an Interface
+
+```go
+package main
+
+import "fmt"
+
+type Shape interface {
+    Area() float64
+}
+
+type Square struct {
+    Side float64
+}
+
+func (s Square) Area() float64 {
+    return s.Side * s.Side
+}
+
+type Circle struct {
+    Radius float64
+}
+
+func (c Circle) Area() float64 {
+    return 3.14 * c.Radius * c.Radius
+}
+
+func printArea(s Shape) {
+    fmt.Printf("Area: %.2f\n", s.Area())
+}
+
+func main() {
+    sq := Square{Side: 4}
+    c := Circle{Radius: 3}
+
+    printArea(sq)
+    printArea(c)
+}
+```
+
+Output:
+```
+Area: 16.00
+Area: 28.26
+```
+
+## Breaking Down the Interface
+
+**`type Shape interface { Area() float64 }`** — declares an interface type named `Shape`. Its contents are just **method signatures** (name, parameters, return type) — no body, no fields.
+
+**`Square` and `Circle`** — look closely: **there isn't a single line** saying "Square implements Shape". Both structs automatically satisfy the `Shape` interface simply because each has an `Area() float64` method with exactly the same signature the interface requires.
+
+Picture an interface like a job posting that only lists a requirement: "can drive a car". Anyone who has that ability automatically "qualifies" — no matter their background, and with no need to formally register as a "qualifier".
+
+**`func printArea(s Shape)`** — the parameter `s` is of interface type `Shape`, not a concrete struct type. This means the function can accept **a value of any type**, as long as that type has an `Area() float64` method. This is the power of interfaces: one function can work with many different types, as long as its method "contract" is satisfied.
+
+:::tip
+This principle is sometimes called the static version of *duck typing*: "if it walks like a duck and quacks like a duck, treat it as a duck" — but in Go, all of this is still strictly checked at compile time, not at runtime like in Python.
+:::
+
+## The Empty Interface
+
+An interface with no methods at all, written `interface{}`, can hold a value **of any type** — because its requirement is empty, every type automatically satisfies it.
+
+```go
+func printAnything(v interface{}) {
+    fmt.Println(v)
+}
+
+func main() {
+    printAnything(42)
+    printAnything("hello")
+    printAnything(true)
+}
+```
+
+Output:
+```
+42
+hello
+true
+```
+
+:::warning
+Always write `interface{}` literally as shown above for the empty interface. The Go version used in this course (and many production projects) doesn't yet support the `any` alias — that feature only arrived in Go 1.18 and later.
+:::
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+A method signature must match **exactly** — including parameter types and return type. If `Area()` returns `int` when the interface requires `float64`, that type does **not** satisfy the interface, even though the name matches.
 :::
+
+## Common Mistakes
+
+1. **A method's return type doesn't match the interface:**
+   ```go
+   func (s Square) Area() int { // should be float64
+       return int(s.Side * s.Side)
+   }
+
+   func main() {
+       var sh Shape = Square{Side: 4}
+       // ERROR: cannot use Square{...} (type Square) as type Shape:
+       // Square does not implement Shape (wrong type for Area method)
+   }
+   ```
+
+2. **A method is declared with a pointer receiver, but used through a value:**
+   ```go
+   type Triangle struct {
+       Base, Height float64
+   }
+
+   func (t *Triangle) Area() float64 {
+       return t.Base * t.Height / 2
+   }
+
+   func main() {
+       var sh Shape = Triangle{Base: 4, Height: 3}
+       // ERROR: cannot use Triangle{...} (type Triangle) as type Shape:
+       // Triangle does not implement Shape (Area method has pointer receiver)
+   }
+   ```
+   If a method uses a pointer receiver, only `*Triangle` satisfies the interface, not plain `Triangle`. The fix: `var sh Shape = &Triangle{Base: 4, Height: 3}`.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u6l4-ex1"
+  title="Implicit Interface Satisfaction"
+  description="Complete the program so it prints `Sound: Woof woof!` -- make the Dog struct satisfy the Animal interface without an implements keyword."
+  type="code-output"
+  expectedOutput="Sound: Woof woof!"
+  starterCode={`package main
+
+import "fmt"
+
+type Animal interface {
+    Sound() string
+}
+
+type Dog struct{}
+
+func (d Dog) Sound() string {
+    return "Woof woof!"
+}
+
+func main() {
+    var a Animal = Dog{}
+    fmt.Printf("Sound: %s\\n", a.Sound())
+}`}
+  hints={["This code is actually already correct -- try running it.", "Dog automatically satisfies the Animal interface because it has a Sound() string method with a matching signature."]}
+  explanation="Dog satisfies the Animal interface simply by implementing the Sound() string method -- no implements declaration needed at all, this is Go's signature implicit interface satisfaction."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l4-ex2"
+  title="How a Type Satisfies an Interface"
+  description="How is a type in Go declared to satisfy an interface?"
+  type="multiple-choice"
+  options={["By writing the implements keyword followed by the interface name", "By implementing all the methods the interface requires, with exactly matching signatures", "By registering the type to the interface through a special function", "By embedding that interface as a field with the same name"]}
+  correctIndex={1}
+  hints={["Go has no implements keyword at all.", "Just match the method name, parameters, and return type."]}
+  explanation="Go uses implicit interface satisfaction: a type automatically satisfies an interface as soon as it implements all the required methods, with exactly matching signatures -- with no explicit declaration whatsoever."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u6l4-ex3"
+  title="Complete the Interface Declaration"
+  description="Complete the Shape interface declaration so it requires an Area method that returns float64."
+  type="fill-blank"
+  template="type Shape interface {\n    Area() {{BLANK}}\n}"
+  blanks={["float64"]}
+  hints={["The return type used for area calculations is usually a decimal number."]}
+  explanation="The method signature Area() float64 requires every type that wants to satisfy the Shape interface to have an Area method returning a float64 value."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Interface declaration | `type Shape interface { Area() float64 }` |
+| Implicit satisfaction | Just implement the method, no `implements` needed |
+| Parameter of interface type | `func printArea(s Shape)` |
+| The empty interface | `func printAnything(v interface{})` |
+| Pointer receiver gotcha | Only `*Type` satisfies the interface if the method uses a pointer receiver |
+
+In the next lesson, we cover **error handling** — how Go treats failure as a regular *value*, not through exceptions like other languages.

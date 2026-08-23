@@ -1,19 +1,270 @@
 ---
-title: "Maps"
+title: "Map"
 unit: 5
 lesson: 3
-description: "English translation of lesson 03-map"
+description: "Go's key-value data structure — storing and looking up data through keys, not numeric index"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Create and access maps with a literal and with make()"
+  - "Check whether a key exists using the comma-ok pattern"
+  - "Delete entries with delete() and understand that iteration order isn't guaranteed"
 estimatedTime: 35
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-5/02-slice"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-5"]
+tags: ["map", "data-structure", "key-value"]
 ---
 
-# Maps
+# Map
+
+Slice accesses data through a numeric index — `data[0]`, `data[1]`, and so on. But sometimes you want to access data through a **name**, not a position: the exam grade of "Andi", the stock of an item called "Apple". For that, Go has `map` — a key-value data structure, similar to a dictionary.
+
+## Creating a Map
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    grades := map[string]int{
+        "Andi": 90,
+        "Budi": 85,
+    }
+
+    fmt.Println(grades)
+    fmt.Println("Andi's grade:", grades["Andi"])
+}
+```
+
+Output:
+```
+map[Andi:90 Budi:85]
+Andi's grade: 90
+```
+
+## Breaking Down the Map Literal
+
+**`map[string]int{...}`** — a map type is written as `map[KeyType]ValueType`. Here, the key is of type `string` (the student's name) and the value is of type `int` (the grade). You can use any type for the value, but the key must be a type that's comparable (`==`) — usually `string`, a number, or `bool`.
+
+**`grades["Andi"]`** — accesses a value through its key, similar to how you access a slice element through an index, except here the "index" is a string.
+
+**`fmt.Println(grades)`** prints `map[Andi:90 Budi:85]` — notice the order is **alphabetical by key** (Andi before Budi). This isn't a coincidence: `fmt` deliberately sorts keys when printing a map, so the output is always consistent and easy to read.
+
+## Creating a Map with `make()`
+
+If you don't know its contents upfront, create an empty map with `make()`, then fill it in later:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    stock := make(map[string]int)
+    stock["Apple"] = 50
+    stock["Orange"] = 30
+
+    fmt.Println(stock)
+    fmt.Println("Total item types:", len(stock))
+}
+```
+
+Output:
+```
+map[Apple:50 Orange:30]
+Total item types: 2
+```
+
+`len(stock)` on a map returns the number of **key-value pairs** stored, not a character count or anything like that.
+
+## Checking Whether a Key Exists: The Comma-Ok Pattern
+
+This is an important part: accessing a key that **doesn't exist** in a map doesn't produce an error — Go silently returns the zero value of the value's type. This can be confusing!
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    stock := map[string]int{"Apple": 50, "Orange": 30}
+
+    amount, ok := stock["Mango"]
+    if ok {
+        fmt.Println("Mango stock:", amount)
+    } else {
+        fmt.Println("Mango is not in stock")
+    }
+}
+```
+
+Output:
+```
+Mango is not in stock
+```
+
+**`amount, ok := stock["Mango"]`** — this is the **comma-ok** pattern. The second value (`ok`, of type `bool`) tells you whether the key actually exists in the map. If you only wrote `amount := stock["Mango"]` (without `ok`), you'd get `0` — and wouldn't be able to tell "Mango's stock really is 0" apart from "Mango was never in the data at all".
+
+:::warning
+`m[key]` without comma-ok is a classic trap. If the value type is `int`, a key that doesn't exist looks exactly the same as a key whose value really is `0`. Always use `v, ok := m[key]` when that difference matters to your logic.
+:::
+
+## Deleting an Entry with `delete()`
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    stock := map[string]int{"Apple": 50, "Orange": 30, "Mango": 10}
+    delete(stock, "Orange")
+
+    fmt.Println(stock)
+}
+```
+
+Output:
+```
+map[Apple:50 Mango:10]
+```
+
+`delete(stock, "Orange")` removes the key-value pair with key `"Orange"`. If the key doesn't exist, `delete` does nothing — no error, no panic.
+
+## Iteration Order Isn't Guaranteed
+
+Remember, `fmt.Println` sorts keys when printing a map — but that's special behavior from `fmt`. If you **iterate manually** with `for range`, the order is **deliberately randomized** by Go every time the program runs!
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    grades := map[string]int{"Citra": 88, "Andi": 90, "Budi": 85}
+
+    var names []string
+    for name := range grades {
+        names = append(names, name)
+    }
+    sort.Strings(names)
+
+    for _, name := range names {
+        fmt.Println(name, ":", grades[name])
+    }
+}
+```
+
+Output:
+```
+Andi : 90
+Budi : 85
+Citra : 88
+```
+
+If you directly wrote `for name, g := range grades { fmt.Println(name, g) }`, the order could differ every time it runs. The solution: collect all the keys into a slice, sort them with `sort.Strings`, then iterate through that sorted slice.
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Why does Go deliberately randomize `for range` order on a map? So programmers don't silently depend on a particular order that's actually not guaranteed — if you need an order, sort it yourself explicitly like the example above.
 :::
+
+## Common Mistakes
+
+1. **Accessing a key that doesn't exist without comma-ok, thinking it's an error:**
+   ```go
+   stock := map[string]int{"Apple": 50}
+   fmt.Println(stock["Mango"]) // Output: 0 — not an error, just the zero value!
+   ```
+
+2. **Writing to a map that hasn't been `make()`'d (nil map):**
+   ```go
+   var stock map[string]int // nil map, not yet initialized
+   stock["Apple"] = 50      // ERROR: panic: assignment to entry in nil map
+   ```
+   Reading from a nil map is safe (the result is the zero value), but **writing** to a nil map always panics. Fix: always `make()` first before writing.
+
+3. **Relying on `for range` order on a map:**
+   ```go
+   for name, studentGrade := range studentData {
+       fmt.Println(name, studentGrade) // different order every time it runs!
+   }
+   ```
+   Fix: collect the keys into a slice, sort them with `sort.Strings`, then iterate.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l3-ex1"
+  title="Access a Value with the Right Key"
+  description="Change the program so it prints `Orange stock: 30`."
+  type="code-output"
+  expectedOutput="Orange stock: 30"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    stock := map[string]int{"Apple": 50, "Orange": 30}
+    fmt.Println("Orange stock:", stock["Apple"])
+}`}
+  hints={["The key you access must match what's shown in the text.", "Change stock[\"Apple\"] to stock[\"Orange\"]."]}
+  explanation='stock["Orange"] takes the value from key "Orange", which is 30 — not from key "Apple".'
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l3-ex2"
+  title="The Comma-Ok Pattern"
+  description="Fix the program so it prints `Key not found` when the key doesn't exist in the map."
+  type="code-output"
+  expectedOutput="Key not found"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    age := map[string]int{"Andi": 20, "Budi": 22}
+
+    _, ok := age["Citra"]
+    if ok {
+        fmt.Println("Key found")
+    } else {
+        fmt.Println("Key found")
+    }
+}`}
+  hints={["Look at the message inside the else block — it's still wrong.", "Change the message inside else to \"Key not found\"."]}
+  explanation='ok is false because "Citra" doesn’t exist in the age map, so the else block runs — its message needs to reflect that.'
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l3-ex3"
+  title="Zero Value on a Missing Key"
+  description="What happens when you access a key that doesn't exist in a `map[string]int` without using the comma-ok pattern?"
+  type="multiple-choice"
+  options={["The program panics at runtime", "Go returns the zero value of the value type (e.g. 0), without telling you the key actually doesn't exist", "The program fails to compile", "Go returns nil"]}
+  correctIndex={1}
+  hints={["Remember the 'classic trap' section in this lesson.", "Reading a missing key is safe, but the result can be confusing."]}
+  explanation="Accessing a key that doesn't exist without comma-ok returns the zero value of the value's type (0 for int, an empty string for string, etc.) — with no sign that the key never existed at all."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Map type | `map[string]int` |
+| Map literal | `map[string]int{"a": 1}` |
+| Create an empty map | `make(map[string]int)` |
+| Access a value | `m["key"]` |
+| Check if a key exists | `v, ok := m["key"]` |
+| Delete an entry | `delete(m, "key")` |
+| Number of entries | `len(m)` |
+| Iteration order | Not guaranteed — sort manually if needed |
+
+We now have array, slice, and map — Go's three core data structures. Next we return to strings, but this time we dive deeper: **string, rune, and byte**.

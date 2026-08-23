@@ -1,19 +1,220 @@
 ---
-title: "Break, Continue & Labels"
+title: "Break, Continue & Label"
 unit: 3
 lesson: 3
-description: "English translation of lesson 03-break-continue-label.mdx"
+description: "Control loop flow with break, continue, and labels for nested loops"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Use break to stop a loop early"
+  - "Use continue to skip a single iteration"
+  - "Use labels to control nested loops from the outside"
 estimatedTime: 25
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-3/02-range"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-3"]
+tags: ["break", "continue", "label", "loop"]
 ---
 
-# Break, Continue & Labels
+# Break, Continue & Label
+
+You already used `break` briefly in the For Loop lesson. Now let's master `break`, its counterpart `continue`, and a Go-specific trick for nested loops: **labels**.
+
+## Break: Stopping a Loop
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i <= 10; i++ {
+        if i == 5 {
+            break
+        }
+        fmt.Println(i)
+    }
+    fmt.Println("Loop done")
+}
+```
+
+Output:
+```
+1
+2
+3
+4
+Loop done
+```
+
+**`break`** immediately stops the loop **entirely**, jumping to the line right after the loop ends. Notice the number `5` is never printed — as soon as `i == 5`, the loop stops right away.
+
+## Continue: Skipping One Iteration
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i <= 6; i++ {
+        if i%2 == 0 {
+            continue
+        }
+        fmt.Println(i)
+    }
+}
+```
+
+Output:
+```
+1
+3
+5
+```
+
+**`continue`** skips **the rest of the code in the current iteration** and jumps straight to the next iteration (the post clause still runs). Here, every even `i` is skipped — `fmt.Println(i)` is never reached for even numbers, so only odd numbers get printed.
+
+:::tip
+The difference between `break` and `continue`: `break` = "stop completely," `continue` = "skip this one, move on to the next." If you're having trouble telling them apart, think of `break` as leaving the room, and `continue` as skipping past one table to reach the next table in the same room.
+:::
+
+## Labels for Nested Loops
+
+This is a distinctive Go feature rarely found in other languages: a plain `break`/`continue` only affects the **innermost** loop it's written in. If you have a loop inside a loop and want to `break` all the way out to the **outer** loop, you need a **label**.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+searchNumber:
+    for i := 1; i <= 3; i++ {
+        for j := 1; j <= 3; j++ {
+            if i*j == 6 {
+                fmt.Println("Found:", i, "x", j, "= 6")
+                break searchNumber
+            }
+            fmt.Println("Trying:", i, "x", j)
+        }
+    }
+    fmt.Println("Search done")
+}
+```
+
+Output:
+```
+Trying: 1 x 1
+Trying: 1 x 2
+Trying: 1 x 3
+Trying: 2 x 1
+Trying: 2 x 2
+Found: 2 x 3 = 6
+Search done
+```
+
+## Breaking Down Labels
+
+**`searchNumber:`** — the label, written right before the `for` keyword you want to mark. Its name is up to you; convention is camelCase, like a variable name.
+
+**`break searchNumber`** — stops **the loop that owns that label**, not just the innermost one. Without the label, `break` here would only stop the inner `j` loop, and the outer `i` loop would keep running — not what we want.
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+`continue label` is also valid — it jumps to the next iteration of the loop that owns that label, not just the innermost one. This pattern is rarely needed for simple cases, but it's very useful when you need to search inside a nested data structure (a matrix, a grid, etc.).
 :::
+
+## Common Mistakes
+
+1. **Thinking a plain break exits ALL nested loops:**
+   ```go
+   for i := 1; i <= 3; i++ {
+       for j := 1; j <= 3; j++ {
+           if i*j == 6 {
+               break  // only exits the j loop, the i loop keeps going!
+           }
+       }
+   }
+   ```
+   If you mean to exit both loops at once, you need a label — `break` without one only affects the nearest loop.
+
+2. **Forgetting that continue still runs the post clause:**
+   ```go
+   for i := 0; i < 5; i++ {
+       if i == 2 {
+           continue  // i++ still runs, the loop doesn't get stuck
+       }
+       fmt.Println(i)
+   }
+   ```
+   `continue` does not skip the post clause (`i++`) — if you forget this and think you need to increment manually before `continue`, you might accidentally skip two values at once.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u3l3-ex1"
+  title="Skip Multiples of 3"
+  description="Complete the program so it prints the numbers 1-6 except multiples of 3."
+  type="code-output"
+  expectedOutput="1
+2
+4
+5"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i <= 6; i++ {
+        if i%3 == 0 {
+            continue
+        }
+        fmt.Println(i)
+    }
+}`}
+  hints={["continue skips the rest of the code in that iteration, moving on to the next one.", "This code is already correct — try running it!"]}
+  explanation="continue skips fmt.Println(i) every time i is a multiple of 3 (3 and 6), so only 1, 2, 4, 5 get printed."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l3-ex2"
+  title="Break in Nested Loops"
+  description="Without a label, will a break inside the inner (nested) loop stop which loop?"
+  type="multiple-choice"
+  options={["All loops at once", "Only the innermost loop where break is written", "Only the outer loop", "The program stops entirely"]}
+  correctIndex={1}
+  hints={["Remember why labels are needed in the first place.", "A plain break is 'local' to the loop it's inside."]}
+  explanation="A break without a label only stops the nearest/innermost loop it's written in. To stop the outer loop from inside a nested loop, you need a break with a label."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u3l3-ex3"
+  title="Complete the Labeled Break"
+  description="Complete the code to exit the outer loop labeled 'search' from inside the nested loop."
+  type="fill-blank"
+  template={`search:
+for i := 0; i < 3; i++ {
+    for j := 0; j < 3; j++ {
+        if i == j {
+            break {{BLANK}}
+        }
+    }
+}`}
+  blanks={["search"]}
+  hints={["The same label name declared above the outer loop."]}
+  explanation="break search stops the outer loop labeled 'search', not just the inner loop where break is written."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Effect |
+|---|---|
+| `break` | Stops the nearest loop entirely |
+| `continue` | Skips the rest of the iteration, moves to the next |
+| `label:` | Names a loop |
+| `break label` / `continue label` | Controls the outer loop from inside a nested loop |
+
+In the next lesson, we'll dig deeper into **nested loops** — loops inside loops for building patterns and tables!

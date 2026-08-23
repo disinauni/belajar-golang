@@ -2,18 +2,194 @@
 title: "Testing with go test"
 unit: 8
 lesson: 2
-description: "English translation of lesson 02-testing.mdx"
+description: "Writing unit tests for Go code with the testing package and the table-driven test pattern"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand why automated testing matters"
+  - "Write a test function with func TestX(t *testing.T)"
+  - "Use the table-driven test pattern that's idiomatic in Go"
 estimatedTime: 40
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-8/01-package-module"]
+translationStatus: "complete"
 difficulty: "intermediate"
-tags: ["unit-8"]
+tags: ["testing", "go-test", "table-driven-test"]
 ---
 
 # Testing with go test
 
+Imagine you have a `CalculateDiscount` function used in 50 different places across your application. One day you "fix" that function — except your fix actually breaks the logic for a certain case. Without automated tests, you only find out there's a bug after a user complains. With automated tests, you find out **before** the code ever gets deployed.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Real testing needs a separate file (`_test.go`) and the `go test` command — not `go run` — so it can't be run directly through this site's single-file playground. The `_test.go` code in this lesson is meant to be **read and understood**; the exercises at the end are still `package main` programs you can run.
 :::
+
+## Anatomy of a Test Function
+
+Say you have this simple function in a file `math.go`:
+
+```go
+package math
+
+func Add(a, b int) int {
+    return a + b
+}
+```
+
+Its test is written in a separate file called `math_test.go`:
+
+```go
+package math
+
+import "testing"
+
+func TestAdd(t *testing.T) {
+    result := Add(2, 3)
+    want := 5
+
+    if result != want {
+        t.Errorf("Add(2, 3) = %d; want %d", result, want)
+    }
+}
+```
+
+Running `go test` in a terminal compiles and runs every function starting with `Test` in that package.
+
+## Breaking Down the Test Function
+
+**The `_test.go` file name** — Go automatically recognizes files ending in `_test.go` as test files, and excludes them when you `go build` a regular program.
+
+**`func TestAdd(t *testing.T)`** — a test function's name **must** start with `Test` (capitalized), followed by the parameter `t *testing.T` — an object that provides methods for reporting failures.
+
+**`t.Errorf(...)`** — reports a **failed** test, but lets other tests in the same file keep running. Its formatting works just like `fmt.Printf`.
+
+**`t.Fatalf(...)`** — similar to `Errorf`, but stops that test function immediately (used when continuing the test no longer makes sense, for example after a fatal error like a failed connection).
+
+If neither `t.Errorf` nor `t.Fatalf` gets called, the test is automatically considered **passing** — Go doesn't need you to write an explicit "assert success."
+
+## Table-Driven Tests — The Most Idiomatic Pattern
+
+Rather than writing a separate test function for every scenario, the Go idiom is a **table-driven test**: a single slice holding many test cases, run in one loop.
+
+```go
+package math
+
+import "testing"
+
+func TestAdd(t *testing.T) {
+    cases := []struct {
+        name string
+        a, b int
+        want int
+    }{
+        {"two positives", 2, 3, 5},
+        {"with zero", 0, 5, 5},
+        {"two negatives", -2, -3, -5},
+    }
+
+    for _, c := range cases {
+        t.Run(c.name, func(t *testing.T) {
+            result := Add(c.a, c.b)
+            if result != c.want {
+                t.Errorf("Add(%d, %d) = %d; want %d", c.a, c.b, result, c.want)
+            }
+        })
+    }
+}
+```
+
+## Breaking Down the Table-Driven Test
+
+**`cases := []struct{ ... }{ ... }`** — a slice of anonymous structs, each representing one test scenario: a descriptive name, inputs (`a`, `b`), and the expected result (`want`).
+
+**`for _, c := range cases`** — a regular loop (from Unit 3!) running each case one at a time.
+
+**`t.Run(c.name, func(t *testing.T) { ... })`** — runs a **subtest** named `c.name`. If one of the cases fails, `go test` shows exactly which subtest failed (e.g. `TestAdd/two_negatives`), not just a generic "TestAdd failed" with no details.
+
+:::tip
+Adding a new test case to this pattern just takes one new line in the `cases` slice — no need to write a whole new test function. This is exactly why this pattern is so popular in the Go community.
+:::
+
+## Common Mistakes
+
+1. **Forgetting the `Test` prefix on the function name:**
+   ```go
+   func Add2Numbers(t *testing.T) { ... }  // ERROR: not recognized as a test, go test silently skips it
+   ```
+   Go **doesn't give an error** for this — the function is just quietly skipped, making you think everything passed when that test never actually ran.
+
+2. **Calling `t.Fatalf` from a separate goroutine:**
+   ```go
+   go func() {
+       t.Fatalf("failed")  // DANGEROUS: t.Fatal must be called from the same goroutine as the test
+   }()
+   ```
+   `t.Fatal`/`t.FailNow` can only be called from the test's main goroutine — this ties back to the concurrency you learned in Unit 7.
+
+## Exercises
+
+Since `go test` can't be run through the single-file playground, the exercise below simulates the **concept of an assertion** (the core of testing) using an ordinary `package main` — the logic is exactly the same as `t.Errorf`, just called manually inside `main()`.
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u8l2-ex1"
+  title="Simple Assertion Simulation"
+  description="Complete the program so it prints 'PASS' if the function call result matches expectations."
+  type="code-output"
+  expectedOutput="PASS"
+  starterCode={`package main
+
+import "fmt"
+
+func square(n int) int {
+    return n * n
+}
+
+func main() {
+    got := square(4)
+    want := 16
+
+    if got != want {
+        fmt.Println("FAIL")
+    } else {
+        fmt.Println("PASS")
+    }
+}`}
+  hints={["This code is already correct — square(4) does produce 16.", "Try running it first to see the result."]}
+  explanation="square(4) produces 16, matching 'want', so the condition got != want is false and the program prints PASS — this is exactly the core logic behind t.Errorf under the hood."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u8l2-ex2"
+  title="Test Function Names"
+  description="Which test function will be recognized and run by the <code>go test</code> command?"
+  type="multiple-choice"
+  options={["func testAdd(t *testing.T)", "func TestAdd(t *testing.T)", "func Add_Test(t *testing.T)", "func addTest(t *testing.T)"]}
+  correctIndex={1}
+  hints={["go test looks for the capitalized prefix 'Test'.", "This also automatically makes the function exported."]}
+  explanation="go test only recognizes functions starting with capitalized 'Test', followed by the parameter (t *testing.T). Any other name is silently skipped without a warning."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u8l2-ex3"
+  title="Table-Driven Test Structure"
+  description="Complete the line that runs each test case as a subtest named after its description."
+  type="fill-blank"
+  template="t.{{BLANK}}(c.name, func(t *testing.T) { ... })"
+  blanks={["Run"]}
+  hints={["This method runs a subtest with a given name."]}
+  explanation="t.Run(name, func) runs a subtest named 'name', making go test's report more detailed whenever a case fails."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Description |
+|---|---|
+| Test file | Ends in `_test.go`, separate from regular code |
+| Test function name | Starts with capitalized `Test`, parameter `t *testing.T` |
+| Marking failure | `t.Errorf(...)` (continues) or `t.Fatalf(...)` (stops) |
+| Table-driven test | Slice of test cases + loop + `t.Run` |
+
+In the next lesson, we'll cover **JSON encoding** — how to turn a Go struct into JSON text and back, an essential skill for communication between applications!

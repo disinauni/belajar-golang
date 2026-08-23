@@ -2,18 +2,270 @@
 title: "Project: Number Guessing Game"
 unit: 2
 lesson: 4
-description: "English translation of lesson 04-project-tebak-angka.mdx"
+description: "Build a number guessing game that combines every branching concept from Unit 2"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Combine if-else and switch in a single program"
+  - "Use the math/rand package to generate random numbers"
+  - "Build an interactive game with a limited number of attempts"
 estimatedTime: 60
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-2/03-switch"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-2"]
+tags: ["project", "branching", "random", "game"]
 ---
 
 # Project: Number Guessing Game
 
-:::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Time to apply everything you learned in Unit 2 — comparison operators, logical operators, if-else, and switch — to build a simple game: **Guess the Number**.
+
+## Program Specification
+
+Our game should be able to:
+
+1. Generate a random secret number between 1-100
+2. Ask the user to guess repeatedly (up to 7 attempts)
+3. Give a "too high" or "too low" hint for every wrong guess
+4. Announce a win/loss at the end
+
+Example of the expected interaction:
+```
+=== GUESS THE NUMBER (1-100) ===
+You have 7 chances.
+
+Guess #1: 50
+Too high!
+
+Guess #2: 25
+Too low!
+
+Guess #3: 37
+Correct! You won in 3 attempts.
+```
+
+## Stage 1: Planning
+
+**What data do we need to store?**
+- The secret number (`int`, a random result from 1-100)
+- The user's guess for each attempt (`int`)
+- The number of attempts used so far (`int`)
+- Win/loss status (`bool`)
+
+**Program flow:**
+1. Generate the random secret number
+2. Loop up to 7 times:
+   - Ask the user for a guess
+   - Compare it against the secret number
+   - If correct: win, exit the loop
+   - If wrong: give a too-high/too-low hint
+3. If all 7 attempts run out without a win: lose, show the correct number
+
+**Edge cases to consider:**
+- What if the user guesses correctly on the last attempt?
+- What if the user guesses the same number repeatedly?
+
+## Stage 2: Pseudocode
+
+```
+PROGRAM GuessTheNumber:
+    secretNumber = random(1, 100)
+    maxAttempts = 7
+
+    FOR attempt FROM 1 TO maxAttempts:
+        ASK guess from user
+        IF guess == secretNumber:
+            PRINT "Correct! Won in " + attempt + " attempts"
+            EXIT program
+        IF guess > secretNumber:
+            PRINT "Too high!"
+        ELSE:
+            PRINT "Too low!"
+
+    PRINT "Lost! The correct number was: " + secretNumber
+```
+
+## Stage 3: Implementation
+
+Since `for` loops aren't formally covered until Unit 3, we'll keep this first version simple — just a single guess for now, before wrapping it in a loop later in the Bonus Challenge.
+
+### Version 1: A Single Guess
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strconv"
+    "time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    secretNumber := rand.Intn(100) + 1 // 1-100
+
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== GUESS THE NUMBER (1-100) ===")
+    fmt.Print("Your guess: ")
+    scanner.Scan()
+    guess, _ := strconv.Atoi(scanner.Text())
+
+    if guess == secretNumber {
+        fmt.Println("Correct!")
+    } else if guess > secretNumber {
+        fmt.Println("Too high!")
+    } else {
+        fmt.Println("Too low!")
+    }
+}
+```
+
+Try running it a few times — notice the secret number changes each time the program runs.
+
+### Version 2: Limit Attempts with Switch for the Status
+
+Now let's add attempt tracking and a final result announcement, using `switch` to tidy up the status messages:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "math/rand"
+    "os"
+    "strconv"
+    "time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    secretNumber := rand.Intn(100) + 1
+
+    scanner := bufio.NewScanner(os.Stdin)
+    attempt := 1
+    won := false
+
+    fmt.Println("=== GUESS THE NUMBER (1-100) ===")
+    fmt.Println("You have 3 chances (demo version).")
+    fmt.Println()
+
+    fmt.Printf("Guess #%d: ", attempt)
+    scanner.Scan()
+    guess, _ := strconv.Atoi(scanner.Text())
+
+    switch {
+    case guess == secretNumber:
+        won = true
+    case guess > secretNumber:
+        fmt.Println("Too high!")
+    default:
+        fmt.Println("Too low!")
+    }
+
+    if won {
+        fmt.Printf("\nCorrect! You won in %d attempts.\n", attempt)
+    } else {
+        fmt.Printf("\nNot quite. The secret number was %d.\n", secretNumber)
+    }
+}
+```
+
+This is our basic version! Let's understand the important parts.
+
+## Understanding the Code
+
+### Random Numbers with math/rand
+
+```go
+rand.Seed(time.Now().UnixNano())
+secretNumber := rand.Intn(100) + 1
+```
+
+`rand.Seed(...)` gives a random "starting point" based on the current time — without this, the program would generate the exact same "random" sequence of numbers every time it runs (because Go 1.13.5 doesn't auto-seed like newer versions do). `rand.Intn(100)` generates a random number from `0` to `99`, so we add `1` to shift the range to `1` through `100`.
+
+### The `won` Variable as a Flag
+
+```go
+won := false
+// ...
+switch {
+case guess == secretNumber:
+    won = true
+// ...
+}
+
+if won {
+    // ...
+}
+```
+
+Just like the calculator in Unit 1, we use a `bool` variable as a "flag" to mark that a certain condition occurred inside a deeper block, then check it again further out.
+
+## Stage 4: Testing
+
+**Test 1: Correct guess**
+```
+Secret number: 42 (simulated)
+Input: 42
+Expected: "Correct! You won in 1 attempts."
+```
+
+**Test 2: Guess too high**
+```
+Secret number: 42
+Input: 80
+Expected: "Too high!" then the loss message
+```
+
+**Test 3: Guess too low**
+```
+Secret number: 42
+Input: 10
+Expected: "Too low!" then the loss message
+```
+
+:::tip
+Since the number is random, you can't know its value ahead of time before running. For consistent testing during development, you can temporarily replace `rand.Intn(100) + 1` with a fixed number like `42` — then switch it back to random once you're confident the logic is correct.
 :::
+
+## Bonus Challenge
+
+Got the basics down? Try these challenges to complete the game:
+
+**Challenge 1: Wrap It in a Loop**
+
+This is the main challenge! We haven't formally learned `for` yet (that's Unit 3), but if you're curious, try wrapping the guessing process with `for attempt := 1; attempt <= 7; attempt++ { ... }` so the user can guess up to 7 times or until they win — use `break` to exit the loop as soon as they win.
+
+**Challenge 2: Input Validation**
+
+Add a check: if `strconv.Atoi` fails (the user typed something that isn't a number), show an error message and ask for input again, without counting it as an attempt.
+
+**Challenge 3: Adjustable Range**
+
+Modify the program so the secret number range (`1-100`) can be adjusted via a variable at the start of the program, e.g. `1-50` for easy mode or `1-500` for hard mode.
+
+## Reflection: What You Learned
+
+| Concept | Used For |
+|--------|---------------|
+| Comparison operators (`==`, `>`, `<`) | Comparing the guess against the secret number |
+| `if-else` | Giving too-high/too-low hints |
+| `switch` without an expression | Tidying up the result-status logic |
+| `math/rand` | Generating the secret number |
+| `bufio.Scanner` + `strconv.Atoi` | Reading the user's guess |
+| `bool` variable as a flag | Tracking win status |
+
+## Wrapping Up Unit 2
+
+Congratulations! You've completed **Unit 2: Branching**. Let's recap:
+
+- Comparing values with comparison operators
+- Combining conditions with `&&`, `\|\|`, `!` and understanding short-circuit evaluation
+- Writing branches with `if`, `else if`, `else`, including Go's distinctive init-statement pattern
+- Using `switch` with and without an expression, and understanding why Go doesn't fall through automatically
+- Building an interactive game that combines all of the above
+
+In **Unit 3**, you'll learn **loops** — how to make a program repeat actions without writing the same code over and over. You already got a small peek at this in the Bonus Challenge above. See you there!

@@ -1,19 +1,211 @@
 ---
-title: "Arrays"
+title: "Array"
 unit: 5
 lesson: 1
-description: "English translation of lesson 01-array"
+description: "A fixed-size data structure — the foundation before you meet the more flexible slice"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Declare and use fixed-size arrays in Go"
+  - "Understand that arrays are value types — fully copied when assigned"
+  - "Learn why arrays are rarely used directly compared to slices"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
+prerequisites: ["unit-4/07-project-batu-gunting-kertas"]
+translationStatus: "complete"
 difficulty: "beginner"
-tags: ["unit-5"]
+tags: ["array", "data-structure", "value-type"]
 ---
 
-# Arrays
+# Array
+
+So far you've been storing data one at a time — one variable, one value. But what if you have 5 exam grades, or 7 day names? Storing them one by one in 5 or 7 separate variables clearly isn't practical. Array is Go's first data structure for storing **a collection of values of the same type** in a single variable.
+
+## Declaring an Array
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    grades := [5]int{}
+    grades[0] = 90
+    grades[1] = 85
+    grades[2] = 78
+    grades[3] = 92
+    grades[4] = 88
+
+    fmt.Println(grades)
+    fmt.Println("Total data:", len(grades))
+}
+```
+
+Output:
+```
+[90 85 78 92 88]
+Total data: 5
+```
+
+## Breaking Down the Array Declaration
+
+**`grades := [5]int{}`** — declares an array with size **5**, of type `int`. This size is part of the type itself — `[5]int` and `[3]int` are two different types as far as Go is concerned, even though both are arrays of int. Since no values are set yet, every element automatically holds the zero value of type `int`, which is `0`.
+
+**`grades[0] = 90`** — fills the element at index 0 (the first element). Just like strings, array indexes start at `0`, not `1`.
+
+**`len(grades)`** — returns the array's size, which is `5`. For arrays, `len()` always returns exactly the number declared — it never changes.
+
+You can also fill an array directly at declaration time with an **array literal**:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    days := [7]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+    fmt.Println(days)
+    fmt.Println("First day:", days[0])
+    fmt.Println("Last day:", days[6])
+}
+```
+
+Output:
+```
+[Monday Tuesday Wednesday Thursday Friday Saturday Sunday]
+First day: Monday
+Last day: Sunday
+```
+
+:::tip
+Too lazy to count the elements? Use `[...]` — Go will count the size automatically from the number of elements in the literal: `days := [...]string{"Monday", "Tuesday", "Wednesday"}` produces a `[3]string` array, exactly as if you had written `[3]string{...}` yourself.
+:::
+
+## Array Is a Value Type
+
+This is the most important part to understand: an array in Go is **fully copied** every time you assign it to another variable, or pass it as a function argument. This is different from most other languages (and different from slice, which we'll learn next).
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    original := [3]int{1, 2, 3}
+    copy := original
+    copy[0] = 100
+
+    fmt.Println("original:", original)
+    fmt.Println("copy    :", copy)
+}
+```
+
+Output:
+```
+original: [1 2 3]
+copy    : [100 2 3]
+```
+
+**`copy := original`** — this doesn't create "two names for the same array." Go truly copies the entire contents of the array into the new variable. Changing `copy` has absolutely no effect on `original`.
 
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+Picture an array like a photocopy of a physical document. If you have a photocopy and scribble on it, the original stays clean — because they're genuinely different sheets of paper. This is different from slice later on, which is more like "pointing to the same document."
 :::
+
+## Why Arrays Are Rarely Used Directly
+
+A fixed array size sounds safe, but it actually becomes a problem in practice: you rarely know upfront how much data you'll be storing. Want to store a shopping list? It could be 3 items, it could be 30. Array forces you to guess the size ahead of time — and if your guess is wrong, you have to create a new array with a different size (a different type, too!).
+
+Because of this limitation, in real-world Go you'll use **slice** far more often — a data structure built on top of array, but one that can grow and shrink dynamically. Array is still important to understand because slice actually "wraps" an array underneath it — and that's the topic of the next lesson.
+
+:::fun
+Array isn't entirely useless — it's used when the data size really is fixed and certain, for example `[3]float64` for X, Y, Z coordinates, or a tic-tac-toe board `[3][3]string`. But for most everyday cases, slice is the default choice.
+:::
+
+## Common Mistakes
+
+1. **Accessing an index with a constant number that's out of bounds:**
+   ```go
+   data := [3]int{1, 2, 3}
+   fmt.Println(data[5]) // ERROR: invalid argument: index 5 out of bounds [0:3]
+   ```
+   Because `5` is a constant number and the array size is known at compile time, Go rejects the compile immediately.
+
+2. **Accessing an index through a variable that turns out to be out of bounds at runtime:**
+   ```go
+   data := [3]int{1, 2, 3}
+   idx := 5
+   fmt.Println(data[idx]) // panic: runtime error: index out of range [5] with length 3
+   ```
+   If the index comes from a variable (not a constant number), Go can't check it at compile time — the error only shows up as a *panic* when the program runs.
+
+3. **Assuming arrays of different sizes are the same type:**
+   ```go
+   var a [3]int = [5]int{1, 2, 3, 4, 5} // ERROR: cannot use [5]int{…} as [3]int value
+   ```
+   `[3]int` and `[5]int` are two completely different types — just as `int` and `string` are different. Size is part of the array's type.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u5l1-ex1"
+  title="Change an Array Element"
+  description="Change the program so it prints `[10 20 100 40]` — the element at index 2 changed to 100."
+  type="code-output"
+  expectedOutput="[10 20 100 40]"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    numbers := [4]int{10, 20, 0, 40}
+    numbers[2] = 0
+    fmt.Println(numbers)
+}`}
+  hints={["You only need to change one number.", "numbers[2] = 0 needs to become numbers[2] = 100."]}
+  explanation="numbers[2] = 100 changes the element at index 2 (the third element) to 100, producing [10 20 100 40]."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l1-ex2"
+  title="Array Length Is Always Fixed"
+  description="Change the program so it prints `5` — the number of elements in the array, not its contents."
+  type="code-output"
+  expectedOutput="5"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    days := [5]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
+    fmt.Println(days)
+}`}
+  hints={["Go's built-in function for counting elements is len().", "Change fmt.Println(days) to fmt.Println(len(days))."]}
+  explanation="len(days) returns the array's size, which is 5 — this number always matches the declared size, no matter what it contains."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u5l1-ex3"
+  title="How Arrays Behave When Assigned"
+  description="If `copy := original` (both arrays), and you then change one element of `copy`, what happens to `original`?"
+  type="multiple-choice"
+  options={["original changes too, because copy and original point to the same data", "original doesn't change at all, because the array is fully copied on assignment", "The program fails to compile", "original only changes if its size is greater than 5"]}
+  correctIndex={1}
+  hints={["Remember the photocopy analogy from this lesson.", "Array is a value type — different from slice, which you'll learn next."]}
+  explanation="Array is a value type: every assignment copies its entire contents into the new variable. Changing the copy never affects the original array."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Declaring an empty array | `var grades [5]int` |
+| Array literal | `[3]int{1, 2, 3}` |
+| Automatic size from literal | `[...]int{1, 2, 3}` |
+| Accessing an element | `grades[0]` |
+| Array length | `len(grades)` |
+| Behavior on assignment | Fully copied (value type) |
+
+Array is solid but rigid. In the next lesson, we move on to **slice** — the most commonly used data structure in Go, built on top of array but far more flexible.

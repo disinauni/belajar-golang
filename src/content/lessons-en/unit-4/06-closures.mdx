@@ -2,18 +2,273 @@
 title: "Closures"
 unit: 4
 lesson: 6
-description: "English translation of lesson 06-closures.mdx"
+description: "Anonymous functions that can access and 'remember' variables from the scope outside themselves"
 objectives:
-  - "See the Indonesian version for full objectives"
+  - "Understand what a closure is and how it captures variables from the outer scope"
+  - "Build anonymous functions and function factories using closures"
+  - "Recognize and avoid the loop variable capture gotcha in Go 1.13"
 estimatedTime: 30
-prerequisites: []
-translationStatus: "draft"
-difficulty: "beginner"
-tags: ["unit-4"]
+prerequisites: ["unit-4/05-defer"]
+translationStatus: "complete"
+difficulty: "intermediate"
+tags: ["closure", "anonymous-function", "loop-variable", "function"]
 ---
 
 # Closures
 
+Every function you've written so far has had a name and was declared at package level. But Go also allows **anonymous functions** — functions with no name that can be created right in the middle of your code, and even stored in a variable. When an anonymous function "remembers" a variable from the scope around it, that's called a **closure**.
+
+## A Simple Anonymous Function and Closure
+
+```go
+package main
+
+import "fmt"
+
+func makeCounter() func() int {
+    count := 0
+    return func() int {
+        count++
+        return count
+    }
+}
+
+func main() {
+    counter := makeCounter()
+    fmt.Println(counter())
+    fmt.Println(counter())
+    fmt.Println(counter())
+}
+```
+
+Output:
+```
+1
+2
+3
+```
+
+## Breaking Down the Closure
+
+**`func makeCounter() func() int`** — this is an ordinary function, but its return type is **another function**: `func() int` (a function with no parameters that returns `int`). A function that returns another function is called a *function factory*.
+
+**`count := 0`** — a local variable inside `makeCounter`. Normally, a local variable "disappears" once its function finishes. But here, something special happens.
+
+**`return func() int { count++; return count }`** — this anonymous function "closes over" the `count` variable from the scope around it. This is a **closure**: this anonymous function carries access to `count` along with it, even after `makeCounter` finishes executing and would normally "go out of scope."
+
+**`counter := makeCounter()`** — `counter` now holds that anonymous function, complete with its own `count` that stays "alive" because the closure keeps hold of it.
+
+**Every time `counter()` is called** — it increments `count` by 1 and returns its value. Because `count` belongs to this particular closure (it isn't re-copied on every call), its value **keeps growing** across calls: 1, 2, 3.
+
+Think of a closure like a backpack an anonymous function carries wherever it goes — inside that backpack are variables from its "old home" (the scope where it was created), and it can keep opening and changing the contents of that backpack every time it's called.
+
 :::note
-This lesson is currently being translated. Please read the Indonesian version for complete content.
+If you call `makeCounter()` **again** to create `counter2 := makeCounter()`, `counter2` will have its **own** `count`, completely separate from the `count` belonging to `counter`. Every call to `makeCounter()` creates a brand-new `count` variable.
 :::
+
+## The Classic Gotcha: Closures Inside a Loop
+
+This is one of Go's most notorious gotchas, and it's **especially important** to understand accurately for the specific Go version in use. Look at the following code:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    funcs := []func(){}
+
+    for i := 0; i < 3; i++ {
+        funcs = append(funcs, func() {
+            fmt.Println(i)
+        })
+    }
+
+    for _, f := range funcs {
+        f()
+    }
+}
+```
+
+Output:
+```
+3
+3
+3
+```
+
+You'd probably expect the output to be `0 1 2` — but it's `3 3 3`! Why?
+
+:::warning
+**This is the behavior of older Go versions (including Go 1.13.5, which is what runs the code on this site).** The loop variable `i` in `for i := 0; i < 3; i++` is **shared** across all iterations — it is not re-copied on every pass. Every closure created inside the loop stores a **reference to that same `i` variable**, not a copy of its value at that moment. By the time the loop finishes, `i` holds the value `3` (the value that makes the condition `i < 3` fail) — and since every closure points to that same `i`, they all print `3` when called later.
+
+As of Go 1.22, this behavior **changed**: the loop variable is automatically a fresh copy on every iteration, so the code above prints `0 1 2` on modern Go. But the playground on this site runs **Go 1.13.5** — before that change — so you still need to understand and apply the fixes below to get correct behavior here.
+:::
+
+### Fix 1: Shadowing — Make a New Copy Each Iteration
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    funcs := []func(){}
+
+    for i := 0; i < 3; i++ {
+        i := i // shadow: declares a NEW variable named i, a copy of the loop's i
+        funcs = append(funcs, func() {
+            fmt.Println(i)
+        })
+    }
+
+    for _, f := range funcs {
+        f()
+    }
+}
+```
+
+Output:
+```
+0
+1
+2
+```
+
+**`i := i`** — this line looks strange but is very common in Go. The right-hand side (`i`) refers to the loop variable outside; the left-hand side **declares a new variable**, also named `i`, but living in the loop body's scope, and created **fresh on every iteration**. The closure created after this line captures this new `i` — whose value is "frozen" for that iteration — instead of the loop's shared `i` variable.
+
+### Fix 2: Pass It as a Function Parameter
+
+```go
+package main
+
+import "fmt"
+
+func makeFunc(n int) func() {
+    return func() {
+        fmt.Println(n)
+    }
+}
+
+func main() {
+    funcs := []func(){}
+
+    for i := 0; i < 3; i++ {
+        funcs = append(funcs, makeFunc(i))
+    }
+
+    for _, f := range funcs {
+        f()
+    }
+}
+```
+
+Output:
+```
+0
+1
+2
+```
+
+This fix relies on something you already learned: function parameters are **always copied (by value)**. Every call to `makeFunc(i)` copies the value of `i` **at that exact moment** into a fresh parameter `n` — and every call gets its own `n`, separate from every other call. The closure inside `makeFunc` captures `n` (which is already safe, per-call), not `i` (which the loop shares).
+
+:::tip
+Rule of thumb: if you create a closure inside a loop and that closure is **used later** (stored, sent to a goroutine, etc. — not called immediately in the same iteration), always be suspicious of the loop variable. Apply shadowing (`i := i`) or pass it as a function parameter to make sure every closure gets its own copy.
+:::
+
+## Common Mistakes
+
+1. **A closure in a loop without shadowing, used later (the main gotcha above):**
+   ```go
+   for i := 0; i < 3; i++ {
+       funcs = append(funcs, func() { fmt.Println(i) }) // all capture the same i
+   }
+   // Every closure prints the final value of i (3), not the value when it was created
+   ```
+
+2. **Assuming a closure copies a variable's value at the moment the closure is created:**
+   ```go
+   x := 10
+   print := func() { fmt.Println(x) }
+   x = 20
+   print() // prints 20, NOT 10 — the closure captures the variable, not its value at that time
+   ```
+   A closure captures the **variable** (a reference), not the **value** at the moment the closure is created. This is different from an ordinary function parameter, which really is copied at call time.
+
+## Exercises
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u4l6-ex1"
+  title="Independent Closure Counters"
+  description="Predict the output when two independent counters are created from the same function factory."
+  type="code-output"
+  expectedOutput="1
+2
+1"
+  starterCode={`package main
+
+import "fmt"
+
+func makeCounter() func() int {
+    count := 0
+    return func() int {
+        count++
+        return count
+    }
+}
+
+func main() {
+    counterA := makeCounter()
+    counterB := makeCounter()
+
+    fmt.Println(counterA())
+    fmt.Println(counterA())
+    fmt.Println(counterB())
+}`}
+  hints={["counterA and counterB each have their own count variable.", "Calling counterA() twice does not affect counterB's count."]}
+  explanation="counterA and counterB come from two separate calls to makeCounter(), so each has its own count variable. Calling counterA() twice produces 1 then 2, while counterB(), called for the first time, produces 1."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l6-ex2"
+  title="Loop Variable Output in Go 1.13.5"
+  description="Recall the <code>funcs</code> code example in the 'Classic Gotcha: Closures Inside a Loop' section above — a closure is created inside a loop without shadowing, then every closure is called after the loop finishes. In Go 1.13.5 (the version this playground uses), what is the output?"
+  type="multiple-choice"
+  options={["3 3 3 — because all closures share the same i variable", "0 1 2 — because every closure automatically gets its own copy of i", "0 0 0 — because i never had a chance to change", "A compile error"]}
+  correctIndex={0}
+  hints={["In Go 1.13.5, the loop variable is shared across all iterations, not copied per iteration.", "After the loop finishes, i's value is 3 (the value that makes the loop condition fail)."]}
+  explanation="In Go 1.13.5, the for-loop's i variable is shared by every iteration. All closures store a reference to that same i, so when they're called later (after the loop finishes and i is 3), they all print 3. This behavior only changed starting in Go 1.22+."
+  lang="en"
+/>
+
+<Exercise client:load
+  id="u4l6-ex3"
+  title="Complete the Shadowing"
+  description="Fill in the line that makes a new copy of the loop variable on every iteration, so the closure inside it captures the correct value."
+  type="fill-blank"
+  template={`for i := 0; i < 3; i++ {
+    {{BLANK}} := i
+    funcs = append(funcs, func() { fmt.Println(i) })
+}`}
+  blanks={["i"]}
+  hints={["This new variable is deliberately named the same as the loop variable — this technique is called shadowing."]}
+  explanation="'i := i' declares a new i variable scoped to the loop body, as a copy of the loop's i at that iteration. The closure created afterward captures this new i, not the loop's shared i."
+  lang="en"
+/>
+
+## Summary
+
+| Concept | Example |
+|---|---|
+| Anonymous function | `func() { fmt.Println("hello") }` |
+| Closure | An anonymous function that captures a variable from the outer scope |
+| Function factory | A function that returns another function, each call gets its own state |
+| Closures capture variables, not values | Changing the variable afterward is still visible from the closure |
+| Loop variable gotcha (Go 1.13.5) | Every closure in the loop shares 1 variable — the end result can be `3 3 3` |
+| Shadowing fix | `i := i` inside the loop body |
+| Function parameter fix | Pass `i` as an argument to another function |
+
+You've now mastered all the fundamentals of functions in Go: declarations, parameters, multiple returns, variadics, defer, and closures. It's time to bring it all together in **this unit's project: Rock Paper Scissors**!
