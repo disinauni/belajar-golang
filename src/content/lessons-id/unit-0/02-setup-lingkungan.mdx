@@ -1,0 +1,122 @@
+---
+title: "Setup Lingkungan"
+unit: 0
+lesson: 2
+description: "Siapkan lingkungan belajar Go — baik langsung di browser maupun di komputer sendiri"
+objectives:
+  - "Memahami bahwa playground di situs ini bisa dipakai tanpa install apapun"
+  - "Mengetahui cara install Go di komputer sendiri (opsional)"
+  - "Mengenal perintah dasar: go version, go run, go build"
+estimatedTime: 20
+prerequisites: ["unit-0/01-apa-itu-go"]
+difficulty: "beginner"
+tags: ["setup", "instalasi", "tooling"]
+---
+
+# Setup Lingkungan
+
+Kabar baik: kamu **tidak wajib** install apapun untuk mengikuti kursus ini. Playground di situs ini menjalankan kode Go langsung di server, jadi kamu bisa langsung menulis dan menjalankan kode dari browser manapun — laptop, Chromebook sekolah, bahkan tablet.
+
+Tapi kalau kamu ingin coding Go di komputer sendiri (sangat direkomendasikan begitu kamu makin serius), pelajaran ini akan memandu instalasinya.
+
+## Opsi 1: Pakai Playground di Situs Ini
+
+Tidak ada yang perlu disiapkan. Buka halaman **Playground** dari menu navigasi, tulis kodemu, dan klik **Jalankan**. Kode kamu dikirim ke server, di-compile, dijalankan, dan hasilnya dikirim balik ke browser dalam hitungan detik.
+
+Ini cara tercepat untuk mulai belajar — dan cara yang kita pakai di sepanjang kursus ini.
+
+## Opsi 2: Install Go di Komputer
+
+Kalau kamu mau menulis project Go yang lebih serius (atau sekadar penasaran), begini langkahnya:
+
+1. Buka **[go.dev/dl](https://go.dev/dl)** dan unduh installer sesuai sistem operasimu (Windows, macOS, atau Linux)
+2. Jalankan installer, ikuti instruksi standar (Next → Next → Install)
+3. Buka terminal / command prompt, lalu ketik:
+
+```bash
+go version
+```
+
+Kalau instalasi berhasil, kamu akan melihat output seperti ini:
+
+```
+go version go1.23.4 darwin/arm64
+```
+
+## Membedah Output `go version`
+
+**`go version`** — nama perintah yang kamu jalankan. Semua tooling Go diakses lewat satu executable bernama `go`, diikuti sub-perintah seperti `version`, `run`, atau `build`.
+
+**`go1.23.4`** — versi Go yang terinstall. Angka ini penting karena beberapa fitur bahasa hanya tersedia di versi tertentu (misalnya generics baru ada sejak Go 1.18).
+
+**`darwin/arm64`** — target platform: OS (`darwin` = macOS, `linux`, atau `windows`) dan arsitektur CPU (`arm64`, `amd64`, dst). Go memakai info ini untuk meng-compile biner yang sesuai dengan mesinmu.
+
+:::tip
+Editor yang direkomendasikan untuk Go adalah **VS Code** dengan extension resmi **"Go"** dari tim Google. Extension ini otomatis memberi auto-complete, format-on-save, dan menunjukkan error compile langsung di editor.
+:::
+
+## Dua Perintah yang Akan Sering Kamu Pakai
+
+```bash
+go run main.go
+```
+Meng-compile dan langsung menjalankan file `main.go` dalam satu langkah — tanpa meninggalkan file biner permanen. Ini perintah yang paling sering kamu pakai selama development.
+
+```bash
+go build main.go
+```
+Meng-compile `main.go` menjadi file executable biner (misalnya `main` atau `main.exe`) yang bisa dijalankan kapan saja tanpa Go terinstall di komputer target. Dipakai saat kamu siap membagikan/deploy programmu.
+
+:::note
+Sejak Go 1.16, workspace project modern memakai **Go Modules** (ditandai file `go.mod`), bukan lagi struktur folder `GOPATH` lama. Kamu akan kenalan dengan `go.mod` di Unit 8 — untuk sekarang, playground di situs ini sudah menangani semua itu otomatis.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa restart terminal setelah install** — di beberapa OS, perubahan PATH baru terbaca setelah terminal ditutup dan dibuka lagi.
+   ```bash
+   go version
+   # command not found: go   ← padahal baru saja install
+   ```
+   Solusi: tutup terminal, buka yang baru, coba lagi.
+
+2. **Mengikuti tutorial lama yang menyebut `GOPATH`** — banyak tutorial dari sebelum 2019 mengharuskan kode ditaruh di folder `GOPATH` tertentu. Dengan Go Modules (default sejak Go 1.16), kamu bisa menaruh project Go di folder manapun.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u0l2-ex1"
+  title="Perintah yang Tepat"
+  description="Perintah mana yang meng-compile Go menjadi file executable biner permanen (bukan cuma menjalankan sementara)?"
+  type="multiple-choice"
+  options={["go run", "go build", "go version", "go install"]}
+  correctIndex={1}
+  hints={["'run' bagus untuk development cepat, tapi tidak meninggalkan file apapun.", "Kamu ingin sebuah file yang bisa dibagikan dan dijalankan berulang kali."]}
+  explanation="go build menghasilkan file executable biner permanen. go run hanya meng-compile dan menjalankan sekali, tanpa meninggalkan file biner."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u0l2-ex2"
+  title="Lengkapi Perintahnya"
+  description="Lengkapi perintah untuk mengecek versi Go yang terinstall."
+  type="fill-blank"
+  template="go {{BLANK}}"
+  blanks={["version"]}
+  hints={["Bukan 'run' atau 'build' — kamu ingin tahu versinya, bukan menjalankan kode."]}
+  explanation="'go version' menampilkan versi Go yang sedang terinstall di komputermu."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Perintah | Fungsi |
+|---|---|
+| `go version` | Cek versi Go yang terinstall |
+| `go run file.go` | Compile + jalankan langsung, tanpa file biner permanen |
+| `go build file.go` | Compile jadi file executable biner |
+| Playground situs ini | Jalankan Go tanpa install apapun |
+
+Lingkungan belajarmu sudah siap — baik lewat playground browser atau instalasi lokal. Di pelajaran berikutnya, kita akan **tour singkat fitur-fitur playground** ini supaya kamu makin lancar memakainya sepanjang kursus!

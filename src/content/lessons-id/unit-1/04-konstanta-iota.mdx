@@ -1,0 +1,182 @@
+---
+title: "Konstanta & iota"
+unit: 1
+lesson: 4
+description: "Membuat nilai yang tidak bisa diubah dengan const, dan penomoran otomatis dengan iota"
+objectives:
+  - "Mendeklarasikan konstanta dengan keyword const"
+  - "Memahami bedanya const dan var"
+  - "Memakai iota untuk membuat penomoran konstanta otomatis"
+estimatedTime: 25
+prerequisites: ["unit-1/03-tipe-data"]
+difficulty: "beginner"
+tags: ["konstanta", "const", "iota"]
+---
+
+# Konstanta & iota
+
+Bayangkan kamu menulis program fisika yang memakai nilai Pi berkali-kali. Kalau Pi disimpan sebagai variabel biasa, ada risiko (walau kecil) nilainya ke-otak-atik di suatu tempat di kode. Untuk nilai yang **memang tidak boleh berubah**, Go punya keyword khusus: `const`.
+
+## Konstanta dengan `const`
+
+```go
+package main
+
+import "fmt"
+
+const Pi = 3.14159
+const NamaAplikasi = "Kalkulator Go"
+
+func main() {
+    jariJari := 5.0
+    luas := Pi * jariJari * jariJari
+    fmt.Println(NamaAplikasi)
+    fmt.Println("Luas lingkaran:", luas)
+}
+```
+
+Output:
+```
+Kalkulator Go
+Luas lingkaran: 78.53975
+```
+
+## Membedah Konstanta
+
+**`const Pi = 3.14159`** — mendeklarasikan konstanta bernama `Pi`. Beda dari `var`, nilainya **ditentukan saat compile** dan tidak bisa diubah sama sekali setelah itu — bahkan mencoba menugaskan ulang akan membuat compiler menolak.
+
+**Kenapa bukan `var`?** — Secara teknis kamu *bisa* pakai `var` dan cukup disiplin tidak mengubahnya. Tapi `const` membuat Go **menegakkan** aturan itu di level compiler — kalau ada baris kode (sengaja atau tidak) yang mencoba mengubah `Pi`, program tidak akan berhasil di-compile.
+
+:::note
+Berbeda dari Python yang tidak punya keyword `const` sungguhan (konvensinya cuma menamai variabel dengan `HURUF_KAPITAL`), Go menegakkan sifat "tidak bisa diubah" ini di level bahasa.
+:::
+
+## Penomoran Otomatis dengan `iota`
+
+Sekarang bayangkan kamu perlu merepresentasikan hari dalam seminggu sebagai angka. Menulis `0, 1, 2, 3...` manual itu rawan salah ketik. Di sinilah `iota` berguna — identifier khusus yang otomatis bertambah 1 di setiap baris dalam blok `const`.
+
+```go
+package main
+
+import "fmt"
+
+const (
+    Senin = iota // 0
+    Selasa       // 1
+    Rabu         // 2
+    Kamis        // 3
+    Jumat        // 4
+)
+
+func main() {
+    fmt.Println("Senin =", Senin)
+    fmt.Println("Rabu =", Rabu)
+    fmt.Println("Jumat =", Jumat)
+}
+```
+
+Output:
+```
+Senin = 0
+Rabu = 2
+Jumat = 4
+```
+
+## Membedah `iota`
+
+**`const ( ... )`** — sintaks blok, mengelompokkan beberapa deklarasi konstanta sekaligus tanpa mengulang keyword `const` di setiap baris.
+
+**`Senin = iota`** — `iota` dimulai dari `0` di baris pertama setiap blok `const`.
+
+**`Selasa`** (tanpa `= iota` eksplisit) — di dalam blok yang sama, baris tanpa nilai eksplisit otomatis mewarisi ekspresi baris sebelumnya (`= iota`), dan `iota` sendiri sudah bertambah jadi `1`. Begitu seterusnya setiap baris.
+
+Ini mirip cara Go "mengisi otomatis" pola yang berulang — daripada menulis `= iota` di setiap baris, cukup sekali di baris pertama.
+
+:::tip
+`iota` reset ke `0` di setiap blok `const` baru. Kalau kamu buat blok `const (...)` kedua, `iota`-nya mulai dari `0` lagi, terlepas dari nilai terakhir di blok sebelumnya.
+:::
+
+## Kesalahan Umum
+
+1. **Mencoba mengubah nilai konstanta:**
+   ```go
+   const Pi = 3.14159
+   Pi = 3.14  // ERROR: cannot assign to Pi (neither addressable nor a map index expression)
+   ```
+   Konstanta memang didesain untuk tidak bisa diubah — kalau kamu butuh nilai yang bisa berubah, pakai `var`.
+
+2. **Lupa `iota` reset per blok:**
+   ```go
+   const (
+       A = iota // 0
+       B        // 1
+   )
+   const (
+       C = iota // 0, BUKAN 2!
+   )
+   ```
+   Banyak pemula mengira `iota` terus bertambah lintas blok — padahal setiap `const (...)` baru memulai `iota` dari `0` lagi.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l4-ex1"
+  title="Tebak Nilai iota"
+  description="Program ini memakai iota untuk level kesulitan. Lengkapi agar mencetak nilai 'Sulit' dengan benar."
+  type="code-output"
+  expectedOutput="2"
+  starterCode={`package main
+
+import "fmt"
+
+const (
+    Mudah = iota
+    Sedang
+    Sulit
+)
+
+func main() {
+    fmt.Println(Sulit)
+}`}
+  hints={["iota mulai dari 0 di baris pertama blok const.", "Mudah=0, Sedang=1, jadi Sulit seharusnya 2 — kode ini sudah benar, coba jalankan saja!"]}
+  explanation="iota dimulai dari 0 pada Mudah, bertambah 1 setiap baris: Mudah=0, Sedang=1, Sulit=2."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l4-ex2"
+  title="const vs var"
+  description="Apa yang terjadi jika kamu mencoba mengubah nilai variabel yang dideklarasikan dengan const?"
+  type="multiple-choice"
+  options={["Program tetap jalan, nilainya berubah seperti var biasa", "Compile error — Go menolak mengubah konstanta", "Program crash saat runtime", "Nilainya diabaikan, tetap seperti semula"]}
+  correctIndex={1}
+  hints={["const berarti 'tidak bisa diubah' dan ditegakkan oleh compiler.", "Ini beda dari sekadar konvensi penamaan HURUF_KAPITAL di Python."]}
+  explanation="Go menolak meng-compile kode yang mencoba mengubah nilai const — errornya muncul sebelum program sempat dijalankan sama sekali."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l4-ex3"
+  title="Lengkapi Blok Konstanta"
+  description="Lengkapi keyword untuk mendeklarasikan blok konstanta dengan iota."
+  type="fill-blank"
+  template="{{BLANK}} (\n    A = iota\n    B\n)"
+  blanks={["const"]}
+  hints={["Bukan 'var' — iota cuma valid di dalam blok const."]}
+  explanation="iota hanya bisa dipakai di dalam blok const, karena nilainya harus ditentukan saat compile."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Konstanta tunggal | `const Pi = 3.14159` |
+| Blok konstanta | `const ( A = iota; B; C )` |
+| iota di baris pertama | `0` |
+| iota bertambah tiap baris | `1, 2, 3, ...` |
+| iota reset per blok | blok baru mulai dari `0` lagi |
+
+Di pelajaran berikutnya, kita akan belajar **input dan output** — cara programmu membaca input dari pengguna, bukan cuma mencetak teks tetap!

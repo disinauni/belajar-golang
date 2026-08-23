@@ -1,0 +1,112 @@
+---
+title: "Tour Playground"
+unit: 0
+lesson: 3
+description: "Mengenal Playground Go dan mulai menulis kode pertama"
+objectives:
+  - "Memahami fitur-fitur Playground"
+  - "Berhasil menjalankan kode Go pertama"
+  - "Memahami cara membaca pesan error kompilasi"
+estimatedTime: 10
+prerequisites: ["unit-0/02-setup-lingkungan"]
+difficulty: "beginner"
+tags: ["playground", "first-code", "error"]
+---
+
+# Tour Playground
+
+Saatnya mencoba langsung! Di pelajaran ini kita akan keliling Playground dan menulis kode Go pertama.
+
+## Anatomi Playground
+
+Playground terdiri dari beberapa bagian:
+
+- **Toolbar** (atas) — tombol Run, Reset, Copy, dan Download
+- **Editor** (kiri/atas) — tempat menulis kode Go
+- **Output** (kanan/bawah) — tempat melihat hasil kode
+
+## Kode Pertamamu
+
+Coba ketik kode ini di Playground dan klik **Run**:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Halo, Dunia!")
+}
+```
+
+Kamu akan melihat output:
+```
+Halo, Dunia!
+```
+
+Selamat! Kamu baru saja menjalankan program Go pertamamu! 🎉
+
+## Eksperimen Kode
+
+Sekarang coba ubah kode menjadi ini:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Nama saya:", "Budi")
+    fmt.Println("Saya suka Go!")
+    fmt.Println(2024 + 1)
+}
+```
+
+Output yang diharapkan:
+```
+Nama saya: Budi
+Saya suka Go!
+2025
+```
+
+`fmt.Println` bisa menampilkan teks (string) maupun angka sekaligus, dipisahkan otomatis dengan spasi.
+
+## Memahami Error Kompilasi
+
+Error adalah bagian normal dari programming — semua programmer pernah mengalaminya! Karena Go adalah bahasa **compiled**, error sering ketahuan sebelum program sempat dijalankan sama sekali. Mari coba membuat error dengan sengaja:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Ini kode yang salah"
+}
+```
+
+Kamu akan melihat pesan error seperti:
+```
+./main.go:6:39: syntax error: unexpected newline, expected comma or )
+```
+
+Ini berarti kamu lupa menutup tanda kurung di pemanggilan `fmt.Println`. Angka `6:39` menunjukkan baris dan kolom tempat masalahnya terdeteksi — ini disebut **compile error**, beda dari runtime error yang baru muncul saat program benar-benar berjalan.
+
+:::tip
+Jangan takut dengan error! Error kompilasi Go biasanya sangat spesifik — lengkap dengan nomor baris. Baca pesan error dengan teliti, ini teman yang memberitahumu persis di mana program perlu diperbaiki.
+:::
+
+## Tombol-Tombol Penting
+
+| Tombol | Fungsi |
+|--------|--------|
+| **Run** | Compile dan jalankan kode |
+| **Reset** | Kembalikan kode ke semula |
+| **Copy** | Salin semua kode |
+| **Download** | Unduh kode sebagai file `.go` |
+
+## Siap Belajar!
+
+Kamu sudah kenal Playground dan berhasil menjalankan kode Go pertama. Sekarang kita siap masuk ke Unit 1 dan mulai belajar Go secara lebih mendalam.
+
+Di pelajaran berikutnya: **Hello, World!** — tradisi pertama setiap programmer!

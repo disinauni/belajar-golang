@@ -1,0 +1,198 @@
+---
+title: "Konversi Tipe Data"
+unit: 1
+lesson: 8
+description: "Mengonversi antar int, float64, dan string dengan benar — plus jebakan pembulatan yang wajib diketahui"
+objectives:
+  - "Mengonversi antar tipe numerik dengan int()/float64()"
+  - "Mengonversi string ke angka dan sebaliknya dengan package strconv"
+  - "Memahami bahwa konversi float ke int memotong (truncate), bukan membulatkan"
+estimatedTime: 20
+prerequisites: ["unit-1/07-string-dasar"]
+difficulty: "beginner"
+tags: ["konversi", "strconv", "type-conversion"]
+---
+
+# Konversi Tipe Data
+
+Sejak pelajaran Tipe Data, kamu sudah tahu Go tidak melakukan konversi otomatis. Sekarang saatnya kuasai cara melakukannya **secara eksplisit** — dan mengenal satu jebakan yang sering bikin bug diam-diam.
+
+## Konversi Antar Tipe Numerik
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var bilanganBulat int = 9
+    var bilanganDesimal float64 = float64(bilanganBulat)
+    fmt.Println(bilanganDesimal)  // 9
+
+    var pi float64 = 3.99
+    var piBulat int = int(pi)
+    fmt.Println(piBulat)  // 3 — bukan 4!
+}
+```
+
+Output:
+```
+9
+3
+```
+
+## Membedah Konversi Numerik
+
+**`float64(bilanganBulat)`** — mengonversi `int` ke `float64`. Aman, tidak ada data yang hilang.
+
+**`int(pi)`** — mengonversi `float64` ke `int`. Perhatikan hasilnya `3`, padahal `3.99` "harusnya" dibulatkan jadi `4`. Konversi `float64` ke `int` di Go **selalu memotong (truncate)** bagian desimal, **tidak pernah membulatkan**.
+
+:::note
+Kalau kamu benar-benar butuh pembulatan matematis (bukan pemotongan), pakai fungsi dari package `math`: `math.Round()`, `math.Ceil()` (bulatkan ke atas), atau `math.Floor()` (bulatkan ke bawah, sama seperti pemotongan untuk angka positif).
+:::
+
+## Konversi String ↔ Angka
+
+Konversi ke/dari `string` sedikit berbeda — tidak bisa pakai `int(...)` atau `float64(...)` langsung, harus lewat package `strconv`.
+
+```go
+package main
+
+import (
+    "fmt"
+    "strconv"
+)
+
+func main() {
+    // Angka ke string
+    umur := 17
+    teksUmur := strconv.Itoa(umur)
+    fmt.Println("Umurmu: " + teksUmur + " tahun")
+
+    // String ke angka
+    input := "42"
+    angka, err := strconv.Atoi(input)
+    if err != nil {
+        fmt.Println("Gagal konversi:", err)
+        return
+    }
+    fmt.Println(angka + 8)
+
+    // String ke float64
+    inputDesimal := "3.14"
+    desimal, _ := strconv.ParseFloat(inputDesimal, 64)
+    fmt.Println(desimal * 2)
+}
+```
+
+Output:
+```
+Umurmu: 17 tahun
+50
+6.28
+```
+
+## Membedah Fungsi strconv
+
+**`strconv.Itoa(umur)`** — "**I**nteger **to** **A**SCII", mengubah `int` jadi `string`. Cuma butuh satu argumen, tidak pernah gagal (tidak mengembalikan error).
+
+**`strconv.Atoi(input)`** — kebalikannya, "**A**SCII **to** **I**nteger". **Bisa gagal** (misalnya kalau `input` bukan angka valid), makanya mengembalikan dua nilai: hasil dan `error`.
+
+**`strconv.ParseFloat(inputDesimal, 64)`** — mengubah `string` jadi `float64`. Argumen kedua (`64`) menentukan presisi bit — selalu pakai `64` kecuali kamu punya alasan spesifik.
+
+:::tip
+Alternatif untuk menggabungkan angka ke dalam string adalah `fmt.Sprintf`, yang bekerja seperti `Printf` tapi mengembalikan `string` alih-alih mencetak langsung:
+```go
+pesan := fmt.Sprintf("Umurmu: %d tahun", umur)
+```
+Ini sering lebih ringkas daripada `strconv.Itoa` + penggabungan `+` manual.
+:::
+
+## Kesalahan Umum
+
+1. **Mengabaikan error dari Atoi/ParseFloat:**
+   ```go
+   angka, _ := strconv.Atoi("bukan-angka")
+   fmt.Println(angka)  // 0, tanpa pesan error yang jelas kalau _ diabaikan
+   ```
+   Selalu periksa `err` kecuali kamu yakin 100% inputnya valid.
+
+2. **Mengira `int(3.99)` membulatkan jadi 4:**
+   ```go
+   hasil := int(3.99)
+   fmt.Println(hasil)  // 3, BUKAN 4 — Go memotong, tidak membulatkan
+   ```
+   Pakai `math.Round(3.99)` kalau kamu butuh pembulatan matematis sesungguhnya.
+
+3. **Memakai `int()`/`float64()` untuk konversi dari string:**
+   ```go
+   angka := int("42")  // ERROR: cannot convert "42" (untyped string constant) to type int
+   ```
+   Konversi string ke angka **wajib** lewat `strconv`, tidak bisa pakai `int(...)` langsung.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l8-ex1"
+  title="Konversi dan Jumlahkan"
+  description="Lengkapi program agar membaca dua string angka, mengonversinya, dan mencetak jumlahnya: 30"
+  type="code-output"
+  expectedOutput="30"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "strconv"
+)
+
+func main() {
+    teksA := "12"
+    teksB := "18"
+
+    a, _ := strconv.Atoi(teksA)
+    b, _ := strconv.Atoi(teksB)
+
+    fmt.Println(a + b)
+}`}
+  hints={["strconv.Atoi mengubah string jadi int, mengembalikan (int, error).", "Kode ini sudah lengkap — coba jalankan!"]}
+  explanation="strconv.Atoi mengonversi kedua string jadi int, baru bisa dijumlahkan dengan operator + biasa: 12 + 18 = 30."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l8-ex2"
+  title="Truncate vs Round"
+  description="Berapa hasil dari `int(7.8)` di Go?"
+  type="multiple-choice"
+  options={["8 (dibulatkan ke atas)", "7 (dipotong, bukan dibulatkan)", "7.8 (tetap desimal)", "Error saat compile"]}
+  correctIndex={1}
+  hints={["Konversi float64 ke int di Go tidak pernah membulatkan.", "Bagian desimal langsung dibuang begitu saja."]}
+  explanation="Konversi float64 ke int selalu memotong (truncate) bagian desimal — int(7.8) menghasilkan 7, bukan dibulatkan ke 8."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l8-ex3"
+  title="Lengkapi Konversi Int ke String"
+  description="Lengkapi fungsi dari package strconv untuk mengubah int menjadi string."
+  type="fill-blank"
+  template="teks := strconv.{{BLANK}}(umur)"
+  blanks={["Itoa"]}
+  hints={["Namanya singkatan dari 'Integer to ASCII'."]}
+  explanation="strconv.Itoa(umur) mengonversi nilai int menjadi string — kebalikan dari strconv.Atoi."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konversi | Cara | Bisa Gagal? |
+|---|---|---|
+| int → float64 | `float64(x)` | Tidak |
+| float64 → int | `int(x)` (memotong, bukan membulatkan!) | Tidak |
+| int → string | `strconv.Itoa(x)` | Tidak |
+| string → int | `strconv.Atoi(s)` | Ya (return error) |
+| string → float64 | `strconv.ParseFloat(s, 64)` | Ya (return error) |
+
+Kamu sudah menguasai semua dasar Go: variabel, tipe data, konstanta, input/output, aritmatika, string, dan konversi tipe. Saatnya menggabungkan semuanya di **project unit ini: Kalkulator Sederhana**!

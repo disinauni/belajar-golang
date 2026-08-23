@@ -1,0 +1,447 @@
+---
+title: "Project: Kalkulator Sederhana"
+unit: 1
+lesson: 9
+description: "Membuat kalkulator sederhana yang menggabungkan semua konsep Unit 1"
+objectives:
+  - "Merencanakan program dari awal (planning dan pseudocode)"
+  - "Mengimplementasikan kalkulator dengan input, output, dan operasi aritmatika"
+  - "Menguji program dengan berbagai skenario"
+estimatedTime: 60
+prerequisites: ["unit-1/08-konversi-tipe"]
+difficulty: "beginner"
+tags: ["project", "calculator", "practice", "integration"]
+---
+
+# Project: Kalkulator Sederhana
+
+Selamat! Kamu sudah mempelajari semua konsep dasar di Unit 1. Sekarang saatnya menggabungkan semuanya dalam satu project nyata — **Kalkulator Sederhana**.
+
+Ini adalah project pertamamu, jadi kita akan melewati setiap tahap secara perlahan: dari perencanaan sampai implementasi dan pengujian. Ini adalah cara programmer profesional bekerja — tidak langsung coding, tapi **planning dulu**.
+
+## Spesifikasi Program
+
+Kalkulator kita harus bisa:
+
+1. Meminta user memasukkan **angka pertama**
+2. Meminta user memasukkan **operator** (+, -, *, /)
+3. Meminta user memasukkan **angka kedua**
+4. Menghitung dan menampilkan **hasil operasi**
+
+Contoh interaksi yang diharapkan:
+```
+=== KALKULATOR SEDERHANA ===
+
+Masukkan angka pertama: 15
+Masukkan operator (+, -, *, /): *
+Masukkan angka kedua: 4
+
+Hasil: 15 * 4 = 60
+```
+
+## Tahap 1: Planning
+
+Sebelum menulis satu baris kode pun, mari pikirkan:
+
+**Data apa yang perlu disimpan?**
+- Angka pertama (desimal — `float64`)
+- Angka kedua (desimal — `float64`)
+- Operator (satu simbol — kita simpan sebagai `string`, karena input dari `scanner.Text()` selalu string)
+- Hasil perhitungan (desimal — `float64`)
+
+**Alur program:**
+1. Tampilkan judul kalkulator
+2. Minta input angka pertama
+3. Minta input operator
+4. Minta input angka kedua
+5. Hitung berdasarkan operator yang dipilih
+6. Tampilkan hasil
+
+**Edge case yang perlu dipikirkan:**
+- Bagaimana kalau user membagi dengan 0?
+- Bagaimana kalau user memasukkan operator yang tidak valid?
+
+## Tahap 2: Pseudocode
+
+Pseudocode adalah "kode palsu" — menuliskan logika program dalam bahasa manusia sebelum menulisnya dalam Go. Ini membantu kita berpikir tentang logika tanpa terganggu oleh syntax.
+
+```
+PROGRAM Kalkulator:
+    TAMPILKAN judul "KALKULATOR SEDERHANA"
+
+    MINTA input angka1 (float64)
+    MINTA input operasi (string)
+    MINTA input angka2 (float64)
+
+    JIKA operasi adalah "+":
+        hasil = angka1 + angka2
+    JIKA operasi adalah "-":
+        hasil = angka1 - angka2
+    JIKA operasi adalah "*":
+        hasil = angka1 * angka2
+    JIKA operasi adalah "/":
+        JIKA angka2 adalah 0:
+            TAMPILKAN "Error: tidak bisa membagi dengan 0!"
+        SELAIN ITU:
+            hasil = angka1 / angka2
+    SELAIN ITU:
+        TAMPILKAN "Operator tidak valid!"
+
+    TAMPILKAN "angka1 operasi angka2 = hasil"
+```
+
+Pseudocode ini belum bisa dijalankan, tapi sudah memberikan gambaran jelas tentang apa yang harus ditulis.
+
+## Tahap 3: Implementasi
+
+Sekarang saatnya menulis kode Go yang sesungguhnya. Kita akan membangunnya bertahap.
+
+### Versi 1: Kerangka Dasar
+
+Mulai dari kerangka program yang cuma membaca input, belum menghitung apapun:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Println("=== KALKULATOR SEDERHANA ===")
+    fmt.Println()
+
+    fmt.Print("Masukkan angka pertama: ")
+    scanner.Scan()
+    angka1, _ := strconv.ParseFloat(scanner.Text(), 64)
+
+    fmt.Print("Masukkan operator (+, -, *, /): ")
+    scanner.Scan()
+    operasi := scanner.Text()
+
+    fmt.Print("Masukkan angka kedua: ")
+    scanner.Scan()
+    angka2, _ := strconv.ParseFloat(scanner.Text(), 64)
+
+    // TODO: Hitung hasil
+    // TODO: Tampilkan hasil
+
+    fmt.Println(angka1, operasi, angka2)
+}
+```
+
+Coba jalankan — program sudah bisa menerima input, meskipun belum menghitung apa-apa (baris terakhir cuma untuk memastikan variabelnya kepakai, sehingga tidak kena error "declared and not used").
+
+### Versi 2: Tambahkan Perhitungan
+
+Sekarang tambahkan logika perhitungan. Kita akan menggunakan `switch` — meskipun kita belum mempelajarinya secara formal (itu di Unit 2), konsepnya cukup intuitif: "cocokkan nilai operasi dengan salah satu case, jalankan blok yang cocok".
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+    var hasil float64
+    valid := true // penanda apakah operasi valid
+
+    fmt.Println("=== KALKULATOR SEDERHANA ===")
+    fmt.Println()
+
+    fmt.Print("Masukkan angka pertama: ")
+    scanner.Scan()
+    angka1, _ := strconv.ParseFloat(scanner.Text(), 64)
+
+    fmt.Print("Masukkan operator (+, -, *, /): ")
+    scanner.Scan()
+    operasi := scanner.Text()
+
+    fmt.Print("Masukkan angka kedua: ")
+    scanner.Scan()
+    angka2, _ := strconv.ParseFloat(scanner.Text(), 64)
+
+    switch operasi {
+    case "+":
+        hasil = angka1 + angka2
+    case "-":
+        hasil = angka1 - angka2
+    case "*":
+        hasil = angka1 * angka2
+    case "/":
+        if angka2 == 0 {
+            fmt.Println("\n[ERROR] Tidak bisa membagi dengan nol!")
+            valid = false
+        } else {
+            hasil = angka1 / angka2
+        }
+    default:
+        fmt.Printf("\n[ERROR] Operator '%s' tidak dikenali.\n", operasi)
+        fmt.Println("Operator yang tersedia: +, -, *, /")
+        valid = false
+    }
+
+    if valid {
+        fmt.Printf("\nHasil: %.2f %s %.2f = %.2f\n", angka1, operasi, angka2, hasil)
+    }
+}
+```
+
+Ini adalah versi lengkap kalkulator kita! Mari kita pahami bagian-bagian pentingnya.
+
+## Memahami Kode
+
+### Variabel yang Digunakan
+
+```go
+var hasil float64   // dideklarasikan dengan var karena diisi belakangan, di dalam switch
+valid := true        // penanda: apakah operasi berhasil?
+angka1, _ := strconv.ParseFloat(scanner.Text(), 64)  // short declaration, langsung diisi
+```
+
+Kita pakai `float64` (bukan `int`) untuk `angka1`, `angka2`, dan `hasil` agar kalkulator bisa menangani bilangan desimal. `operasi` disimpan sebagai `string` karena begitulah `scanner.Text()` mengembalikan nilainya. `valid` adalah "bendera" (`bool`) yang menandai apakah perhitungan berhasil.
+
+Perhatikan `hasil` dideklarasikan dengan `var hasil float64` (tanpa nilai awal, jadi otomatis zero value `0`), bukan `:=` — karena nilainya baru diisi di dalam blok `switch` nanti, bukan langsung saat dideklarasikan.
+
+### Percabangan `switch`
+
+Meskipun kita belum belajar ini secara formal, logikanya sederhana:
+
+```go
+switch operasi {
+case "+":            // Jika operasi sama dengan "+"
+    hasil = angka1 + angka2
+case "-":             // Selain itu, jika operasi sama dengan "-"
+    hasil = angka1 - angka2
+default:              // Selain itu semua (operator tidak dikenal)
+    // handle error
+}
+```
+
+Perhatikan: **tidak perlu `break`** di akhir setiap `case` seperti di C++/Java — Go otomatis berhenti setelah satu `case` yang cocok dijalankan.
+
+### Penanganan Division by Zero
+
+```go
+case "/":
+    if angka2 == 0 {
+        fmt.Println("\n[ERROR] Tidak bisa membagi dengan nol!")
+        valid = false
+    } else {
+        hasil = angka1 / angka2
+    }
+```
+
+Pembagian dengan nol pada `float64` di Go sebenarnya tidak crash — hasilnya `+Inf` (infinity) atau `NaN` (bukan error runtime seperti di banyak bahasa lain). Tapi menampilkan "Inf" ke pengguna itu membingungkan, jadi kita tetap mengecek `angka2 == 0` secara eksplisit untuk memberi pesan yang jelas.
+
+## Tahap 4: Testing
+
+Program yang baik harus diuji dengan berbagai skenario. Coba jalankan dengan input berikut:
+
+**Test 1: Penjumlahan biasa**
+```
+Angka pertama: 10
+Operator: +
+Angka kedua: 5
+Expected: 10.00 + 5.00 = 15.00
+```
+
+**Test 2: Pembagian desimal**
+```
+Angka pertama: 7
+Operator: /
+Angka kedua: 2
+Expected: 7.00 / 2.00 = 3.50
+```
+
+**Test 3: Division by zero**
+```
+Angka pertama: 10
+Operator: /
+Angka kedua: 0
+Expected: Error message
+```
+
+**Test 4: Operator invalid**
+```
+Angka pertama: 5
+Operator: ^
+Angka kedua: 3
+Expected: Error message
+```
+
+**Test 5: Angka negatif**
+```
+Angka pertama: -8
+Operator: *
+Angka kedua: 3
+Expected: -8.00 * 3.00 = -24.00
+```
+
+:::tip
+Testing itu penting! Setiap programmer profesional menguji programnya dengan berbagai skenario — termasuk skenario "aneh" seperti angka negatif, nol, dan input tidak valid. Biasakan menguji programmu sebelum menganggapnya selesai.
+:::
+
+## Kode Solusi Lengkap (Final Version)
+
+Berikut kode lengkap yang sudah rapi dengan komentar:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    // === Variabel ===
+    var hasil float64 // Hasil perhitungan
+    valid := true      // Apakah operasi valid?
+
+    // === Header ===
+    fmt.Println("=============================")
+    fmt.Println("   KALKULATOR SEDERHANA GO   ")
+    fmt.Println("=============================")
+    fmt.Println()
+
+    // === Input ===
+    fmt.Print("Masukkan angka pertama : ")
+    scanner.Scan()
+    angka1, _ := strconv.ParseFloat(scanner.Text(), 64)
+
+    fmt.Print("Masukkan operator (+, -, *, /): ")
+    scanner.Scan()
+    operasi := scanner.Text()
+
+    fmt.Print("Masukkan angka kedua   : ")
+    scanner.Scan()
+    angka2, _ := strconv.ParseFloat(scanner.Text(), 64)
+
+    // === Perhitungan ===
+    switch operasi {
+    case "+":
+        hasil = angka1 + angka2
+    case "-":
+        hasil = angka1 - angka2
+    case "*":
+        hasil = angka1 * angka2
+    case "/":
+        if angka2 == 0 {
+            fmt.Println("\n[ERROR] Tidak bisa membagi dengan nol!")
+            valid = false
+        } else {
+            hasil = angka1 / angka2
+        }
+    default:
+        fmt.Printf("\n[ERROR] Operator '%s' tidak dikenali.\n", operasi)
+        fmt.Println("Operator yang tersedia: +, -, *, /")
+        valid = false
+    }
+
+    // === Output ===
+    if valid {
+        fmt.Println()
+        fmt.Println("-----------------------------")
+        fmt.Printf("  %.2f %s %.2f = %.2f\n", angka1, operasi, angka2, hasil)
+        fmt.Println("-----------------------------")
+    }
+
+    fmt.Println("\nTerima kasih telah menggunakan kalkulator!")
+}
+```
+
+Contoh interaksi lengkap:
+```
+=============================
+   KALKULATOR SEDERHANA GO
+=============================
+
+Masukkan angka pertama : 12.5
+Masukkan operator (+, -, *, /): *
+Masukkan angka kedua   : 4
+
+-----------------------------
+  12.50 * 4.00 = 50.00
+-----------------------------
+
+Terima kasih telah menggunakan kalkulator!
+```
+
+## Challenge Bonus
+
+Sudah selesai? Coba tantangan tambahan ini untuk menguji kemampuanmu:
+
+**Challenge 1: Operator Modulo**
+
+Tambahkan dukungan untuk operator `%` (modulo). Ingat bahwa modulo di Go hanya bekerja dengan integer, jadi kamu perlu mengonversi `float64` ke `int` (dan ingat: konversi ini **memotong**, bukan membulatkan!):
+
+```go
+case "%":
+    if angka2 == 0 {
+        fmt.Println("Error: Tidak bisa modulo dengan nol!")
+        valid = false
+    } else {
+        hasil = float64(int(angka1) % int(angka2))
+    }
+```
+
+**Challenge 2: Menampilkan Informasi Tambahan**
+
+Sebelum menampilkan hasil, tampilkan juga informasi tambahan:
+- Jenis operasi (Penjumlahan/Pengurangan/Perkalian/Pembagian)
+- Apakah hasilnya positif, negatif, atau nol
+
+**Challenge 3: Multiple Calculations**
+
+Bungkus seluruh program dalam loop supaya kalkulator bisa dipakai berkali-kali tanpa restart. Kita akan belajar `for` — satu-satunya keyword loop di Go — secara formal di Unit 3, tapi kalau penasaran, coba bungkus dengan `for { ... }` (infinite loop) dan `break` saat user mengetik "keluar".
+
+## Refleksi: Apa yang Sudah Dipelajari
+
+Dalam project ini, kamu menggunakan **hampir semua konsep** dari Unit 1:
+
+| Konsep | Dipakai Untuk |
+|--------|---------------|
+| `package main` / `func main()` | Struktur & entry point program |
+| `fmt.Println` / `fmt.Printf` | Menampilkan teks dan hasil |
+| `bufio.Scanner` | Menerima input dari user |
+| `strconv.ParseFloat` | Mengonversi input teks jadi angka |
+| Variabel (`float64`, `string`, `bool`) | Menyimpan data |
+| Operator aritmatika (`+`, `-`, `*`, `/`) | Perhitungan |
+| Komentar (`//`) | Dokumentasi kode |
+| `switch` (pengenalan awal) | Memilih perhitungan sesuai operator |
+
+## Penutup Unit 1
+
+Selamat! Kamu sudah menyelesaikan **Unit 1: Dasar-Dasar Go**! Mari recap apa yang sudah kamu kuasai:
+
+- Menulis dan menjalankan program Go dari nol
+- Memahami struktur program: `package main`, `import`, `func main()`
+- Menulis komentar untuk mendokumentasikan kode
+- Menggunakan variabel dan berbagai tipe data (`int`, `float64`, `string`, `bool`, `rune`)
+- Menerima input dari user dan menampilkan output terformat
+- Melakukan operasi aritmatika (termasuk jebakan pembagian integer)
+- Memanipulasi string dasar
+- Menggunakan konstanta (`const`) dan `iota`
+- Mengonversi antar tipe data dengan benar
+- Membangun program yang utuh dari planning sampai testing
+
+Ini adalah fondasi yang kuat. Setiap konsep yang kamu pelajari di sini akan dipakai terus-menerus di unit-unit berikutnya.
+
+Di **Unit 2**, kamu akan belajar tentang **percabangan** (`if/else`, `switch`) secara formal. Kalkulator kita tadi sebenarnya sudah mengintip sedikit ke Unit 2 dengan menggunakan `switch` — jadi kamu sudah punya gambaran!
+
+Terus semangat belajar, dan jangan lupa: setiap programmer hebat pernah ada di titik ini. Kamu sudah memulai perjalananmu!

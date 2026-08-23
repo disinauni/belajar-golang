@@ -1,0 +1,171 @@
+---
+title: "Tipe Data"
+unit: 1
+lesson: 3
+description: "Mengenal tipe data dasar Go: int, float64, string, bool, rune, dan byte"
+objectives:
+  - "Mengenal tipe data dasar Go dan kapan memakainya"
+  - "Memahami bahwa Go adalah bahasa statically typed"
+  - "Mengetahui bahwa Go tidak melakukan konversi tipe implisit"
+estimatedTime: 35
+prerequisites: ["unit-1/02-komentar-variabel"]
+difficulty: "beginner"
+tags: ["tipe-data", "int", "float64", "string", "bool", "rune", "byte"]
+---
+
+# Tipe Data
+
+Di pelajaran sebelumnya kamu sudah pakai `int` dan `string` tanpa banyak penjelasan. Sekarang saatnya kenalan resmi dengan tipe-tipe data dasar Go — dan satu aturan penting yang membedakan Go dari Python: **Go sama sekali tidak melakukan konversi tipe otomatis**.
+
+## Tipe-Tipe Dasar
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var umur int = 17
+    var tinggi float64 = 165.5
+    var nama string = "Budi"
+    var lulus bool = true
+    var inisial rune = 'B'
+
+    fmt.Println(umur, tinggi, nama, lulus, inisial)
+}
+```
+
+Output:
+```
+17 165.5 Budi true 66
+```
+
+Perhatikan `inisial` tercetak sebagai `66`, bukan `B` — kita bahas kenapa di bawah!
+
+## Membedah Setiap Tipe
+
+**`int`** — bilangan bulat (tanpa desimal). Ukurannya (32-bit atau 64-bit) mengikuti platform komputer, tapi untuk kebanyakan program kamu tidak perlu memikirkan ini. Ada juga varian ukuran tetap seperti `int8`, `int32`, `int64` untuk kasus khusus.
+
+**`float64`** — bilangan desimal dengan presisi 64-bit. Ini tipe angka desimal **default** di Go — pakai `float64` kecuali kamu punya alasan spesifik memakai `float32`.
+
+**`string`** — teks, diapit tanda kutip ganda. String di Go **immutable** (tidak bisa diubah setelah dibuat) dan secara internal adalah rangkaian byte yang meng-encode UTF-8.
+
+**`bool`** — nilai benar/salah: `true` atau `false`. Beda dari Python, Go **tidak** menganggap `0` atau string kosong sebagai "falsy" — hanya `bool` asli yang valid untuk kondisi `if`.
+
+**`rune`** — satu karakter Unicode, sebenarnya alias dari `int32`. Inilah kenapa `inisial` tercetak `66` di atas — `rune` sebenarnya cuma angka (kode Unicode karakter `'B'` adalah 66). Untuk menampilkannya sebagai karakter, pakai `fmt.Printf("%c", inisial)`.
+
+:::note
+**Kutip tunggal vs ganda** — di Go, tanda kutip **tunggal** (`'B'`) untuk satu karakter (`rune`), tanda kutip **ganda** (`"Budi"`) untuk string. Ini beda dari Python yang menganggap keduanya setara!
+:::
+
+## Kenapa Tercetak `66`?
+
+```go
+var inisial rune = 'B'
+fmt.Println(inisial)          // 66 (kode Unicode)
+fmt.Printf("%c\n", inisial)   // B  (karakter sesungguhnya)
+```
+
+`rune` sebenarnya cuma angka di balik layar — Go memilih menampilkan angka mentahnya dengan `Println`, dan kamu perlu format khusus (`%c` di `Printf`) untuk menampilkan karakternya. Ini akan lebih masuk akal setelah kita bahas `byte` dan encoding string di Unit 5.
+
+:::tip
+Go statically typed berarti **setiap variabel punya tipe tetap yang diperiksa saat compile**, bukan saat program berjalan. Ini menangkap banyak bug lebih awal — sebelum programmu sempat dijalankan sama sekali.
+:::
+
+## Tidak Ada Konversi Implisit
+
+Ini beda besar dari Python: di Go, kamu **tidak bisa** langsung mengoperasikan dua tipe berbeda, bahkan `int` dan `float64` sekalipun.
+
+```go
+var umur int = 17
+var faktor float64 = 1.5
+
+// hasil := umur * faktor  // ERROR: mismatched types int and float64
+hasil := float64(umur) * faktor  // harus dikonversi eksplisit
+fmt.Println(hasil)
+```
+
+Output:
+```
+25.5
+```
+
+Kita akan bahas konversi tipe secara lengkap di pelajaran **Konversi Tipe Data** nanti di unit ini.
+
+## Kesalahan Umum
+
+1. **Mengoperasikan int dan float64 langsung:**
+   ```go
+   var a int = 5
+   var b float64 = 2.5
+   hasil := a + b  // ERROR: mismatched types int and float64
+   ```
+   Solusi: konversi salah satu dulu, misalnya `float64(a) + b`.
+
+2. **Memakai kutip ganda untuk rune:**
+   ```go
+   var huruf rune = "A"  // ERROR: cannot use "A" (untyped string constant) as rune value
+   ```
+   Rune butuh kutip **tunggal**: `var huruf rune = 'A'`.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l3-ex1"
+  title="Perbaiki Konversi Tipe"
+  description="Kode ini error karena mencampur int dan float64 langsung. Perbaiki dengan konversi eksplisit supaya program mencetak hasilnya."
+  type="code-output"
+  expectedOutput="17.5"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    var umur int = 17
+    var tambahan float64 = 0.5
+    hasil := umur + tambahan
+    fmt.Println(hasil)
+}`}
+  hints={["Go tidak bisa langsung menjumlahkan int dan float64.", "Bungkus 'umur' dengan float64(...) sebelum dijumlahkan."]}
+  explanation="hasil := float64(umur) + tambahan mengonversi umur (int) menjadi float64 dulu, baru bisa dijumlahkan dengan tambahan yang bertipe float64."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l3-ex2"
+  title="Tipe Data Default Desimal"
+  description="Tipe apa yang dipakai Go secara default untuk bilangan desimal?"
+  type="multiple-choice"
+  options={["float32", "float64", "double", "decimal"]}
+  correctIndex={1}
+  hints={["Go tidak punya tipe bernama 'double' seperti C++/Java.", "Ini presisi 64-bit."]}
+  explanation="float64 adalah tipe desimal default di Go, dipakai kecuali ada alasan spesifik memakai float32 (misalnya untuk hemat memori)."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l3-ex3"
+  title="Kutip untuk Rune"
+  description="Lengkapi deklarasi rune yang benar untuk karakter 'A'."
+  type="fill-blank"
+  template="var huruf rune = {{BLANK}}A{{BLANK}}"
+  blanks={["'", "'"]}
+  hints={["Rune butuh tanda kutip tunggal, bukan ganda."]}
+  explanation="var huruf rune = 'A' memakai tanda kutip tunggal karena rune merepresentasikan satu karakter, bukan string."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Tipe | Contoh Nilai | Zero Value |
+|---|---|---|
+| `int` | `17` | `0` |
+| `float64` | `165.5` | `0` |
+| `string` | `"Budi"` | `""` |
+| `bool` | `true` | `false` |
+| `rune` | `'B'` (disimpan sebagai angka) | `0` |
+| `byte` | satu byte mentah (alias `uint8`) | `0` |
+
+Di pelajaran berikutnya, kita akan bahas **konstanta dan iota** — cara membuat nilai yang tidak boleh diubah, plus trik penomoran otomatis khas Go!

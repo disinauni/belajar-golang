@@ -1,0 +1,190 @@
+---
+title: "Komentar & Variabel"
+unit: 1
+lesson: 2
+description: "Menulis catatan di kode dengan komentar dan menyimpan data dengan variabel"
+objectives:
+  - "Menulis komentar satu baris dan banyak baris"
+  - "Mendeklarasikan variabel dengan var dan short declaration (:=)"
+  - "Memahami konsep zero value di Go"
+estimatedTime: 25
+prerequisites: ["unit-1/01-hello-world"]
+difficulty: "beginner"
+tags: ["komentar", "variabel", "var", "zero-value"]
+---
+
+# Komentar & Variabel
+
+Bayangkan kamu menulis resep masakan tapi lupa mencatat takaran garamnya — sebulan kemudian kamu bingung sendiri. Di programming, masalah serupa terjadi terus-menerus: kamu (atau orang lain) akan lupa **kenapa** sebuah baris kode ditulis seperti itu. Solusinya: **komentar**. Dan untuk menyimpan data yang dipakai program, kita butuh **variabel**.
+
+## Komentar
+
+Komentar adalah teks yang diabaikan compiler — murni untuk manusia yang membaca kode.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    // Ini komentar satu baris
+    fmt.Println("Halo!") // bisa juga di akhir baris
+
+    /*
+       Ini komentar banyak baris.
+       Cocok untuk penjelasan panjang.
+    */
+    fmt.Println("Selesai!")
+}
+```
+
+Output:
+```
+Halo!
+Selesai!
+```
+
+## Membedah Sintaks Komentar
+
+**`// komentar satu baris`** — semua teks setelah `//` sampai akhir baris diabaikan compiler.
+
+**`/* komentar banyak baris */`** — semua teks di antara `/*` dan `*/` diabaikan, bisa mencakup banyak baris sekaligus.
+
+:::tip
+Komentar yang bagus menjelaskan **kenapa**, bukan **apa**. `// tambah 1` di atas `x++` itu percuma — yang lebih berguna adalah `// kompensasi index 0-based ke 1-based untuk ditampilkan ke user`.
+:::
+
+## Variabel
+
+Variabel adalah tempat penyimpanan data yang diberi nama. Go punya dua cara deklarasi:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var nama string = "Budi"
+    var umur int = 17
+
+    kota := "Jakarta"
+
+    fmt.Println(nama, umur, kota)
+}
+```
+
+Output:
+```
+Budi 17 Jakarta
+```
+
+## Membedah Dua Cara Deklarasi
+
+**`var nama string = "Budi"`** — cara eksplisit. Urutannya: keyword `var`, nama variabel, tipe data, tanda sama dengan, lalu nilai. Bisa dipakai di mana saja, termasuk di luar fungsi.
+
+**`var umur int = 17`** — pola yang sama, tipe data `int` untuk bilangan bulat.
+
+**`kota := "Jakarta"`** — *short variable declaration*. Tipe data disimpulkan otomatis dari nilainya (di sini, `string`, karena `"Jakarta"` diapit tanda kutip). Lebih ringkas, tapi **hanya bisa dipakai di dalam fungsi** — tidak bisa di level package/global.
+
+Bayangkan `var` seperti mengisi formulir lengkap (nama, tipe, nilai semua ditulis), sementara `:=` seperti mengisi formulir cepat yang otomatis menebak sebagian isian dari yang kamu tulis.
+
+:::note
+**Zero Value** — kalau kamu deklarasi variabel tanpa nilai awal (`var jumlah int`), Go **tidak** membiarkannya kosong/undefined seperti banyak bahasa lain. Go otomatis mengisi *zero value*: `0` untuk angka, `""` untuk string, `false` untuk bool.
+```go
+var jumlah int     // otomatis bernilai 0
+var pesan string   // otomatis bernilai "" (string kosong)
+fmt.Println(jumlah, pesan)  // Output: 0
+```
+:::
+
+:::tip
+Konvensi penamaan variabel di Go memakai **camelCase** (`namaLengkap`, bukan `nama_lengkap` atau `NamaLengkap`) untuk variabel biasa. Huruf awal kapital (`NamaLengkap`) punya arti khusus — exported dari package — yang akan kita bahas di Unit 8.
+:::
+
+## Kesalahan Umum
+
+1. **Mendeklarasikan variabel tapi tidak pernah memakainya:**
+   ```go
+   func main() {
+       nama := "Budi"  // ERROR: declared and not used
+       fmt.Println("Halo!")
+   }
+   ```
+   Go **menolak compile** kalau ada variabel lokal yang dideklarasikan tapi tidak dipakai sama sekali — beda dari banyak bahasa lain yang hanya memberi warning.
+
+2. **Memakai `:=` di luar fungsi:**
+   ```go
+   package main
+
+   nama := "Budi"  // ERROR: syntax error, non-declaration statement outside function body
+
+   func main() {
+       fmt.Println(nama)
+   }
+   ```
+   `:=` hanya valid di dalam fungsi. Di level package (luar fungsi), kamu wajib pakai `var`.
+
+3. **Redeclare dengan `:=` di scope yang sama:**
+   ```go
+   nama := "Budi"
+   nama := "Ani"  // ERROR: no new variables on left side of :=
+   ```
+   Kalau variabelnya sudah ada di scope yang sama, pakai tanda sama dengan biasa (`nama = "Ani"`), bukan `:=` lagi.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l2-ex1"
+  title="Perbaiki Variabel yang Tidak Dipakai"
+  description="Kode ini error karena variabel 'pesan' dideklarasikan tapi tidak pernah dipakai. Perbaiki agar programnya mencetak isi variabel tersebut."
+  type="code-output"
+  expectedOutput="Selamat belajar Go!"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    pesan := "Selamat belajar Go!"
+}`}
+  hints={["Tambahkan baris untuk mencetak variabel 'pesan' dengan fmt.Println.", "fmt.Println(pesan) akan menampilkan isinya."]}
+  explanation="Tambahkan fmt.Println(pesan) supaya variabel pesan benar-benar dipakai, sesuai aturan Go yang melarang variabel lokal menganggur."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l2-ex2"
+  title="Zero Value int"
+  description="Apa nilai variabel 'jumlah' setelah baris `var jumlah int` dijalankan, sebelum diisi nilai apapun?"
+  type="multiple-choice"
+  options={["undefined", "null", "0", "Error, harus diisi nilai"]}
+  correctIndex={2}
+  hints={["Go tidak punya konsep 'undefined' atau 'null' untuk variabel yang belum diisi.", "Zero value untuk semua tipe angka adalah nol."]}
+  explanation="Go otomatis mengisi zero value untuk variabel yang dideklarasikan tanpa nilai awal. Untuk tipe int, zero value-nya adalah 0."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l2-ex3"
+  title="Short Declaration"
+  description="Lengkapi cara mendeklarasikan variabel 'skor' bernilai 100 memakai short declaration."
+  type="fill-blank"
+  template="skor {{BLANK}} 100"
+  blanks={[":="]}
+  hints={["Short declaration memakai simbol titik dua diikuti sama dengan."]}
+  explanation="skor := 100 mendeklarasikan sekaligus mengisi variabel skor, dengan tipe int disimpulkan otomatis dari nilainya."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Komentar satu baris | `// catatan` |
+| Komentar banyak baris | `/* catatan panjang */` |
+| Deklarasi eksplisit | `var nama string = "Budi"` |
+| Short declaration | `nama := "Budi"` |
+| Zero value int/string/bool | `0` / `""` / `false` |
+
+Di pelajaran berikutnya, kita akan bahas lebih dalam soal **tipe data** — apa saja pilihan tipe di Go dan kapan memakainya!

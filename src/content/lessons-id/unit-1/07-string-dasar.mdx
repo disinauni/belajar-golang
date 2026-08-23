@@ -1,0 +1,193 @@
+---
+title: "String Dasar"
+unit: 1
+lesson: 7
+description: "Menggabungkan, membandingkan, dan memanipulasi teks dengan string dan package strings"
+objectives:
+  - "Menggabungkan string dengan operator +"
+  - "Memakai fungsi-fungsi dari package strings"
+  - "Memahami bahwa string di Go bersifat immutable"
+estimatedTime: 30
+prerequisites: ["unit-1/06-operasi-aritmatika"]
+difficulty: "beginner"
+tags: ["string", "strings-package", "immutable"]
+---
+
+# String Dasar
+
+Hampir semua program berinteraksi dengan teks — nama pengguna, pesan error, judul artikel. Go menyediakan operator sederhana untuk operasi dasar, plus package `strings` yang berisi puluhan fungsi siap pakai untuk kebutuhan lebih rumit.
+
+## Menggabungkan String
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    depan := "Budi"
+    belakang := "Santoso"
+
+    namaLengkap := depan + " " + belakang
+    fmt.Println(namaLengkap)
+    fmt.Println("Panjang nama:", len(namaLengkap))
+}
+```
+
+Output:
+```
+Budi Santoso
+Panjang nama: 12
+```
+
+## Membedah Operasi String
+
+**`depan + " " + belakang`** — operator `+` menggabungkan (concatenate) string. Perhatikan `" "` di tengah — spasi juga string, cuma isinya satu karakter.
+
+**`len(namaLengkap)`** — fungsi bawaan Go untuk menghitung panjang. Untuk string ASCII biasa seperti ini, hasilnya sama dengan jumlah karakter. Tapi sebenarnya `len()` menghitung jumlah **byte**, bukan jumlah karakter — untuk teks dengan karakter non-ASCII (misalnya emoji atau huruf beraksen), jumlah byte bisa lebih besar dari jumlah karakter yang terlihat. Kita bahas ini tuntas di Unit 5.
+
+## Fungsi-Fungsi Package `strings`
+
+```go
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    kalimat := "Belajar Go itu Menyenangkan"
+
+    fmt.Println(strings.ToUpper(kalimat))
+    fmt.Println(strings.ToLower(kalimat))
+    fmt.Println(strings.Contains(kalimat, "Go"))
+    fmt.Println(strings.Replace(kalimat, "Menyenangkan", "Seru", 1))
+    fmt.Println(strings.Split(kalimat, " "))
+}
+```
+
+Output:
+```
+BELAJAR GO ITU MENYENANGKAN
+belajar go itu menyenangkan
+true
+Belajar Go itu Seru
+[Belajar Go itu Menyenangkan]
+```
+
+## Membedah Fungsi strings
+
+**`strings.ToUpper` / `strings.ToLower`** — mengubah semua huruf jadi kapital/kecil.
+
+**`strings.Contains(kalimat, "Go")`** — mengembalikan `bool`, `true` kalau `"Go"` ditemukan di dalam `kalimat`.
+
+**`strings.Replace(kalimat, "Menyenangkan", "Seru", 1)`** — mengganti kemunculan pertama (angka `1` di akhir) dari `"Menyenangkan"` menjadi `"Seru"`. Pakai `-1` untuk mengganti **semua** kemunculan.
+
+**`strings.Split(kalimat, " ")`** — memecah string jadi slice `[]string`, dipisah berdasarkan spasi. Kita akan bahas slice secara mendalam di Unit 5 — untuk sekarang, cukup tahu ini menghasilkan kumpulan potongan teks.
+
+:::tip
+Package `strings` punya puluhan fungsi lain: `strings.TrimSpace` (hapus spasi di awal/akhir), `strings.HasPrefix`/`HasSuffix` (cek awalan/akhiran), `strings.Join` (kebalikan dari Split). Kamu tidak perlu menghafal semuanya — cukup tahu package ini ada saat kamu butuh.
+:::
+
+## String Immutable
+
+String di Go **tidak bisa diubah** setelah dibuat — mencoba mengubah satu karakter lewat index akan gagal compile:
+
+```go
+kata := "Halo"
+kata[0] = 'h'  // ERROR: cannot assign to kata[0] (neither addressable nor a map index expression)
+```
+
+Kalau kamu perlu "mengubah" string, sebenarnya kamu **membuat string baru**:
+
+```go
+kata := "Halo"
+kataBaru := "h" + kata[1:]
+fmt.Println(kataBaru)  // hHalo... eh, salah! Karena kata[1:] mulai dari index 1
+```
+
+:::note
+Contoh di atas menunjukkan slicing string dengan `[1:]` — topik yang akan kita bahas lengkap saat membahas slice di Unit 5. Untuk sekarang, ingat saja: string itu **immutable**, titik.
+:::
+
+## Kesalahan Umum
+
+1. **Mencoba mengubah karakter lewat index:**
+   ```go
+   nama := "budi"
+   nama[0] = 'B'  // ERROR: cannot assign to nama[0]
+   ```
+   Solusi: buat string baru, jangan coba mengubah yang lama.
+
+2. **Menggabungkan string dengan tipe lain tanpa konversi:**
+   ```go
+   umur := 17
+   pesan := "Umur: " + umur  // ERROR: mismatched types string and int
+   ```
+   Solusi: konversi dulu dengan `strconv.Itoa(umur)`, atau pakai `fmt.Sprintf("Umur: %d", umur)`.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l7-ex1"
+  title="Gabungkan dan Ubah Huruf Besar"
+  description="Lengkapi program agar mencetak 'BUDI SANTOSO' (semua huruf kapital) dari dua variabel nama depan dan belakang."
+  type="code-output"
+  expectedOutput="BUDI SANTOSO"
+  starterCode={`package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    depan := "Budi"
+    belakang := "Santoso"
+    lengkap := depan + " " + belakang
+    fmt.Println(strings.ToUpper(lengkap))
+}`}
+  hints={["Gabungkan dulu dengan +, lalu ubah semuanya jadi kapital.", "strings.ToUpper() mengubah seluruh string jadi huruf besar."]}
+  explanation="depan + spasi + belakang menggabungkan nama, lalu strings.ToUpper() mengubah hasilnya jadi BUDI SANTOSO."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l7-ex2"
+  title="Sifat String di Go"
+  description="Kenapa `nama[0] = 'B'` menghasilkan compile error di Go?"
+  type="multiple-choice"
+  options={["Karena nama harus dideklarasikan dengan const", "Karena string di Go bersifat immutable (tidak bisa diubah)", "Karena index harus dimulai dari 1, bukan 0", "Karena huruf besar tidak diizinkan di string"]}
+  correctIndex={1}
+  hints={["Ingat sifat khusus string yang dibahas di pelajaran ini.", "Kamu bisa membuat string baru, tapi tidak bisa mengubah string yang sudah ada."]}
+  explanation="String di Go bersifat immutable — setelah dibuat, isinya tidak bisa diubah sama sekali. Untuk 'mengubah' teks, kamu sebenarnya membuat string baru."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l7-ex3"
+  title="Lengkapi Pengecekan Substring"
+  description="Lengkapi fungsi dari package strings untuk mengecek apakah sebuah kalimat mengandung kata tertentu."
+  type="fill-blank"
+  template='strings.{{BLANK}}(kalimat, "Go")'
+  blanks={["Contains"]}
+  hints={["Fungsi ini mengembalikan bool: true kalau ditemukan."]}
+  explanation='strings.Contains(kalimat, "Go") mengembalikan true jika "Go" ditemukan di dalam kalimat.'
+  lang="id"
+/>
+
+## Ringkasan
+
+| Fungsi | Kegunaan |
+|---|---|
+| `a + b` | Gabungkan (concatenate) string |
+| `len(s)` | Panjang string dalam byte |
+| `strings.ToUpper(s)` / `ToLower(s)` | Ubah ke huruf besar/kecil |
+| `strings.Contains(s, sub)` | Cek apakah mengandung substring |
+| `strings.Replace(s, old, new, n)` | Ganti kemunculan teks |
+| `strings.Split(s, sep)` | Pecah string jadi slice |
+
+Di pelajaran berikutnya, kita akan bahas **konversi tipe data** secara tuntas — cara mengubah antar int, float64, dan string dengan benar!

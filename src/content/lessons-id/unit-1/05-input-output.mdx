@@ -1,0 +1,184 @@
+---
+title: "Input & Output"
+unit: 1
+lesson: 5
+description: "Membaca input dari pengguna dengan bufio.Scanner dan menampilkan output dengan format"
+objectives:
+  - "Membaca input teks dari keyboard dengan bufio.Scanner"
+  - "Mengonversi input teks menjadi angka dengan strconv.Atoi"
+  - "Memformat output dengan fmt.Printf"
+estimatedTime: 30
+prerequisites: ["unit-1/04-konstanta-iota"]
+difficulty: "beginner"
+tags: ["input", "output", "bufio", "scanner", "strconv"]
+---
+
+# Input & Output
+
+Program yang cuma mencetak teks tetap itu membosankan — program sungguhan berinteraksi dengan penggunanya. Di Go, membaca input dari keyboard sedikit lebih verbose dibanding bahasa seperti Python, tapi begitu kamu paham polanya, kamu akan memakainya berulang-ulang.
+
+## Membaca Input dengan bufio.Scanner
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Print("Siapa namamu? ")
+    scanner.Scan()
+    nama := scanner.Text()
+
+    fmt.Println("Halo, " + nama + "!")
+}
+```
+
+Kalau kamu jalankan ini di halaman **Playground** (buka kolom "Input/stdin" dan isi nama sebelum klik Run) dan mengetik `Budi`, outputnya:
+
+```
+Siapa namamu? Halo, Budi!
+```
+
+## Membedah Setiap Baris
+
+**`import ( "bufio" "fmt" "os" )`** — kali ini kita import tiga package sekaligus, ditulis dalam kurung. Ini gaya penulisan import yang direkomendasikan saat lebih dari satu package dipakai.
+
+**`bufio.NewScanner(os.Stdin)`** — membuat scanner baru yang membaca dari `os.Stdin`, yaitu "standard input" — biasanya keyboard. `bufio` (buffered I/O) menyediakan cara efisien membaca input baris per baris.
+
+**`scanner.Scan()`** — membaca satu baris input, menunggu sampai pengguna menekan Enter. Fungsi ini mengembalikan `bool`: `true` kalau berhasil membaca sesuatu.
+
+**`scanner.Text()`** — mengambil teks yang baru saja dibaca `Scan()`, sebagai `string`.
+
+:::note
+Kotak **Latihan** di pelajaran ini tidak menyediakan kolom stdin, jadi kode yang butuh input interaktif sebaiknya kamu coba dulu di halaman **Playground** (yang punya kolom "Input/stdin"), bukan di kotak Latihan di bawah.
+:::
+
+## Membaca Angka dari Input
+
+`scanner.Text()` selalu mengembalikan `string` — bahkan kalau penggunanya mengetik angka. Untuk mengubahnya jadi angka, kita perlu package `strconv` (string conversion):
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+
+    fmt.Print("Umurmu berapa? ")
+    scanner.Scan()
+    teksUmur := scanner.Text()
+
+    umur, err := strconv.Atoi(teksUmur)
+    if err != nil {
+        fmt.Println("Itu bukan angka yang valid!")
+        return
+    }
+
+    fmt.Printf("Tahun depan kamu %d tahun.\n", umur+1)
+}
+```
+
+## Membedah Konversi Angka
+
+**`strconv.Atoi(teksUmur)`** — "Atoi" singkatan dari "ASCII to Integer". Fungsi ini mencoba mengubah string jadi `int`, dan mengembalikan **dua nilai**: hasil konversi (`int`) dan `error` (nil kalau berhasil, berisi pesan kalau gagal).
+
+**`if err != nil { ... }`** — pola idiomatik Go untuk memeriksa error. Kalau `err` bukan `nil`, artinya konversi gagal (misalnya penggunanya mengetik "abc" bukan angka). Kita bahas error handling secara lengkap di Unit 6 — untuk sekarang, cukup ingat pola ini sering muncul.
+
+**`fmt.Printf("Tahun depan kamu %d tahun.\n", umur+1)`** — `Printf` memakai *format verb* seperti `%d` (integer) untuk menyisipkan nilai ke dalam teks. Perhatikan juga `\n` di akhir — beda dari `Println`, `Printf` **tidak** otomatis menambahkan baris baru, jadi kamu harus menulisnya sendiri.
+
+:::tip
+Format verb yang sering dipakai: `%d` untuk integer, `%s` untuk string, `%f` untuk desimal (`%.2f` untuk 2 angka di belakang koma), `%t` untuk bool, `%v` untuk nilai apapun (format default).
+:::
+
+## Kesalahan Umum
+
+1. **Lupa import `bufio` atau `os`:**
+   ```go
+   scanner := bufio.NewScanner(os.Stdin)  // ERROR: undefined: bufio (kalau lupa import)
+   ```
+
+2. **Lupa menangani error dari strconv.Atoi:**
+   ```go
+   umur, _ := strconv.Atoi(teksUmur)  // error diabaikan dengan _
+   fmt.Println(umur + 1)  // kalau input bukan angka, umur bernilai 0 — bukan error yang jelas!
+   ```
+   Mengabaikan error dengan `_` kadang oke untuk contoh singkat, tapi program yang serius sebaiknya selalu memeriksa `err`.
+
+3. **Lupa `\n` di `Printf`:**
+   ```go
+   fmt.Printf("Halo, %s!", nama)  // tidak ada baris baru di akhir
+   fmt.Println("Baris berikutnya")
+   // Output: Halo, Budi!Baris berikutnya  ← nempel!
+   ```
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l5-ex1"
+  title="Format Output dengan Printf"
+  description="Lengkapi program agar mencetak 'Skor: 95, Rata-rata: 88.50' memakai fmt.Printf dengan format verb yang tepat."
+  type="code-output"
+  expectedOutput="Skor: 95, Rata-rata: 88.50"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    skor := 95
+    rata := 88.5
+    fmt.Printf("Skor: %d, Rata-rata: %.2f\\n", skor, rata)
+}`}
+  hints={["%d untuk integer, %.2f untuk desimal dua angka di belakang koma.", "Kode ini sebenarnya sudah benar — coba jalankan!"]}
+  explanation="%d menyisipkan integer, %.2f menyisipkan desimal dengan tepat 2 angka di belakang koma — 88.5 menjadi 88.50."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l5-ex2"
+  title="Fungsi strconv.Atoi"
+  description="Apa yang dikembalikan oleh <code>strconv.Atoi(&quot;25&quot;)</code>?"
+  type="multiple-choice"
+  options={["Hanya angka 25", "Angka 25 dan sebuah error (nil jika berhasil)", "String \"25\"", "Sebuah boolean"]}
+  correctIndex={1}
+  hints={["Ingat pola multiple return values yang sudah kamu lihat di beberapa contoh.", "Selalu ada dua nilai: hasil konversi, dan error."]}
+  explanation="strconv.Atoi mengembalikan dua nilai: int hasil konversi, dan error (nil kalau berhasil, berisi pesan kalau string-nya bukan angka valid)."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l5-ex3"
+  title="Lengkapi Pembacaan Baris"
+  description="Lengkapi kode untuk membaca satu baris input dan mengambil teksnya sebagai string."
+  type="fill-blank"
+  template="scanner.Scan()\nteks := scanner.{{BLANK}}()"
+  blanks={["Text"]}
+  hints={["Method ini mengambil hasil baca terakhir sebagai string."]}
+  explanation="scanner.Text() mengembalikan baris terakhir yang berhasil dibaca oleh scanner.Scan(), sebagai string."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Buat scanner | `bufio.NewScanner(os.Stdin)` |
+| Baca satu baris | `scanner.Scan()` |
+| Ambil teksnya | `scanner.Text()` |
+| String ke int | `strconv.Atoi(teks)` (return: int, error) |
+| Format output | `fmt.Printf("%d %s %.2f\n", ...)` |
+
+Di pelajaran berikutnya, kita akan bahas **operasi aritmatika** — cara Go menghitung tambah, kurang, kali, bagi, dan sisa bagi!

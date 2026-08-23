@@ -1,0 +1,203 @@
+---
+title: "Hello, World!"
+unit: 1
+lesson: 1
+description: "Menulis program Go pertamamu dan memahami setiap barisnya"
+objectives:
+  - "Menulis dan menjalankan program Hello World di Go"
+  - "Memahami fungsi package, import, func main(), dan fmt.Println"
+  - "Mengenal konsep package di Go"
+estimatedTime: 25
+prerequisites: ["unit-0/03-tour-playground"]
+difficulty: "beginner"
+tags: ["hello-world", "fmt", "package", "main", "basics"]
+---
+
+# Hello, World!
+
+Ada tradisi di dunia programming: program pertama yang kamu tulis dalam bahasa baru haruslah program yang menampilkan "Hello, World!" di layar. Tradisi ini dimulai dari buku legenda "The C Programming Language" tahun 1978. Sekarang giliranmu melanjutkan tradisi ini — kali ini dalam Go!
+
+## Program Pertamamu
+
+Berikut program Hello World dalam Go:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Halo, Dunia!")
+}
+```
+
+Ketik kode ini di playground, lalu klik **Run**. Kamu akan melihat:
+
+```
+Halo, Dunia!
+```
+
+Selamat! Kamu baru saja menulis program Go pertamamu! Mungkin terlihat sederhana, tapi ada banyak hal yang terjadi di balik layar. Mari kita bedah **setiap baris**.
+
+## Membedah Setiap Baris
+
+### Baris 1: `package main`
+
+```go
+package main
+```
+
+Setiap file Go **wajib** dimulai dengan deklarasi package. Package adalah cara Go mengelompokkan kode yang saling berhubungan — mirip folder untuk kode.
+
+Bayangkan begini: `package` itu seperti nama rumah besar tempat kode-kode terkait "tinggal" bersama. Nama `main` itu istimewa — ini memberitahu Go "inilah program yang bisa dijalankan langsung", bukan library yang cuma dipakai program lain. Kalau kamu ganti `main` jadi nama lain, kamu sedang membuat *library* — dan itu topik untuk Unit 8.
+
+### Baris 3: `import "fmt"`
+
+```go
+import "fmt"
+```
+
+Baris ini menyertakan package `fmt` (singkatan dari **f**or**m**a**t**) — bagian dari standard library Go yang berisi fungsi untuk mencetak teks ke layar dan membaca input.
+
+Bayangkan begini: kamu mau memasak, tapi alatnya ada di laci. `import` itu seperti membuka laci dan mengeluarkan alat yang dibutuhkan. Tanpa `import "fmt"`, kamu tidak bisa menggunakan `fmt.Println` sama sekali — dan Go akan menolak meng-compile kodemu.
+
+**Fakta penting:**
+- Nama package diapit tanda kutip ganda `"..."`, bukan `<...>` seperti di C++
+- Kalau kamu import sesuatu tapi tidak dipakai, Go akan **menolak compile** — bukan sekadar warning!
+
+### Baris 5: `func main() {`
+
+```go
+func main() {
+```
+
+Ini adalah **fungsi main** — pintu masuk program. Setiap program Go yang bisa dijalankan **harus** punya persis satu fungsi `main()` di dalam `package main`.
+
+Bayangkan programmu adalah sebuah gedung. `main()` adalah pintu depan — tidak peduli seberapa besar gedungnya, semua orang masuk lewat pintu depan. Begitu juga program: tidak peduli seberapa kompleks kodenya, eksekusi selalu dimulai dari `main()`.
+
+Mari pecah bagian-bagiannya:
+- `func` — keyword untuk mendeklarasikan fungsi
+- `main` — nama fungsi. Nama ini **wajib** `main`, tidak bisa diganti
+- `()` — tanda kurung untuk parameter (kosong artinya tidak menerima parameter)
+- `{` — kurung kurawal pembuka, menandai awal *body* fungsi
+
+### Baris 6: `fmt.Println("Halo, Dunia!")`
+
+```go
+    fmt.Println("Halo, Dunia!")
+```
+
+Ini adalah baris yang melakukan aksi sebenarnya — menampilkan teks ke layar. Mari pecah satu per satu:
+
+**`fmt.Println`** — memanggil fungsi `Println` yang "hidup" di dalam package `fmt`. Tanda titik (`.`) adalah cara Go mengakses sesuatu dari dalam sebuah package — mirip cara kamu bilang "laci.pisau" untuk ambil pisau dari laci bernama "laci".
+
+**`("Halo, Dunia!")`** — tanda kurung berisi *argumen*: nilai yang dikirim ke fungsi. Di sini argumennya adalah string literal `"Halo, Dunia!"` — teks yang diapit tanda kutip ganda, ditampilkan persis seperti yang kamu tulis.
+
+**`Println`** — singkatan dari "**Print** **Ln**e" (cetak baris). Fungsi ini otomatis menambahkan baris baru (newline) setelah teks — beda dari `fmt.Print` yang tidak menambahkan newline.
+
+Perhatikan: **tidak ada titik koma** di akhir baris! Go otomatis menyisipkan titik koma di belakang layar berdasarkan aturan newline — kamu tidak perlu menulisnya sendiri (dan sebenarnya, kamu tidak boleh).
+
+### Baris 7: `}`
+
+```go
+}
+```
+
+Kurung kurawal penutup, menandai akhir *body* fungsi `main()`. Setiap `{` di Go **harus** punya `}` pasangannya — kalau lupa, compiler akan komplain.
+
+:::note
+**Tentang huruf besar/kecil** — `Println` diawali huruf besar (`P`), sementara `main` diawali huruf kecil. Ini bukan kebetulan! Di Go, huruf awal kapital menandakan fungsi/variabel itu bisa diakses dari luar package (*exported*), huruf kecil berarti hanya bisa diakses di dalam package itu sendiri. Kita bahas ini lebih dalam di Unit 8.
+:::
+
+:::tip
+Ada tiga fungsi cetak yang mirip: `fmt.Print` (tanpa newline otomatis), `fmt.Println` (dengan newline, pisahkan argumen dengan spasi), dan `fmt.Printf` (format string dengan placeholder seperti `%d`, `%s`). Kita akan pakai ketiganya sepanjang kursus ini.
+:::
+
+## Kesalahan Umum
+
+1. **Lupa `import "fmt"` tapi tetap memakai `fmt.Println`:**
+   ```go
+   package main
+
+   func main() {
+       fmt.Println("Halo!")  // ERROR: undefined: fmt
+   }
+   ```
+   Go akan menolak compile dengan pesan `undefined: fmt` — package itu belum di-*import*.
+
+2. **Tanda kurung atau kutip tidak lengkap:**
+   ```go
+   fmt.Println("Halo, Dunia!"   // ERROR: syntax error, kurung penutup hilang
+   ```
+   Selalu pastikan setiap `(` punya `)` pasangannya, dan setiap `"` pembuka punya `"` penutup.
+
+3. **Import yang tidak dipakai:**
+   ```go
+   import (
+       "fmt"
+       "os"  // ERROR: "os" imported and not used
+   )
+
+   func main() {
+       fmt.Println("Halo!")
+   }
+   ```
+   Go **menolak compile** kalau ada import yang tidak dipakai sama sekali — ini bukan sekadar warning seperti di banyak bahasa lain.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l1-ex1"
+  title="Ubah Output Hello World"
+  description="Ubah program agar menampilkan `Halo, Go!` (persis, dengan huruf besar/kecil yang sama)."
+  type="code-output"
+  expectedOutput="Halo, Go!"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Halo, Dunia!")
+}`}
+  hints={["Kamu cuma perlu mengubah teks di dalam tanda kutip.", "Perhatikan huruf besar/kecil harus sama persis dengan target."]}
+  explanation='Cukup ganti string di dalam fmt.Println("...") menjadi "Halo, Go!" — struktur program lainnya tidak perlu diubah.'
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l1-ex2"
+  title="Fungsi Package fmt"
+  description="Apa fungsi dari baris <code>import &quot;fmt&quot;</code> di program Go?"
+  type="multiple-choice"
+  options={["Menyertakan package fmt agar fungsi seperti Println bisa dipakai", "Membuat file baru bernama fmt", "Mencetak teks 'fmt' ke layar", "Mendefinisikan variabel bernama fmt"]}
+  correctIndex={0}
+  hints={["'import' artinya menyertakan sesuatu dari luar.", "fmt adalah nama package standard library, bukan variabel atau file."]}
+  explanation='import "fmt" menyertakan package standard library fmt, yang berisi fungsi-fungsi untuk mencetak teks dan membaca input seperti Println, Print, dan Printf.'
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l1-ex3"
+  title="Lengkapi Entry Point"
+  description="Lengkapi deklarasi fungsi entry point program Go."
+  type="fill-blank"
+  template="func {{BLANK}}() {"
+  blanks={["main"]}
+  hints={["Nama fungsi entry point Go wajib huruf kecil semua."]}
+  explanation="Setiap program Go yang bisa dijalankan wajib punya fungsi bernama persis 'main', di dalam package main."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Konsep | Contoh |
+|---|---|
+| Deklarasi package | `package main` |
+| Import package | `import "fmt"` |
+| Entry point program | `func main() { ... }` |
+| Cetak teks + newline | `fmt.Println("teks")` |
+| Cetak tanpa newline | `fmt.Print("teks")` |
+
+Di pelajaran berikutnya, kita akan belajar **komentar dan variabel** — cara menulis catatan di kode dan menyimpan data untuk dipakai nanti!

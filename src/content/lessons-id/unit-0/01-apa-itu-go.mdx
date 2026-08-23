@@ -1,0 +1,131 @@
+---
+title: "Apa itu Go?"
+unit: 0
+lesson: 1
+description: "Kenalan dengan bahasa pemrograman Go dan kenapa banyak perusahaan besar memakainya"
+objectives:
+  - "Memahami sejarah singkat dan alasan Go diciptakan"
+  - "Mengetahui karakteristik utama Go: compiled, statically-typed, dan concurrency-first"
+  - "Mengenal contoh penggunaan Go di dunia nyata"
+estimatedTime: 20
+prerequisites: []
+difficulty: "beginner"
+tags: ["pengenalan", "sejarah", "go"]
+---
+
+# Apa itu Go?
+
+Tahun 2007, tiga programmer di Google — Robert Griesemer, Rob Pike, dan Ken Thompson — sedang menunggu proses compile sebuah program C++ raksasa. Prosesnya memakan waktu **lebih dari 45 menit**. Alih-alih menunggu, mereka mulai mencorat-coret rancangan bahasa pemrograman baru di papan tulis. Bahasa itu kemudian dirilis ke publik tahun 2009 dengan nama **Go** (kadang disebut juga **Golang**, karena domain resminya adalah golang.org).
+
+## Kenapa Go Dibuat?
+
+Google punya masalah unik: mereka mengelola jutaan baris kode C++ yang di-compile ribuan kali sehari oleh ribuan engineer. Bahasa yang ada saat itu punya trade-off yang menyebalkan:
+
+- **C++** cepat saat dijalankan, tapi compile-nya lambat dan sintaksnya rumit
+- **Python** mudah ditulis, tapi lambat saat dijalankan dan tidak punya static typing
+- **Java** punya static typing yang bagus, tapi verbose dan startup-nya berat
+
+Go dirancang untuk mengambil yang terbaik dari ketiganya: **secepat C++** saat dijalankan, **secepat Python** untuk ditulis dan dibaca, dan tetap **type-safe** seperti Java — tanpa kerumitan berlebih dari ketiganya.
+
+## Seperti Apa Kode Go?
+
+Berikut program Go paling sederhana:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Halo, Go!")
+}
+```
+
+Output:
+```
+Halo, Go!
+```
+
+Jangan khawatir kalau belum paham setiap barisnya — itu topik lengkap di pelajaran berikutnya. Untuk sekarang, perhatikan saja: sintaksnya ringkas, tidak ada kelas yang wajib dibuat, dan strukturnya jelas.
+
+## Karakteristik Utama Go
+
+**Compiled** — Kode Go diterjemahkan langsung menjadi file biner sebelum dijalankan, bukan dibaca baris per baris seperti Python. Hasilnya: eksekusi jauh lebih cepat, dan kamu bisa membagikan satu file executable tanpa orang lain perlu install Go sama sekali.
+
+**Statically Typed** — Setiap variabel punya tipe yang tetap dan diperiksa saat compile, bukan saat program berjalan. Banyak bug tertangkap sebelum kodenya sempat dijalankan sama sekali — beda dari Python yang baru "kaget" saat baris bermasalah itu benar-benar dieksekusi.
+
+**Concurrency-First** — Go dirancang dari awal untuk menjalankan banyak proses sekaligus dengan mudah, lewat fitur bernama **goroutine** dan **channel**. Ini salah satu alasan utama Go dipakai untuk sistem server berskala besar. Kita akan bahas ini tuntas di Unit 7.
+
+**Garbage Collected** — Go otomatis membersihkan memori yang sudah tidak dipakai, sama seperti Python. Kamu tidak perlu manual `malloc`/`free` seperti di C.
+
+**Sintaks Minimalis** — Go sengaja dirancang dengan sedikit keyword (cuma 25!) dan tanpa fitur "nice to have" yang bikin bahasa lain kompleks — tidak ada inheritance class, tidak ada generic yang ribet (sampai versi 1.18), tidak ada exception.
+
+:::fun
+Maskot Go adalah seekor gopher (sejenis tupai tanah) berwarna biru langit, didesain oleh Renee French. Kamu akan sering melihatnya di komunitas Go!
+:::
+
+:::note
+"Go" dan "Golang" merujuk ke bahasa yang sama. "Golang" populer karena domain resminya awalnya golang.org (nama "go" saja terlalu umum untuk jadi nama domain/hashtag pencarian).
+:::
+
+## Dipakai di Mana Saja?
+
+Go bukan cuma proyek eksperimen — ini daftar software terkenal yang ditulis (sebagian besar) dengan Go:
+
+- **Docker** dan **Kubernetes** — dua fondasi utama cloud computing modern
+- **Terraform** — infrastructure as code favorit banyak perusahaan
+- **CockroachDB** dan **etcd** — database terdistribusi
+- Backend performa-tinggi di Google, Uber, Twitch, hingga Shopee
+
+:::tip
+Kalau kamu tertarik ke bidang backend, DevOps, atau cloud infrastructure, Go adalah salah satu bahasa dengan return-on-investment tertinggi untuk dipelajari — banyak tooling penting di industri ini ditulis dengan Go.
+:::
+
+## Miskonsepsi Umum
+
+Sebelum lanjut, mari luruskan beberapa salah paham yang sering muncul soal Go:
+
+1. **"Go itu bahasa buatan Google untuk internal doang"** — Salah. Go open source sejak awal dan dipakai luas di luar Google.
+2. **"Go itu susah karena bahasa sistem seperti C"** — Salah. Justru Go dirancang supaya lebih mudah dipelajari daripada C/C++, dengan garbage collector dan sintaks yang jauh lebih bersih.
+3. **"Go = Google App Engine"** — Beda. Go App Engine (produk cloud Google) memang salah satu tempat Go dipakai, tapi Go sendiri adalah bahasa pemrograman umum yang bisa dipakai di mana saja.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u0l1-ex1"
+  title="Tahun Rilis Go"
+  description="Go pertama kali dirilis ke publik pada tahun berapa?"
+  type="multiple-choice"
+  options={["2005", "2009", "2015", "1999"]}
+  correctIndex={1}
+  hints={["Rancangannya dimulai 2007, tapi rilis publiknya dua tahun setelah itu.", "Ini beberapa tahun setelah smartphone pertama muncul."]}
+  explanation="Go mulai dirancang tahun 2007 di Google dan resmi dirilis ke publik tahun 2009."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u0l1-ex2"
+  title="Karakteristik Go"
+  description="Mana yang BUKAN karakteristik utama Go?"
+  type="multiple-choice"
+  options={["Compiled", "Statically typed", "Punya inheritance class seperti Java", "Concurrency-first dengan goroutine"]}
+  correctIndex={2}
+  hints={["Go memang punya konsep 'objek', tapi lewat struct + method, bukan class.", "Ingat: Go sengaja dirancang minimalis, menghindari fitur OOP yang rumit."]}
+  explanation="Go tidak punya class maupun inheritance seperti Java/C++. Go memakai struct, method, dan interface sebagai gantinya — dibahas lengkap di Unit 6."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Fakta | Keterangan |
+|---|---|
+| Dibuat oleh | Google (Griesemer, Pike, Thompson) |
+| Dirancang | 2007, dirilis publik 2009 |
+| Jenis | Compiled, statically typed |
+| Fitur andalan | Goroutine & channel (concurrency) |
+| Nama lain | Golang |
+| Contoh pengguna | Docker, Kubernetes, Terraform |
+
+Sekarang kamu tahu apa itu Go dan kenapa bahasa ini layak dipelajari. Di pelajaran berikutnya, kita akan **setup lingkungan belajar** — supaya kamu siap menulis dan menjalankan kode Go pertamamu!

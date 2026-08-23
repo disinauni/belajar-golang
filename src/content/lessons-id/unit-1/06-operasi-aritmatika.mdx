@@ -1,0 +1,176 @@
+---
+title: "Operasi Aritmatika"
+unit: 1
+lesson: 6
+description: "Operator matematika di Go: tambah, kurang, kali, bagi, sisa bagi, dan jebakan pembagian integer"
+objectives:
+  - "Memakai operator aritmatika dasar: + - * / %"
+  - "Memahami perbedaan pembagian integer dan float"
+  - "Mengetahui bahwa ++ dan -- di Go adalah statement, bukan ekspresi"
+estimatedTime: 30
+prerequisites: ["unit-1/05-input-output"]
+difficulty: "beginner"
+tags: ["aritmatika", "operator", "pembagian", "modulus"]
+---
+
+# Operasi Aritmatika
+
+Kalkulator adalah salah satu program pertama yang dibuat siapapun belajar programming — dan project unit ini memang kalkulator sederhana! Sebelum sampai ke sana, mari kuasai dulu operator matematika dasar Go, termasuk satu jebakan yang mengejutkan banyak pemula.
+
+## Operator Dasar
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    a := 17
+    b := 5
+
+    fmt.Println(a + b)  // 22
+    fmt.Println(a - b)  // 12
+    fmt.Println(a * b)  // 85
+    fmt.Println(a / b)  // 3   ← bukan 3.4!
+    fmt.Println(a % b)  // 2
+}
+```
+
+Output:
+```
+22
+12
+85
+3
+2
+```
+
+## Membedah Setiap Operator
+
+**`+` `-` `*`** — tambah, kurang, kali. Bekerja seperti dugaanmu.
+
+**`/`** — pembagian. Inilah jebakannya: **karena `a` dan `b` bertipe `int`, hasilnya juga `int`** — bagian desimalnya dibuang (truncated), bukan dibulatkan. `17 / 5` secara matematika adalah `3.4`, tapi Go mencetak `3`.
+
+**`%`** — modulus (sisa bagi). `17 % 5` = `2`, karena `17 = 3×5 + 2`. Sangat berguna untuk cek genap/ganjil (`n % 2 == 0`) atau membatasi angka dalam rentang tertentu.
+
+:::note
+**Pembagian integer vs float** — kalau kamu ingin hasil desimal yang akurat, minimal satu operand harus bertipe `float64`:
+```go
+a := 17.0
+b := 5.0
+fmt.Println(a / b)  // 3.4
+```
+Atau konversi eksplisit: `float64(17) / float64(5)`. Ini beda dari Python 3, di mana `/` selalu menghasilkan float meskipun kedua operand integer.
+:::
+
+## Increment & Decrement
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    hitung := 0
+    hitung++
+    hitung++
+    hitung--
+    fmt.Println(hitung)  // 1
+}
+```
+
+**`hitung++`** dan **`hitung--`** menambah/mengurangi 1. Tapi ada batasan penting: di Go, `++`/`--` adalah **statement**, bukan **ekspresi** — artinya tidak bisa dipakai di dalam baris lain.
+
+```go
+x := 5
+y := x++       // ERROR: x++ used as value
+fmt.Println(x++) // ERROR juga
+```
+
+Ini beda besar dari C++/Java yang mengizinkan `y = x++`. Di Go, `hitung++` harus berdiri sendiri sebagai satu baris statement penuh.
+
+:::tip
+Urutan operasi (operator precedence) di Go mengikuti aturan matematika standar: perkalian dan pembagian dikerjakan sebelum penjumlahan dan pengurangan. Pakai tanda kurung `()` untuk memastikan urutan sesuai maksudmu — sama seperti di kalkulator biasa.
+```go
+hasil := 2 + 3 * 4    // 14, bukan 20
+hasilLain := (2 + 3) * 4  // 20
+```
+:::
+
+## Kesalahan Umum
+
+1. **Berharap pembagian integer menghasilkan desimal:**
+   ```go
+   total := 10
+   jumlahOrang := 3
+   rataRata := total / jumlahOrang
+   fmt.Println(rataRata)  // 3, bukan 3.33!
+   ```
+   Solusi: konversi ke `float64` dulu sebelum membagi.
+
+2. **Memakai `++`/`--` sebagai ekspresi:**
+   ```go
+   total := 0
+   fmt.Println(total++)  // ERROR: total++ used as value
+   ```
+   `hitung++` harus jadi statement terpisah, tidak bisa langsung dipakai di dalam pemanggilan fungsi lain.
+
+## Latihan
+
+import { Exercise } from '@/components/learn/Exercise'
+
+<Exercise client:load
+  id="u1l6-ex1"
+  title="Perbaiki Pembagian"
+  description="Kode ini seharusnya menghitung rata-rata 3 nilai dan mencetak '85.33' (2 angka desimal), tapi hasilnya salah karena pembagian integer. Perbaiki!"
+  type="code-output"
+  expectedOutput="85.33"
+  starterCode={`package main
+
+import "fmt"
+
+func main() {
+    total := 256
+    jumlah := 3
+    rata := float64(total) / float64(jumlah)
+    fmt.Printf("%.2f\\n", rata)
+}`}
+  hints={["Kode starter ini sudah dikonversi dengan benar — coba jalankan dulu untuk lihat hasilnya.", "float64(total) / float64(jumlah) memastikan hasil pembagian tetap desimal."]}
+  explanation="Mengonversi total dan jumlah menjadi float64 sebelum dibagi memastikan hasilnya desimal utuh (85.333...), lalu %.2f membulatkannya ke 2 angka di belakang koma."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l6-ex2"
+  title="Hasil Pembagian Integer"
+  description="Berapa hasil dari `17 / 5` jika kedua variabelnya bertipe int di Go?"
+  type="multiple-choice"
+  options={["3.4", "3", "4", "Error"]}
+  correctIndex={1}
+  hints={["Pembagian dua int di Go menghasilkan int, bagian desimalnya dibuang.", "17 dibagi 5 sama dengan 3 sisa 2 — bagian '3'-nya yang dipakai."]}
+  explanation="Karena 17 dan 5 sama-sama int, hasil pembagiannya juga int: 3 (bagian desimal 0.4 dibuang, bukan dibulatkan)."
+  lang="id"
+/>
+
+<Exercise client:load
+  id="u1l6-ex3"
+  title="Operator Sisa Bagi"
+  description="Lengkapi operator untuk mengecek apakah variabel n adalah bilangan genap."
+  type="fill-blank"
+  template="genap := n {{BLANK}} 2 == 0"
+  blanks={["%"]}
+  hints={["Operator ini menghasilkan sisa pembagian, bukan hasil baginya."]}
+  explanation="n % 2 == 0 memeriksa apakah sisa pembagian n dengan 2 adalah nol — itu tandanya n genap."
+  lang="id"
+/>
+
+## Ringkasan
+
+| Operator | Fungsi | Contoh |
+|---|---|---|
+| `+` `-` `*` | Tambah, kurang, kali | `a * b` |
+| `/` | Bagi (int ÷ int = int, dibulatkan ke bawah) | `17 / 5` → `3` |
+| `%` | Sisa bagi (modulus) | `17 % 5` → `2` |
+| `++` `--` | Tambah/kurang 1 (statement, bukan ekspresi) | `hitung++` |
+
+Di pelajaran berikutnya, kita akan bahas **string dasar** — cara menggabungkan, membandingkan, dan memanipulasi teks di Go!
