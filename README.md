@@ -8,9 +8,11 @@
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
   [![Version](https://img.shields.io/badge/version-v0.1.0--beta.1-orange)](./CHANGELOG.md)
+  [![CI](https://github.com/zedfar/belajar-golang/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
   [![Astro](https://img.shields.io/badge/Astro-v7-FF5D01?logo=astro&logoColor=white)](https://astro.build)
   [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+  [![Tests](https://img.shields.io/badge/unit%20tests-63%20passing-brightgreen?logo=vitest)](./src/__tests__)
 
 </div>
 
@@ -48,13 +50,15 @@ Kurikulumnya tidak sekadar menyalin urutan bahasa lain: dua unit terakhir (**Con
 |------|-------|:-------:|--------|
 | 0 | Persiapan | 3 | ✅ Tersedia |
 | 1 | Dasar-Dasar Go | 9 | ✅ Tersedia |
-| 2 | Percabangan | 4 | 🔜 Segera |
-| 3 | Perulangan | 5 | 🔜 Segera |
-| 4 | Fungsi | 7 | 🔜 Segera |
-| 5 | Struktur Data (Slice, Map) | 5 | 🔜 Segera |
-| 6 | Struct & Interface | 7 | 🔜 Segera |
-| 7 | Concurrency (Goroutine & Channel) | 5 | 🔜 Segera |
-| 8 | Practical Go (Module, Testing, JSON) | 4 | 🔜 Segera |
+| 2 | Percabangan | 4 | ✅ Tersedia |
+| 3 | Perulangan | 5 | ✅ Tersedia |
+| 4 | Fungsi | 7 | ✅ Tersedia |
+| 5 | Struktur Data (Slice, Map) | 5 | ✅ Tersedia |
+| 6 | Struct & Interface | 7 | ✅ Tersedia |
+| 7 | Concurrency (Goroutine & Channel) | 5 | ✅ Tersedia |
+| 8 | Practical Go (Module, Testing, JSON) | 4 | ✅ Tersedia |
+
+**49 lesson tersedia** (Bahasa Indonesia) · 1 proyek mini per unit. Terjemahan Inggris masih berupa stub ("translation in progress") — lihat [Berkontribusi](#berkontribusi).
 
 Unit 7 (Concurrency) dan Unit 8 (Practical Go) tidak ada di kurikulum keluarga situs C++/Python/SQL — ditambahkan khusus karena goroutine, channel, dan *error-as-value* adalah identitas inti Go.
 
@@ -143,7 +147,7 @@ belajar-golang/
 │   │   ├── learn/           # CodePlayground, CodeBlock, Exercise, QuizCard, InfoBox, ErrorBoundary
 │   │   └── common/          # ThemeToggle, LanguageToggle, TableOfContents
 │   ├── content/
-│   │   ├── lessons-id/      # Lesson Bahasa Indonesia (MDX, unit-0 & unit-1 tersedia)
+│   │   ├── lessons-id/      # Lesson Bahasa Indonesia (MDX, 49 lesson, unit-0 s.d. unit-8)
 │   │   └── lessons-en/      # Lesson English (MDX, stub — terjemahan menyusul)
 │   ├── data/
 │   │   └── glossary.ts      # Istilah Go bilingual untuk halaman Glosarium
@@ -167,8 +171,8 @@ belajar-golang/
 Kontribusi sangat welcome! Beberapa cara untuk berkontribusi:
 
 - 🐛 **Laporkan bug** — [Buka issue](https://github.com/zedfar/belajar-golang/issues)
-- ✍️ **Tulis lesson** — Tambah konten unit-2 s.d. unit-8 di `src/content/lessons-id/` (metadata sudah terdaftar di `src/lib/curriculum.ts`, tandai `isAvailable: true` setelah kontennya lengkap)
-- 🌐 **Terjemahan** — Bantu terjemahkan lesson ke English di `src/content/lessons-en/`
+- 🌐 **Terjemahan** — Bantu terjemahkan 49 lesson dari `src/content/lessons-id/` ke English di `src/content/lessons-en/` (saat ini semuanya masih stub `translationStatus: "draft"`)
+- ✍️ **Perbaiki/perdalam lesson** — Semua unit sudah ada isinya, tapi selalu ada ruang untuk contoh yang lebih jelas, exercise tambahan, atau koreksi teknis
 - 💡 **Saran fitur** — Diskusikan di [Issues](https://github.com/zedfar/belajar-golang/issues)
 
 ### Menulis Lesson Baru
