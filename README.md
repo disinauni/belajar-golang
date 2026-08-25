@@ -20,7 +20,7 @@
 
 ## Tentang Project
 
-**Belajar Golang** adalah anggota terbaru keluarga situs [Belajar C++](https://github.com/zedfar/belajar-cpp), [Belajar Python](https://github.com/zedfar/belajar-python), dan [Belajar SQL](https://github.com/zedfar/belajar-sql) — mengajarkan **Go (Golang)** dari nol dalam Bahasa Indonesia, langsung bisa dicoba di browser tanpa install apapun.
+**Belajar Golang** adalah anggota keluarga situs [Belajar C++](https://github.com/zedfar/belajar-cpp), [Belajar Python](https://github.com/zedfar/belajar-python), [Belajar SQL](https://github.com/zedfar/belajar-sql), dan [Belajar Rust](https://github.com/zedfar/belajar-rust) — mengajarkan **Go (Golang)** dari nol dalam Bahasa Indonesia, langsung bisa dicoba di browser tanpa install apapun.
 
 Kurikulumnya tidak sekadar menyalin urutan bahasa lain: dua unit terakhir (**Concurrency** dan **Practical Go**) dirancang khusus untuk fitur khas Go — goroutine, channel, dan error handling ala Go — yang tidak punya padanan di keluarga situs C++/Python/SQL.
 
