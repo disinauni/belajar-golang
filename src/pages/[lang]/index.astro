@@ -11,7 +11,7 @@ export function getStaticPaths() {
 const { lang } = Astro.params as { lang: Language }
 const totalLessons = getTotalLessons()
 const totalUnits = CURRICULUM_ID.length
-const firstLessonSlug = '01-apa-itu-programming'
+const firstLessonSlug = '01-apa-itu-go'
 const firstLessonUrl = `/${lang}/learn/unit-0/${firstLessonSlug}`
 
 const features = [
