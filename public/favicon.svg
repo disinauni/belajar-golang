@@ -1,38 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#4f46e5"/>
+      <stop offset="0%" stop-color="#22c3e6"/>
+      <stop offset="100%" stop-color="#0891b2"/>
     </linearGradient>
   </defs>
 
-  <!-- Rounded square background -->
   <rect width="32" height="32" rx="7" fill="url(#bg)"/>
 
-  <!-- Left bracket < -->
-  <polyline
-    points="10,10 5.5,16 10,22"
-    stroke="white"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
+  <!-- gopher head -->
+  <circle cx="16" cy="18" r="7.2" fill="white"/>
 
-  <!-- Right bracket > -->
-  <polyline
-    points="22,10 26.5,16 22,22"
-    stroke="white"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
+  <!-- ears -->
+  <circle cx="10.2" cy="12.2" r="2.6" fill="white"/>
+  <circle cx="21.8" cy="12.2" r="2.6" fill="white"/>
+  <circle cx="10.2" cy="12.2" r="1.1" fill="#0891b2"/>
+  <circle cx="21.8" cy="12.2" r="1.1" fill="#0891b2"/>
 
-  <!-- Slash / -->
-  <line
-    x1="19" y1="9"
-    x2="13" y2="23"
-    stroke="#93c5fd"
-    stroke-width="2"
-    stroke-linecap="round"
-  />
+  <!-- eyes -->
+  <circle cx="13.1" cy="17" r="1.9" fill="#0891b2"/>
+  <circle cx="18.9" cy="17" r="1.9" fill="#0891b2"/>
+  <circle cx="13.5" cy="16.6" r="0.7" fill="white"/>
+  <circle cx="19.3" cy="16.6" r="0.7" fill="white"/>
+
+  <!-- nose -->
+  <ellipse cx="16" cy="21.3" rx="1.6" ry="1.2" fill="#0891b2"/>
+
+  <!-- teeth -->
+  <rect x="14.9" y="22.2" width="1" height="1.6" rx="0.3" fill="white"/>
+  <rect x="16.1" y="22.2" width="1" height="1.6" rx="0.3" fill="white"/>
 </svg>
