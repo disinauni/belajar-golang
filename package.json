@@ -6,10 +6,10 @@
   "homepage": "https://belajar-golang.varnimyr.my.id",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zedfar/belajar-golang.git"
+    "url": "https://github.com/disinauni/belajar-golang.git"
   },
   "bugs": {
-    "url": "https://github.com/zedfar/belajar-golang/issues"
+    "url": "https://github.com/disinauni/belajar-golang/issues"
   },
   "type": "module",
   "scripts": {

@@ -8,7 +8,7 @@
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
   [![Version](https://img.shields.io/badge/version-v0.1.0--beta.1-orange)](./CHANGELOG.md)
-  [![CI](https://github.com/zedfar/belajar-golang/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
+  [![CI](https://github.com/disinauni/belajar-golang/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
   [![Astro](https://img.shields.io/badge/Astro-v7-FF5D01?logo=astro&logoColor=white)](https://astro.build)
   [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
@@ -20,7 +20,7 @@
 
 ## Tentang Project
 
-**Belajar Golang** adalah anggota keluarga situs [Belajar C++](https://github.com/zedfar/belajar-cpp), [Belajar Python](https://github.com/zedfar/belajar-python), [Belajar SQL](https://github.com/zedfar/belajar-sql), dan [Belajar Rust](https://github.com/zedfar/belajar-rust) — mengajarkan **Go (Golang)** dari nol dalam Bahasa Indonesia, langsung bisa dicoba di browser tanpa install apapun.
+**Belajar Golang** adalah anggota keluarga situs [Belajar C++](https://github.com/disinauni/belajar-cpp), [Belajar Python](https://github.com/disinauni/belajar-python), [Belajar SQL](https://github.com/disinauni/belajar-sql), dan [Belajar Rust](https://github.com/disinauni/belajar-rust) — mengajarkan **Go (Golang)** dari nol dalam Bahasa Indonesia, langsung bisa dicoba di browser tanpa install apapun.
 
 Kurikulumnya tidak sekadar menyalin urutan bahasa lain: dua unit terakhir (**Concurrency** dan **Practical Go**) dirancang khusus untuk fitur khas Go — goroutine, channel, dan error handling ala Go — yang tidak punya padanan di keluarga situs C++/Python/SQL.
 
@@ -92,7 +92,7 @@ Unit 7 (Concurrency) dan Unit 8 (Practical Go) tidak ada di kurikulum keluarga s
 
 ```bash
 # Clone repository
-git clone https://github.com/zedfar/belajar-golang.git
+git clone https://github.com/disinauni/belajar-golang.git
 cd belajar-golang
 
 # Install dependencies
@@ -170,9 +170,9 @@ belajar-golang/
 
 Kontribusi sangat welcome! Beberapa cara untuk berkontribusi:
 
-- 🐛 **Laporkan bug** — [Buka issue](https://github.com/zedfar/belajar-golang/issues)
+- 🐛 **Laporkan bug** — [Buka issue](https://github.com/disinauni/belajar-golang/issues)
 - ✍️ **Perbaiki/perdalam lesson** — Semua unit (ID & EN) sudah ada isinya, tapi selalu ada ruang untuk contoh yang lebih jelas, exercise tambahan, atau koreksi teknis
-- 💡 **Saran fitur** — Diskusikan di [Issues](https://github.com/zedfar/belajar-golang/issues)
+- 💡 **Saran fitur** — Diskusikan di [Issues](https://github.com/disinauni/belajar-golang/issues)
 
 ### Menulis Lesson Baru
 
