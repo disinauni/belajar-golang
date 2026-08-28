@@ -114,7 +114,7 @@ Buka **http://localhost:4321** di browser.
 |----------|------------|--------|
 | `JUDGE0_API_URL` | Judge0 endpoint | `https://ce.judge0.com` |
 | `JUDGE0_API_KEY` | API key / auth token (opsional untuk public instance) | `your-key-here` |
-| `PUBLIC_SITE_URL` | URL production | `https://belajar-golang.varnimyr.my.id` |
+| `PUBLIC_SITE_URL` | URL production | `https://belajar-golang.disinauni.my.id` |
 
 ### Scripts
 
@@ -227,7 +227,7 @@ Tipe exercise yang tersedia: `multiple-choice`, `fill-blank`, `code-output`, `fr
 
 ## Deployment
 
-Project ini ditujukan untuk deploy ke **belajar-golang.varnimyr.my.id** via Vercel.
+Project ini ditujukan untuk deploy ke **belajar-golang.disinauni.my.id** via Vercel.
 
 ```bash
 # Build production

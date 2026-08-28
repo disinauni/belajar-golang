@@ -3,7 +3,7 @@
   "description": "Platform pembelajaran Go (Golang) gratis, interaktif, dan bilingual untuk siswa SMP & SMA Indonesia",
   "version": "0.1.0-beta.1",
   "license": "MIT",
-  "homepage": "https://belajar-golang.varnimyr.my.id",
+  "homepage": "https://belajar-golang.disinauni.my.id",
   "repository": {
     "type": "git",
     "url": "https://github.com/disinauni/belajar-golang.git"

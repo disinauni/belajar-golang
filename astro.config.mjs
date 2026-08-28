@@ -51,7 +51,7 @@ const copyButtonTransformer = {
 }
 
 export default defineConfig({
-  site: 'https://belajar-golang.varnimyr.my.id',
+  site: 'https://belajar-golang.disinauni.my.id',
   adapter: vercel(),
 
   vite: {
