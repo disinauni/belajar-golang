@@ -8,11 +8,13 @@
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
   [![Version](https://img.shields.io/badge/version-v0.1.0--beta.1-orange)](./CHANGELOG.md)
-  [![CI](https://github.com/disinauni/belajar-golang/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
+  [![CI](https://github.com/disinauni/belajar-golang/actions/workflows/ci.yml/badge.svg)](https://github.com/disinauni/belajar-golang/actions/workflows/ci.yml)
+  [![Deploy](https://img.shields.io/badge/Live-belajar--golang.disinauni.my.id-black?logo=vercel)](https://belajar-golang.disinauni.my.id)
   [![Astro](https://img.shields.io/badge/Astro-v7-FF5D01?logo=astro&logoColor=white)](https://astro.build)
   [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
   [![Tests](https://img.shields.io/badge/unit%20tests-63%20passing-brightgreen?logo=vitest)](./src/__tests__)
+  [![E2E](https://img.shields.io/badge/e2e-17%20passing-brightgreen?logo=playwright)](./src/__tests__/e2e)
 
 </div>
 
@@ -20,9 +22,11 @@
 
 ## Tentang Project
 
-**Belajar Golang** adalah anggota keluarga situs [Belajar C++](https://github.com/disinauni/belajar-cpp), [Belajar Python](https://github.com/disinauni/belajar-python), [Belajar SQL](https://github.com/disinauni/belajar-sql), dan [Belajar Rust](https://github.com/disinauni/belajar-rust) — mengajarkan **Go (Golang)** dari nol dalam Bahasa Indonesia, langsung bisa dicoba di browser tanpa install apapun.
+**Belajar Golang** mengajarkan **Go (Golang)** dari nol dalam Bahasa Indonesia, langsung bisa dicoba di browser tanpa install apapun.
 
 Kurikulumnya tidak sekadar menyalin urutan bahasa lain: dua unit terakhir (**Concurrency** dan **Practical Go**) dirancang khusus untuk fitur khas Go — goroutine, channel, dan error handling ala Go — yang tidak punya padanan di keluarga situs C++/Python/SQL.
+
+Bagian dari [ekosistem disinauni](https://disinauni.my.id) bersama [Belajar C++](https://github.com/disinauni/belajar-cpp), [Belajar Python](https://github.com/disinauni/belajar-python), [Belajar SQL](https://github.com/disinauni/belajar-sql), dan [Belajar Rust](https://github.com/disinauni/belajar-rust).
 
 **Ditujukan untuk:**
 - Siswa SMP & SMA yang belajar Go untuk pertama kali
@@ -227,7 +231,7 @@ Tipe exercise yang tersedia: `multiple-choice`, `fill-blank`, `code-output`, `fr
 
 ## Deployment
 
-Project ini ditujukan untuk deploy ke **belajar-golang.disinauni.my.id** via Vercel.
+Live di **[belajar-golang.disinauni.my.id](https://belajar-golang.disinauni.my.id)**. Setiap push ke `main` akan trigger deployment otomatis via Vercel.
 
 ```bash
 # Build production
@@ -248,5 +252,5 @@ Dirilis di bawah [MIT License](./LICENSE). Bebas digunakan, dimodifikasi, dan di
 ---
 
 <div align="center">
-  <sub>Dibuat dengan ❤️ untuk pelajar Indonesia</sub>
+  <sub>Dibuat dengan ❤️ untuk pelajar Indonesia &middot; <a href="https://belajar-golang.disinauni.my.id">belajar-golang.disinauni.my.id</a> &middot; bagian dari <a href="https://disinauni.my.id">disinauni</a></sub>
 </div>
