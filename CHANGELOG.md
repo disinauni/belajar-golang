@@ -4,6 +4,15 @@ Semua perubahan penting pada proyek belajar-golang dicatat di file ini. Format m
 
 ## [Unreleased]
 
+### Changed
+- Migrasi organisasi GitHub dari akun personal `zedfar` ke org [`disinauni`](https://github.com/disinauni) (`github.com/disinauni/belajar-golang`), termasuk migrasi domain production dari `varnimyr.my.id` ke `disinauni.my.id`.
+- Favicon & og-image diganti dari desain generik `</>` (sebelumnya identik persis dengan belajar-cpp dan belajar-python) menjadi wajah gopher minimalis warna cyan, terinspirasi maskot resmi Go tanpa meniru artwork-nya persis.
+- Sistem warna `primary` di seluruh UI situs diganti dari biru generik (`#3b82f6`, identik dengan belajar-cpp/python/sql) ke scale cyan resmi Tailwind (`#22d3ee`/`#0891b2`), konsisten dengan favicon baru — mencakup `tailwind.config.ts`, `theme-color` meta tag, state tombol snippet aktif di playground, warna inline-code di prosa lesson, dan gradient/grid/pills di og-image. Warna `accent` (ungu) sengaja dipertahankan.
+- README diseragamkan strukturnya dengan keluarga situs belajar-* lainnya: badge Deploy & E2E ditambahkan, paragraf keanggotaan [ekosistem disinauni](https://disinauni.my.id).
+
+### Fixed
+- Tombol "Mulai Belajar" di homepage mengarah ke slug lesson yang salah (`01-apa-itu-programming`, seharusnya `01-apa-itu-go` sesuai `curriculum.ts` & nama file MDX) — broken link (404) yang sudah ada sejak lama, ketahuan tidak sengaja saat investigasi sistem warna.
+
 ### Added
 - Scaffold awal platform (Astro + React + Tailwind v4), mengikuti arsitektur `belajar-python`/`belajar-sql`.
 - Kurikulum 9 unit (`unit-0` s.d. `unit-8`) terdaftar di `src/lib/curriculum.ts`, termasuk dua unit khas Go (`unit-7` Concurrency, `unit-8` Practical Go) tanpa padanan di keluarga situs cpp/python/sql.
