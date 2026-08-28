@@ -54,6 +54,14 @@ export default defineConfig({
   site: 'https://belajar-golang.disinauni.my.id',
   adapter: vercel(),
 
+  // E2E tests (Playwright) run against `astro dev` in CI (the @astrojs/vercel
+  // adapter's output doesn't support `astro preview`), so the dev toolbar's
+  // injected panels (Islands/Audit/Settings) would otherwise leak extra <h1>
+  // elements into unscoped locators. Disabled only in CI - stays on locally.
+  devToolbar: {
+    enabled: !process.env.CI,
+  },
+
   vite: {
     plugins: [tailwindcss()],
   },
